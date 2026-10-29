@@ -4,7 +4,7 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P3, exact-duplicate engine
-**Next task:** P3-01
+**Next task:** P3-02
 
 ## Status
 
@@ -24,7 +24,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P2-02 | StorageAccess + ScanScope + SAF picker | done | Folders = persisted SAF grants |
 | P2-03 | File enumerators | done | 50k files: 8.7 s, +8 MB heap; cancel in 6 ms |
 | P2-04 | Incremental indexer | done | Unchanged rescan: 0 files to hash; 2,200 files in 553 ms |
-| P3-01 | Size → partial → full hash | todo | |
+| P3-01 | Size → partial → full hash | done | Cached rerun opens 0 files |
 | P3-02 | ScanWorker (foreground, resumable) | todo | |
 | P3-03 | Grouping + SuggestKeeper | todo | |
 | P3-04 | DeleteDuplicates (safe) | todo | |
@@ -54,6 +54,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P3-01: added `FindExactDuplicatesUseCase` (size buckets → partial hash → full hash, keyed by size and hash, four files at a time, minimum size from settings) and `StreamingContentHasher` in `data/hashing` (SHA-256 per D-005, 16 KiB head + tail + size, 256 KiB buffer, `file:` and `content:` sources, fails when the length differs from the index). Hashes are cached in `file_hash` through `FileIndexRepository`. Tests: 11 new JVM tests (54 unit tests total) with temp files: identical copies, same size differing only in the middle, unique sizes never opened, 0-byte files skipped at minimum size 1 and grouped at 0, small files matched from one read, unreadable files skipped, and a cached rerun that opens nothing. On the Primebook, `ExactEngineDeviceTest` runs the engine over Room and a real folder (one group of 3 out of 204 files; the rerun hashes nothing) and hashes a MediaStore image through its `content://` URI. Open: without `ACCESS_MEDIA_LOCATION`, MediaStore streams have EXIF location redacted, so two photos differing only in location could match as exact; not verified, to handle with the permission and `setRequireOriginal`. Next: P3-02.
 - 2026-10-29: P2-04: added `IndexFilesUseCase` (500-file batches; prunes only after a completed enumeration) and `FileIndexRepository`/`FileIndexRepositoryImpl`. An unchanged file (size + mtime) keeps its row id and cached work; a changed one is updated in place and loses its hashes and embeddings; unseen rows are pruned only within the scanned scope's `sourceUri` prefixes. The caller passes the scan id; `scan_run` rows come with P3-02. Tests: 3 new JVM use-case tests (43 unit tests total). On the Primebook, `FileIndexRepositoryTest` over a real 2,200-file walk and Room: first pass adds 2,200; an unchanged rescan leaves 0 files without a hash and takes 553 ms; editing one file leaves exactly 1 to hash and clears its perceptual hash and embedding; a deleted file is pruned; a MediaStore row survives a whole-device scan; a failed walk prunes nothing. `DaoTest` still passes. Known gap: rows under a folder the user removes are not pruned unless it is picked and scanned again; P3-03 grouping must ignore them by scan id. Next: P3-01.
 - 2026-10-29: P2-03: added `FileEnumerator` with three cancellable cold flows (File walk for WholeDevice, MediaStore cursor for MediaOnly, `DocumentsContract` BFS for picked folders), the domain `DiscoveredFile`/`MediaKind`/`ScanFilter`, and `FileTreeWalker` (iterative, symlink-skipping, cancellation checked per folder and file). Used `DocumentsContract` directly instead of `DocumentFile`: it needs no new dependency and makes one query per folder. Tests: 8 new JVM tests (40 unit tests total), including a 50k-file walk and a cancellation timing test. On the Primebook, `EnumeratorDeviceTest`: 50,000 files enumerated in 8.7 s with 8 MB peak heap growth (384 MB max); cancellation stopped the walk in 6 ms; a MediaStore pass returned 114 files. The SAF walk was not run on a device. Next: P2-04.
 - 2026-10-29: P2-02: added `ScanScope` (WholeDevice, MediaOnly, Folders) with the `availableScopes()` reachability rule; `ScanFolderRepository` backed by persisted SAF tree grants (read+write kept when granted); `ExcludedPathRepository` over Room, mapping a picked tree to an absolute path; folder use cases; and a real Settings screen (MVI) with "Folders to scan" and "Excluded folders" sections, plus the design-system `SectionHeader`. Tests: 12 new (32 unit tests total). On the Primebook, through the real Files picker: a picked folder (Ringtones) survives a force-stop and relaunch, removing it releases the grant and stays removed after a restart, and excluding then removing a folder works. Next: P2-03.

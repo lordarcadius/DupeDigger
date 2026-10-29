@@ -2,6 +2,7 @@ package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -40,6 +41,10 @@ class IndexFilesUseCaseTest {
             prunes += scope to scanId
             return 7
         }
+
+        override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
+
+        override suspend fun saveHashes(files: List<IndexedFile>) = Unit
     }
 
     @Test

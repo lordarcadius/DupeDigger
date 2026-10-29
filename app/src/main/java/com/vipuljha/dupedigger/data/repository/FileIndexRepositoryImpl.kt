@@ -6,10 +6,12 @@ import com.vipuljha.dupedigger.data.local.db.dao.EmbeddingDao
 import com.vipuljha.dupedigger.data.local.db.dao.FileHashDao
 import com.vipuljha.dupedigger.data.local.db.dao.FileIndexDao
 import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
+import com.vipuljha.dupedigger.data.local.db.entity.FileHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import javax.inject.Inject
@@ -61,6 +63,14 @@ class FileIndexRepositoryImpl @Inject constructor(
 
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int = db.withTransaction {
         sourceUriPrefixes(scope).sumOf { fileIndexDao.deleteNotSeenSince(scanId, it) }
+    }
+
+    override suspend fun filesSeenIn(scanId: Long): List<IndexedFile> =
+        fileHashDao.hashStateForScan(scanId).map { IndexedFile(it.id, it.sourceUri, it.size, it.mtime, it.partialHash, it.fullHash) }
+
+    override suspend fun saveHashes(files: List<IndexedFile>) {
+        if (files.isEmpty()) return
+        fileHashDao.upsertAll(files.map { FileHashEntity(it.id, it.partialHash, it.fullHash, computedAtMtime = it.mtime) })
     }
 
     private fun DiscoveredFile.toEntity(id: Long, scanId: Long) = FileIndexEntity(

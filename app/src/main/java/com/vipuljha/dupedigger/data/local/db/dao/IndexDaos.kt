@@ -49,9 +49,27 @@ interface FileHashDao {
     @Query("SELECT * FROM file_hash WHERE fileId = :fileId")
     suspend fun get(fileId: Long): FileHashEntity?
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(hashes: List<FileHashEntity>)
+
     @Query("DELETE FROM file_hash WHERE fileId = :fileId")
     suspend fun deleteForFile(fileId: Long)
+
+    @Query(
+        "SELECT f.id, f.sourceUri, f.size, f.mtime, h.partialHash, h.fullHash FROM file_index f " +
+            "LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.lastSeenScanId = :scanId",
+    )
+    suspend fun hashStateForScan(scanId: Long): List<FileHashState>
 }
+
+data class FileHashState(
+    val id: Long,
+    val sourceUri: String,
+    val size: Long,
+    val mtime: Long,
+    val partialHash: String?,
+    val fullHash: String?,
+)
 
 @Dao
 interface PerceptualHashDao {

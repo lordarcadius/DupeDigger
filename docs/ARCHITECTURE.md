@@ -81,6 +81,11 @@ Rules:
   - a changed file is updated in place, and its `file_hash`, `perceptual_hash` and `embedding` rows are deleted;
   - unseen rows are pruned only after a completed enumeration, and only within the scanned scope's `sourceUri` prefixes (`file:`, `content://media/`, or each picked tree), so switching scope keeps the other scopes' cache.
 - Later stages consider only files with `lastSeenScanId` equal to the current scan.
+- The exact stage (`FindExactDuplicatesUseCase` + `ContentHasher`) buckets by size, then by (size, partial hash), then by (size, full hash):
+  - four files hash at once, on `@DefaultDispatcher`;
+  - a file of at most 32 KiB is read once and gets both hashes;
+  - a file whose length no longer matches the index is skipped, never matched;
+  - partial hashes are saved per 500 files, and each full hash as soon as it is computed.
 
 ## Data model (Room)
 
