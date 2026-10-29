@@ -1,0 +1,61 @@
+# Android .gitignore
+# Author: Vipul Jha
+# Updated: Dec 20, 2025
+# Purpose: Clean, editor-agnostic ignore rules for Android projects
+
+
+# --------------------------
+# Android / Gradle
+# --------------------------
+*.iml
+.gradle/
+local.properties
+.cxx/
+.externalNativeBuild/
+.navigation/
+
+# --------------------------
+# Android Studio / IntelliJ
+# --------------------------
+.idea/
+
+# --------------------------
+# Build outputs
+# --------------------------
+**/build/
+*.apk
+*.ap_
+*.aab
+output.json
+
+# --------------------------
+# Kotlin
+# --------------------------
+.kotlin/
+*.main.kts
+
+# --------------------------
+# VS Code / Editors
+# --------------------------
+.vscode/
+*.code-workspace
+.history/
+.cursor/
+.windsurf/
+.antigravity/
+
+# --------------------------
+# System files
+# --------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.hprof
+
+# --------------------------
+# Secrets & Signing
+# --------------------------
+*.jks
+*.keystore
+google-services.json
+secrets.properties
