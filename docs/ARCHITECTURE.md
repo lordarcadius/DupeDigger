@@ -50,7 +50,7 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
                  key: (volume, relativePath+name) or documentId; skip if size+mtime unchanged
 2. Exact      ── group by size (drop unique sizes; drop files < minSize)
                  → partial hash: first 16 KiB + last 16 KiB + size
-                 → full streaming hash (SHA-256 or XXH3-128; decided in spike P0-03)
+                 → full streaming hash (SHA-256, per D-005)
                  → groups of identical full hash  ⇒ MatchTier.EXACT
 3. Near       ── images: decode a downscaled bitmap → dHash + pHash (64-bit)
                  video:  N keyframes via MediaMetadataRetriever → per-frame pHash

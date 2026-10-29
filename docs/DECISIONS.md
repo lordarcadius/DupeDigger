@@ -22,8 +22,36 @@ Options:
 
 **Needs from the owner:** is Play Store distribution a goal, or is sideload/F-Droid acceptable?
 
-## D-005: Content hash algorithm (open, resolved by P0-03)
+## D-005: Content hash algorithm (accepted, P0-03)
 Candidates: SHA-256 (built-in `MessageDigest`, no dependency) or XXH3-128 (faster, needs a library). Collision safety isn't a concern for either at this scale, so speed decides.
+
+**Decision:** SHA-256 through `MessageDigest` for the full hash, and also for the partial hash. The partial-hash window is **16 KiB head + 16 KiB tail**, plus the size.
+
+**Why:**
+- On the device, the platform SHA-256 (the `AndroidOpenSSL` provider, BoringSSL with hardware SHA2) hashes about 1.3 GB/s from memory. Cold storage reads only manage about 430 MiB/s, so full hashing is bound by storage, not CPU.
+- XXH3-128 has no faster option on Android:
+  - hash4j 0.31.0 (pure Java) ran at about 10 MiB/s, both debuggable and non-debuggable. I did not investigate the cause; its byte-array VarHandle reads may not be optimised on ART.
+  - hash4j also needs VarHandle, which ART only has from API 33, below this app's minSdk 31.
+- 16 KiB keeps the window ARCHITECTURE.md already specifies. 4 KiB saves about 0.3 ms per file, but media headers (EXIF, container metadata) often fill the first few KiB, so a smaller window filters less. Filtering power was not measured, because the test files were random bytes.
+
+**Measured** on a Primebook (MediaTek MT8781, 2×A76 + 6×A55, 6 GB RAM, Android 15). Method:
+- An instrumented test, not kept in the repo, ran over 1000 MiB of files: 2000 × 256 KiB and 5 × 100 MiB.
+- The page cache was dropped before every run, through `adb root` and `drop_caches`.
+- Everything ran on one thread, with a 256 KiB read buffer.
+
+Results, each run twice:
+
+| Run | Result |
+|---|---|
+| Read only, no hash | 2.27–2.50 s (400–440 MiB/s) |
+| SHA-256, full | 3.11–3.34 s (300–322 MiB/s) |
+| XXH3-128 (hash4j), full | 104–111 s (9–10 MiB/s) |
+| In memory, 64 MiB | SHA-256 1311–1330 MiB/s; XXH3-128 10–11 MiB/s |
+| Partial head+tail, 2000 files | 4 KiB: 0.57 ms/file; 16 KiB: 0.85 ms/file; 64 KiB: 1.25 ms/file |
+
+**Caveats:**
+- One device, measured on real hardware, not an emulator.
+- The files were synthetic random data on internal storage. SD cards and USB storage will be slower to read, which makes hashing even more storage-bound.
 
 ## D-006: LiteRT-LM embedding integration (open, resolved by P0-04)
 Known from the docs (not yet verified on a device):
