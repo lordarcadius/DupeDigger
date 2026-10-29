@@ -113,10 +113,10 @@ Rules:
 
 - `EmbeddingModelRepository` handles available variants, download state, the active model and the delete-model action.
 - The model is **downloaded on demand** by `ModelDownloadWorker` (resumable, checksum-verified) into `filesDir/models/`. It is never bundled in the APK.
-- Candidate variants (sizes from the LiteRT-LM docs, to be verified in the P0-04 spike):
-  - EmbeddingGemma 2 **740M** (text + image + audio + video, ~485 MB)
-  - **440M** text + vision (~388 MB)
-  - **270M** text only (~165 MB)
-- `EmbeddingEngine` is lazily initialised (init can take ~10 s), held as an app singleton, and closed after an idle timeout or when memory is trimmed.
-- Text inputs use the `task: sentence similarity | text: ` prefix, trimmed. Each vector is L2-normalised before it's stored.
-- The backend preference is GPU → CPU, with NPU where available. The manifest declares `<uses-native-library android:name="libOpenCL.so" android:required="false"/>`.
+- Variants: URLs, pinned revisions and SHA-256 are in D-006.
+  - EmbeddingGemma 2 **740M** (text + image + audio + video, 485 MB)
+  - **440M** text + vision (388 MB)
+  - **270M** text only (165 MB)
+- `EmbeddingEngine` is lazily initialised, held as an app singleton, and closed after an idle timeout or when memory is trimmed. Init takes 1–3 s on CPU and 7–15 s on GPU (D-006).
+- Text inputs use the `task: sentence similarity | query: ` prefix, trimmed. Images use `visionTokensPerImage = 70`. The engine returns L2-normalised vectors, and they are stored as returned.
+- The backend default is CPU. GPU is a user preference that falls back to CPU if init fails (D-006 measured GPU slower and far heavier on a mid-range Mali). The manifest declares `<uses-native-library android:name="libOpenCL.so" android:required="false"/>`.

@@ -53,15 +53,80 @@ Results, each run twice:
 - One device, measured on real hardware, not an emulator.
 - The files were synthetic random data on internal storage. SD cards and USB storage will be slower to read, which makes hashing even more storage-bound.
 
-## D-006: LiteRT-LM embedding integration (open, resolved by P0-04)
-Known from the docs (not yet verified on a device):
-- Artifact: `com.google.ai.edge.litertlm:litertlm-android`. Pin an exact version.
-- API: `EmbeddingEngineConfig(modelPath, backend, visionBackend, audioBackend)`, `EmbeddingEngine(config).initialize()`, `computeEmbedding(listOf(InputData.Text|Image|Audio))`.
-- Model `litert-community/embeddinggemma-2-740m-litert-lm`: Apache-2.0, 485 MB, a shared 768-dim space with output sizes of 128/256/512/768, and inputs of text (up to 8192 tokens), image and audio.
-- Text task prefix for similarity: `task: sentence similarity | text: `.
-- Init takes up to ~10 s. RAM was ~500–800 MB in the published benchmarks.
+## D-006: LiteRT-LM embedding integration (accepted, P0-04)
+**Decision:**
+- Use `litertlm-android` **0.18.1** with the generic (CPU/GPU) `.litertlm` files. Download them from the pinned Hugging Face revisions below and check them against the listed SHA-256.
+- The **CPU backend is the default**. GPU is an opt-in preference that falls back to CPU if it fails to initialise.
+- Images use `visionTokensPerImage = 70`.
 
-To verify: the API names, how the output dim is chosen, whether vectors come normalised, real RAM and latency on a mid-range device, and that the download URL is ungated, along with its checksum.
+**API, confirmed against the 0.18.1 AAR:**
+- `EmbeddingEngineConfig(modelPath, backend, visionBackend?, audioBackend?, cacheDir?, modelFd?, maxInputLength?, visionTokensPerImage?, activationDataType?)`.
+- `EmbeddingEngine(config)`, then `initialize()` / `isInitialized()` / `close()` (it is `AutoCloseable`).
+- `close()` throws if `initialize()` never succeeded, so guard it with `isInitialized()`.
+- Embedding calls:
+  - `computeEmbedding(List<InputData>, EmbeddingOptions)` returns an `EmbeddingResponse` with `embedding: FloatArray`;
+  - `computeEmbeddingBatch(...)` and suspend `computeEmbeddingAsync(...)` also exist.
+- Inputs are `InputData.Text(String)`, `InputData.Image(ByteArray)` and `InputData.Audio(ByteArray)`:
+  - encoded JPEG bytes worked for images;
+  - 16 kHz mono PCM16 WAV bytes worked for audio.
+- Backends are `Backend.CPU(threadCount?)` and `Backend.GPU()`. `Backend.NPU` and `Backend.GOOGLE_TENSOR` also exist, but they need SoC-specific model files.
+- `EmbeddingOptions(normalize?, insertSpecialTokens?, outputSize?, visionTokensPerImage?)`:
+  - the output dimension comes from `outputSize` (128/256/512/768, each verified);
+  - the default is 768.
+- **Vectors come back L2-normalised by default** (norm 1.0000), including truncated sizes. With `normalize = false` the norm is about 874.
+
+**Text prefix:**
+- The model card's symmetric-similarity prompt is `task: sentence similarity | query: {content}`, not `| text:`.
+- Matryoshka truncation is near-lossless down to 256 dimensions, per the card. 128 is not recommended for multimodal.
+- `maxInputLength = 128` rejects audio, which needed 129 tokens for a 5 s clip, so use 512 or more when audio is enabled.
+
+**Models.** All three are ungated and Apache-2.0. The URL pattern is `https://huggingface.co/litert-community/<repo>/resolve/<revision>/<file>`.
+
+| Variant | Repo @ revision | File | Size | SHA-256 |
+|---|---|---|---|---|
+| 270M text | `embeddinggemma-2-text-270m-litert-lm` @ `9be6e8b90982095dc05c2bd162e4b954ee4dbac7` | `embeddinggemma-2-text-270m.litertlm` | 164,626,432 | `2d079ee2f6f066b1f368e8d7c819f55214eaef1d0513b312321901f30ab286fb` |
+| 440M text + vision | `embeddinggemma-2-text-vision-440m-litert-lm` @ `e301f74d5551b0c2641bd5cb4652a76239d5c5f8` | `embeddinggemma-2-text-vision-440m.litertlm` | 387,710,976 | `92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0` |
+| 740M text + vision + audio | `embeddinggemma-2-740m-litert-lm` @ `94408f31843f8bd0adb11c262292627287f5fda4` | `embeddinggemma-2-740m.litertlm` | 484,622,336 | `e7a8a2204b91e0f96e92960e84a09a89212e1633dcb7575a9bf3378b4df77f4c` |
+
+The 270M and 740M downloads matched their SHA-256 exactly. I did not download the 440M file; its size and hash come from the Hugging Face API.
+
+**Measured** on a Primebook: MediaTek MT8781 (2×A76 + 6×A55, Mali GPU), 6 GB RAM, Android 15.
+- The model was loaded from internal `filesDir`. The app cannot read a file the shell pushed into its external files dir.
+- Each configuration ran in a fresh process. The test process sat at about 269 MB RSS before `initialize()`; "peak" below is the process `VmHWM`.
+
+| Model / backend | Init | Text, per item | Image | Audio (5 s) | Peak RSS |
+|---|---|---|---|---|---|
+| 270M CPU | 1.1–1.2 s | 316–319 ms | — | — | 514–522 MB |
+| 270M GPU | 7.1 s | 459 ms | — | — | 2310 MB |
+| 740M CPU, 70 vision tokens | 1.3–1.8 s | 313–315 ms | 2.86 s | 1.48 s | 969–1029 MB |
+| 740M CPU, default (140) vision tokens | 1.3–3.1 s | 314–315 ms | 6.83 s | 1.47 s | 1163–1208 MB |
+| 740M GPU, default vision tokens | 15.3 s | 570 ms | 5.36 s | 1.86 s | 2662 MB |
+
+- **`maxInputLength`:** 128, 512 or the default did not change text latency.
+- **CPU threads:** 1 thread gave 492 ms per text and 3.0 s per image; 2 gave 408 ms; 4 gave 313 ms, about the same as the default; 8 gave 287 ms and 2.8 s.
+- **Similarity sanity check:** synthetic cases only.
+  - Text: "cat on a sofa" against "kitten on a couch" scored 0.933; against "quarterly tax report" it scored 0.716. Unrelated text scores high, so the semantic threshold needs to sit around 0.9.
+  - Images: a shifted copy scored 0.995–0.999; a different image scored 0.81–0.84.
+
+**Why CPU first:**
+- On this Mali GPU the GPU backend was slower than CPU for text.
+- It took 7–15 s to initialise and pushed process RSS to 2.3–2.7 GB on a 6 GB device.
+- GPU was faster only for images, by about 20%.
+
+**Consequences for P6:**
+- At about 2.9 s per image, about 0.3 s per document and about 1.5 s per audio clip, a 20k-photo library takes on the order of 16 hours on this device.
+- So the semantic stage must be:
+  - opt-in and incremental, embedding only files whose vectors are missing or stale;
+  - in a resumable worker, with the charging-only option (P6-05);
+  - limited to the selected MediaKinds.
+
+**Not verified:**
+- Real photos, video and real-world audio.
+- The 440M file.
+- `insertSpecialTokens`.
+- NPU backends.
+- Behaviour on API 31–34.
+- Whether Hugging Face keeps these revisions available long term.
 
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
