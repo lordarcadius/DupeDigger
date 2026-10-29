@@ -126,7 +126,7 @@ Results, each run twice:
 | 440M text + vision | `embeddinggemma-2-text-vision-440m-litert-lm` @ `e301f74d5551b0c2641bd5cb4652a76239d5c5f8` | `embeddinggemma-2-text-vision-440m.litertlm` | 387,710,976 | `92dcbea108899e5d6e30d919b0744f90d9967e80c67a4ab5503ac16d54f62eb0` |
 | 740M text + vision + audio | `embeddinggemma-2-740m-litert-lm` @ `94408f31843f8bd0adb11c262292627287f5fda4` | `embeddinggemma-2-740m.litertlm` | 484,622,336 | `e7a8a2204b91e0f96e92960e84a09a89212e1633dcb7575a9bf3378b4df77f4c` |
 
-The 270M and 740M downloads matched their SHA-256 exactly. I did not download the 440M file; its size and hash come from the Hugging Face API.
+The 270M and 740M downloads matched their SHA-256 exactly. The 440M file's size and hash came from the Hugging Face API, and a P6-02 download later matched them.
 
 **Measured** on a Primebook: MediaTek MT8781 (2×A76 + 6×A55, Mali GPU), 6 GB RAM, Android 15.
 - The model was loaded from internal `filesDir`. The app cannot read a file the shell pushed into its external files dir.
@@ -180,6 +180,17 @@ The 270M and 740M downloads matched their SHA-256 exactly. I did not download th
 - **Wi-Fi only (default on):** maps to `NetworkType.UNMETERED`, which also allows Ethernet and excludes metered Wi-Fi. The constraint is fixed when the work is queued, so a settings change has to queue again (P6-05).
 - **Foreground notification:** `dataSync` type with bytes, a progress bar and Cancel.
 - **Permission:** the app now declares `INTERNET`; this is its only network use.
+
+**Engine wrapper (P6-02):**
+- **Interface:** the domain `Embedder` returns one L2-normalised vector per input at the asked size. It reports `ModelUnavailable` when the model isn't downloaded and `Unknown` when the engine fails; a failed engine is dropped.
+- **Lifecycle:** `LiteRtEmbedder` (data/ai) loads lazily on the IO dispatcher and keeps one model and backend loaded.
+  - It closes 60 s after the last batch, or when the app is trimmed in the background (`TRIM_MEMORY_BACKGROUND`, forwarded from `DupeDiggerApp`), and loads again on the next call.
+  - A mutex keeps one batch in flight.
+- **GPU → CPU fallback:** covers a GPU that throws while starting, and the fallback holds until the model or backend changes.
+  - It can't cover a native crash. The emulator exited during the first device run; its log ended just after a Dawn Vulkan device was created, so the GPU start is the likely cause (not confirmed). GPU stays an opt-in preference (CPU default).
+- **`LiteRtModelLoader`:** vision and audio encoders run only for variants that have them; audio sets `maxInputLength = 512`; images use 70 vision tokens.
+- **440M verified:** its SHA-256 now matches an actual download (P6-02 device test).
+- **Measured** on an API 36 x86_64 emulator, CPU, 440M text + vision: three texts and one 512 × 384 JPEG took 10.2 s including the engine load, and 1.6 s again with it loaded. All vectors had norm 1.0000 at 256 and 768 dimensions. "A cat sleeping on a sofa" against "a kitten asleep on a couch" scored 0.971, against a tax report 0.711.
 
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.

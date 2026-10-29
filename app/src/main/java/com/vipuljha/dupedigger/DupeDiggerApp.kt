@@ -9,6 +9,8 @@ import coil3.SingletonImageLoader
 import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import com.vipuljha.dupedigger.core.designsystem.AppMotion
+import com.vipuljha.dupedigger.data.ai.LiteRtEmbedder
+import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
@@ -17,6 +19,8 @@ import javax.inject.Inject
 class DupeDiggerApp : Application(), Configuration.Provider, SingletonImageLoader.Factory {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject lateinit var embedder: Lazy<LiteRtEmbedder>
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -29,6 +33,11 @@ class DupeDiggerApp : Application(), Configuration.Provider, SingletonImageLoade
             .crossfade(AppMotion.ImageFadeMillis)
             .components { add(VideoFrameDecoder.Factory()) }
             .build()
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        embedder.get().onTrimMemory(level)
+    }
 
     override fun onCreate() {
         super.onCreate()
