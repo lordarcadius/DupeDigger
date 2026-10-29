@@ -35,12 +35,14 @@ class AndroidImageHasher @Inject constructor(
             } else {
                 ImageDecoder.createSource(context.contentResolver, Uri.parse(sourceUri))
             }
+            var pixels = 0L
             val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                pixels = info.size.width.toLong() * info.size.height
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 decoder.setTargetSampleSize(sampleSize(minOf(info.size.width, info.size.height)))
             }
             try {
-                hashOf(bitmap)
+                hashOf(bitmap).copy(pixels = pixels)
             } finally {
                 bitmap.recycle()
             }

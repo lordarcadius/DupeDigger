@@ -12,6 +12,9 @@ data class AppSettings(
 ) {
     companion object {
         val HammingRange = 0..64
+
+        /** The near-match threshold the UI offers; only 10 was timed, and wider bands slow grouping toward all-pairs (D-012). */
+        val NearThresholdChoices = 4..12
         val SemanticRange = 0f..1f
     }
 }

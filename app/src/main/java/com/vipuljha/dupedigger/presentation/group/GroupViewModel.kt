@@ -69,6 +69,7 @@ class GroupViewModel @AssistedInject constructor(
                     )
                 }
             }
+            is GroupIntent.CompareClicked -> sendEffect(GroupEffect.OpenCompare(current.keeper.fileId, intent.fileId))
             GroupIntent.NotDuplicatesClicked -> viewModelScope.launch {
                 markNotDuplicates(fingerprint)
                 sendEffect(GroupEffect.Close)

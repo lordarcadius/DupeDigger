@@ -39,6 +39,7 @@ class AndroidAudioTagReader @Inject constructor(
                     durationMs = duration,
                     title = tag(MediaMetadataRetriever.METADATA_KEY_TITLE),
                     artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: tag(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                    bitrate = tag(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull(),
                 )
             }
         } catch (e: CancellationException) {

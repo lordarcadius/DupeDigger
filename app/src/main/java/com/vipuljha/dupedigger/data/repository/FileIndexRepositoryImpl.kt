@@ -93,7 +93,11 @@ class FileIndexRepositoryImpl @Inject constructor(
         if (hashes.isEmpty()) return
         perceptualHashDao.upsertAll(
             hashes.flatMap { (id, h) ->
-                listOf(PerceptualHashEntity(id, ALGO_DHASH, 0, h.dHash), PerceptualHashEntity(id, ALGO_PHASH, 0, h.pHash))
+                listOfNotNull(
+                    PerceptualHashEntity(id, ALGO_DHASH, 0, h.dHash),
+                    PerceptualHashEntity(id, ALGO_PHASH, 0, h.pHash),
+                    h.pixels?.let { PerceptualHashEntity(id, ALGO_QUALITY, 0, it) },
+                )
             },
         )
     }
@@ -110,7 +114,7 @@ class FileIndexRepositoryImpl @Inject constructor(
         if (signatures.isEmpty()) return
         perceptualHashDao.upsertAll(
             signatures.flatMap { (id, s) ->
-                listOf(PerceptualHashEntity(id, ALGO_VIDEO_DURATION, 0, s.durationMs)) +
+                listOfNotNull(PerceptualHashEntity(id, ALGO_VIDEO_DURATION, 0, s.durationMs), s.pixels?.let { PerceptualHashEntity(id, ALGO_QUALITY, 0, it) }) +
                     s.frames.mapIndexed { i, frame -> PerceptualHashEntity(id, ALGO_VIDEO_PHASH, i, frame) }
             },
         )
@@ -140,6 +144,7 @@ class FileIndexRepositoryImpl @Inject constructor(
                     PerceptualHashEntity(id, ALGO_AUDIO_DURATION, 0, s.durationMs),
                     s.titleKey?.let { PerceptualHashEntity(id, ALGO_AUDIO_TITLE, 0, it) },
                     s.artistKey?.let { PerceptualHashEntity(id, ALGO_AUDIO_ARTIST, 0, it) },
+                    s.bitrate?.let { PerceptualHashEntity(id, ALGO_QUALITY, 0, it) },
                 )
             },
         )
@@ -174,6 +179,7 @@ class FileIndexRepositoryImpl @Inject constructor(
         const val ALGO_VIDEO_PHASH = "VIDEO_PHASH"
         const val ALGO_VIDEO_DURATION = "VIDEO_DURATION"
         const val ALGO_SIMHASH = "SIMHASH"
+        const val ALGO_QUALITY = "QUALITY"
         const val ALGO_AUDIO_DURATION = "AUDIO_DURATION"
         const val ALGO_AUDIO_TITLE = "AUDIO_TITLE"
         const val ALGO_AUDIO_ARTIST = "AUDIO_ARTIST"

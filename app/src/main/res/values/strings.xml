@@ -70,6 +70,11 @@
     <string name="results_tier_exact">Exact</string>
     <string name="results_tier_near">Similar</string>
     <string name="results_tier_semantic">AI match</string>
+    <string name="results_tier_tag">%1$s · %2$s</string>
+    <plurals name="results_similar_files">
+        <item quantity="one">%1$s similar file</item>
+        <item quantity="other">%1$s similar files</item>
+    </plurals>
     <string name="results_frees">Frees %1$s</string>
     <plurals name="results_selected">
         <item quantity="one">%1$s file selected · %2$s</item>
@@ -123,6 +128,20 @@
         <item quantity="one">%1$s copy · frees %2$s</item>
         <item quantity="other">%1$s copies · frees %2$s</item>
     </plurals>
+    <plurals name="group_summary_similar">
+        <item quantity="one">%1$s similar file · %2$s · frees %3$s</item>
+        <item quantity="other">%1$s similar files · %2$s · frees %3$s</item>
+    </plurals>
+    <string name="group_similar_note">These files look alike but aren’t identical. Compare them before deleting.</string>
+    <string name="group_action_compare">Compare</string>
+    <string name="compare_title">Compare</string>
+    <string name="compare_pane_details">%1$s · %2$s</string>
+    <string name="compare_mode_side">Side by side</string>
+    <string name="compare_mode_slider">Slider</string>
+    <string name="compare_zoom_in">Zoom in</string>
+    <string name="compare_zoom_out">Zoom out</string>
+    <string name="compare_zoom_reset">Reset zoom</string>
+    <string name="compare_divider">Divider position</string>
     <string name="group_member_details">%1$s · Modified %2$s</string>
     <string name="group_member_details_with_resolution">%1$s · %2$s</string>
     <string name="group_resolution">%1$d × %2$d</string>
@@ -200,6 +219,11 @@
     <string name="settings_excluded_title">Excluded folders</string>
     <string name="settings_excluded_body">Scans skip these folders and everything inside them.</string>
     <string name="settings_excluded_empty">Nothing excluded.</string>
+    <string name="settings_similar_title">Similar files</string>
+    <string name="settings_similar_body">How different two photos or videos may be and still count as similar. Applies from the next scan.</string>
+    <string name="settings_similar_value">Up to %1$d bits apart</string>
+    <string name="settings_similar_strict">Strict</string>
+    <string name="settings_similar_loose">Loose</string>
     <string name="settings_excluded_add">Exclude folder</string>
     <string name="settings_exclude_failed">Couldn’t exclude that folder. Pick a folder on this device’s storage.</string>
     <string name="settings_remove">Remove</string>

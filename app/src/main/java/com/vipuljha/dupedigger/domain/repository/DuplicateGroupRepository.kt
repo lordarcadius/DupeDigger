@@ -5,11 +5,15 @@ import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.domain.model.KindReclaim
+import com.vipuljha.dupedigger.domain.model.MatchTier
 import kotlinx.coroutines.flow.Flow
 
 interface DuplicateGroupRepository {
     /** Reclaimable space per kind of file, over groups that still have at least two members. */
     fun observeReclaimable(): Flow<List<KindReclaim>>
+
+    /** How many groups of two or more members each tier has; tiers with none are absent. */
+    fun observeTierCounts(): Flow<Map<MatchTier, Int>>
 
     /** Matching groups with at least two members, most space to free first; refreshes when groups or keep choices change. */
     fun pagedGroups(filter: GroupFilter): Flow<PagingData<GroupWithMembers>>

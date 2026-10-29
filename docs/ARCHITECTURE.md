@@ -111,7 +111,7 @@ Rules:
 |---|---|
 | `file_index` | id, sourceUri, path, name, mimeType, mediaKind, size, mtime, volume, lastSeenScanId |
 | `file_hash` | fileId, partialHash, fullHash, computedAtMtime |
-| `perceptual_hash` | fileId, algo (DHASH/PHASH/VIDEO_PHASH/VIDEO_DURATION/SIMHASH/AUDIO_DURATION/AUDIO_TITLE/AUDIO_ARTIST), frameIndex, value (Long) |
+| `perceptual_hash` | fileId, algo (DHASH/PHASH/VIDEO_PHASH/VIDEO_DURATION/SIMHASH/AUDIO_DURATION/AUDIO_TITLE/AUDIO_ARTIST/QUALITY), frameIndex, value (Long) |
 | `embedding` | fileId, modelId, dim, vector (BLOB, float32 LE, normalised) |
 | `duplicate_group` / `group_member` | groupId, tier, score, scanId, fingerprint / groupId, fileId, similarity |
 | `scan_run` | id, scope, tiers, startedAt, finishedAt, status, stats |

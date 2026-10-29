@@ -22,16 +22,22 @@ import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
@@ -45,6 +51,8 @@ import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
 import com.vipuljha.dupedigger.core.designsystem.TooltipIconButton
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
+import com.vipuljha.dupedigger.domain.model.AppSettings
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -93,7 +101,32 @@ fun SettingsScreen(
                     rows = state.excluded,
                     onIntent = onIntent,
                 )
+                item(key = "similar", contentType = "similar") { SimilarFilesSection(state.nearThreshold, onIntent, Modifier.animateItem()) }
             }
+        }
+    }
+}
+
+/** The slider follows the drag locally and saves once it is released, so dragging doesn't write the store on every step. */
+@Composable
+private fun SimilarFilesSection(threshold: Int, onIntent: (SettingsIntent) -> Unit, modifier: Modifier = Modifier) {
+    val choices = AppSettings.NearThresholdChoices
+    var value by remember(threshold) { mutableFloatStateOf(threshold.toFloat()) }
+    Column(modifier) {
+        SectionHeader(stringResource(R.string.settings_similar_title), description = stringResource(R.string.settings_similar_body))
+        val stateText = stringResource(R.string.settings_similar_value, value.roundToInt())
+        Text(stateText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = Dimens.spaceSm))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
+            Text(stringResource(R.string.settings_similar_strict), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Slider(
+                value = value,
+                onValueChange = { value = it },
+                onValueChangeFinished = { onIntent(SettingsIntent.NearThresholdChanged(value.roundToInt())) },
+                valueRange = choices.first.toFloat()..choices.last.toFloat(),
+                steps = choices.last - choices.first - 1,
+                modifier = Modifier.weight(1f).semantics { stateDescription = stateText },
+            )
+            Text(stringResource(R.string.settings_similar_loose), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

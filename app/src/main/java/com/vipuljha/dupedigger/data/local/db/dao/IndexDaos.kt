@@ -70,12 +70,15 @@ interface FileHashDao {
 
 data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)
 
-data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val mediaKind: String, val keepChoice: String?)
+data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val score: Float, val mediaKind: String, val keepChoice: String?)
+
+data class TierCountRow(val tier: String, val groupCount: Int)
 
 data class GroupDetailRow(
     val groupId: Long,
     val fingerprint: String,
     val tier: String,
+    val score: Float,
     val keepChoice: String?,
     val fileId: Long,
     val sourceUri: String,
@@ -84,6 +87,7 @@ data class GroupDetailRow(
     val size: Long,
     val mtime: Long,
     val mediaKind: String,
+    val quality: Long?,
 )
 
 data class GroupMemberRow(
@@ -94,6 +98,7 @@ data class GroupMemberRow(
     val name: String,
     val size: Long,
     val mtime: Long,
+    val quality: Long?,
 )
 
 data class FileHashState(
@@ -197,10 +202,21 @@ interface DuplicateGroupDao {
     )
     fun observeReclaimable(): Flow<List<KindReclaimRow>>
 
+    /** Groups with two or more members, counted per tier. */
+    @Query(
+        """
+        SELECT tier, COUNT(*) AS groupCount FROM (
+            SELECT g.tier AS tier FROM duplicate_group g JOIN group_member m ON m.groupId = g.groupId
+            GROUP BY g.groupId HAVING COUNT(*) >= 2
+        ) GROUP BY tier
+        """,
+    )
+    fun observeTierCounts(): Flow<List<TierCountRow>>
+
     /** Groups with two or more members, most space to free first; a [limit] of -1 returns them all. */
     @Query(
         """
-        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, MIN(f.mediaKind) AS mediaKind,
+        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, g.score AS score, MIN(f.mediaKind) AS mediaKind,
             kc.keeperSourceUri AS keepChoice
         FROM duplicate_group g
         JOIN group_member m ON m.groupId = g.groupId
@@ -218,8 +234,9 @@ interface DuplicateGroupDao {
     @Query(
         """
         SELECT m.groupId AS groupId, f.id AS fileId, f.sourceUri AS sourceUri, f.path AS path, f.name AS name,
-            f.size AS size, f.mtime AS mtime
+            f.size AS size, f.mtime AS mtime, q.value AS quality
         FROM group_member m JOIN file_index f ON f.id = m.fileId
+        LEFT JOIN perceptual_hash q ON q.fileId = f.id AND q.algo = 'QUALITY' AND q.frameIndex = 0
         WHERE m.groupId IN (:groupIds)
         """,
     )
@@ -227,13 +244,14 @@ interface DuplicateGroupDao {
 
     @Query(
         """
-        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, kc.keeperSourceUri AS keepChoice,
+        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, g.score AS score, kc.keeperSourceUri AS keepChoice,
             f.id AS fileId, f.sourceUri AS sourceUri, f.path AS path, f.name AS name, f.size AS size, f.mtime AS mtime,
-            f.mediaKind AS mediaKind
+            f.mediaKind AS mediaKind, q.value AS quality
         FROM duplicate_group g
         JOIN group_member m ON m.groupId = g.groupId
         JOIN file_index f ON f.id = m.fileId
         LEFT JOIN keep_choice kc ON kc.fingerprint = g.fingerprint
+        LEFT JOIN perceptual_hash q ON q.fileId = f.id AND q.algo = 'QUALITY' AND q.frameIndex = 0
         WHERE g.fingerprint = :fingerprint
         """,
     )

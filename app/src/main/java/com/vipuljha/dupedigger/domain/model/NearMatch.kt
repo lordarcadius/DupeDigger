@@ -3,8 +3,8 @@ package com.vipuljha.dupedigger.domain.model
 import kotlinx.collections.immutable.ImmutableList
 import java.security.MessageDigest
 
-/** An image's 64-bit difference hash and DCT perceptual hash. */
-data class ImageHashes(val dHash: Long, val pHash: Long)
+/** An image's 64-bit difference hash and DCT perceptual hash, and its full-size pixel count when just measured. */
+data class ImageHashes(val dHash: Long, val pHash: Long, val pixels: Long? = null)
 
 /** An image seen in a scan, with its cached perceptual hashes if they were computed before. */
 data class ImageFile(val id: Long, val sourceUri: String, val size: Long, val hashes: ImageHashes?)
@@ -12,8 +12,8 @@ data class ImageFile(val id: Long, val sourceUri: String, val size: Long, val ha
 /** How many frames a video signature samples, evenly spaced through the video. */
 const val VIDEO_FRAMES = 8
 
-/** A video's duration and the pHash of each sampled frame, in order. */
-data class VideoSignature(val durationMs: Long, val frames: ImmutableList<Long>)
+/** A video's duration and the pHash of each sampled frame, in order, and its pixel count when just measured. */
+data class VideoSignature(val durationMs: Long, val frames: ImmutableList<Long>, val pixels: Long? = null)
 
 /** A video seen in a scan, with its cached signature if it was computed before. */
 data class VideoFile(val id: Long, val sourceUri: String, val size: Long, val signature: VideoSignature?)
@@ -25,13 +25,13 @@ const val NO_TEXT_SIMHASH = 0L
 data class DocumentFile(val id: Long, val sourceUri: String, val name: String, val mimeType: String?, val size: Long, val simHash: Long?)
 
 /** An audio file's duration and the keys of its tagged title and artist, when it has those tags. */
-data class AudioSignature(val durationMs: Long, val titleKey: Long?, val artistKey: Long?)
+data class AudioSignature(val durationMs: Long, val titleKey: Long?, val artistKey: Long?, val bitrate: Long? = null)
 
 /** An audio file seen in a scan, with its cached signature if it was read before. */
 data class AudioFile(val id: Long, val sourceUri: String, val name: String, val size: Long, val signature: AudioSignature?)
 
 /** What an audio file's metadata says; blank tags are null. */
-data class AudioTags(val durationMs: Long, val title: String?, val artist: String?)
+data class AudioTags(val durationMs: Long, val title: String?, val artist: String?, val bitrate: Long? = null)
 
 /** [score] is the group's similarity, 1 for identical hashes. */
 data class NearGroup(val fingerprint: String, val fileIds: ImmutableList<Long>, val score: Float)

@@ -11,6 +11,8 @@ import com.vipuljha.dupedigger.domain.usecase.AddScanFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.ExcludeFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.RemoveExcludedPathUseCase
 import com.vipuljha.dupedigger.domain.usecase.RemoveScanFolderUseCase
+import com.vipuljha.dupedigger.domain.usecase.SetNearThresholdUseCase
+import com.vipuljha.dupedigger.presentation.FakeSettings
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -65,11 +67,27 @@ class SettingsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
+    private val settings = FakeSettings()
+
     private fun viewModel() = SettingsViewModel(
         folders, excluded,
         AddScanFolderUseCase(folders), RemoveScanFolderUseCase(folders),
         ExcludeFolderUseCase(excluded), RemoveExcludedPathUseCase(excluded),
+        settings, SetNearThresholdUseCase(settings),
     )
+
+    @Test
+    fun `the similar-files threshold shows the setting and saves within the offered range`() {
+        val vm = viewModel()
+        assertEquals(10, vm.state.value.nearThreshold)
+
+        vm.onIntent(SettingsIntent.NearThresholdChanged(7))
+        assertEquals(7, settings.settings.value.nearHammingThreshold)
+        assertEquals(7, vm.state.value.nearThreshold)
+
+        vm.onIntent(SettingsIntent.NearThresholdChanged(40))
+        assertEquals(12, settings.settings.value.nearHammingThreshold)
+    }
 
     @Test
     fun `picking a scan folder adds it and removing it drops it`() {

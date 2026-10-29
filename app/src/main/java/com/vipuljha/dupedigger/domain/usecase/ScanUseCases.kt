@@ -2,6 +2,7 @@ package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
+import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.availableScopes
 import com.vipuljha.dupedigger.domain.model.isReachable
@@ -40,4 +41,10 @@ class CancelScanUseCase @Inject constructor(private val scheduler: ScanScheduler
 
 class SetNearDuplicatesEnabledUseCase @Inject constructor(private val settings: SettingsRepository) {
     suspend operator fun invoke(enabled: Boolean) = settings.update { it.copy(nearDuplicatesEnabled = enabled) }
+}
+
+/** How many bits two images or videos may differ by and still be similar, within the offered choices; used from the next scan. */
+class SetNearThresholdUseCase @Inject constructor(private val settings: SettingsRepository) {
+    suspend operator fun invoke(bits: Int) =
+        settings.update { it.copy(nearHammingThreshold = bits.coerceIn(AppSettings.NearThresholdChoices)) }
 }

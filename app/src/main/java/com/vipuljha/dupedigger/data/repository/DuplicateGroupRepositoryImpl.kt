@@ -40,6 +40,10 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
         rows.map { KindReclaim(MediaKind.valueOf(it.mediaKind), it.groupCount, it.files, it.bytes) }
     }
 
+    override fun observeTierCounts(): Flow<Map<MatchTier, Int>> = groupDao.observeTierCounts().map { rows ->
+        rows.associate { MatchTier.valueOf(it.tier) to it.groupCount }
+    }
+
     override fun observeGroup(fingerprint: String): Flow<GroupWithMembers?> = groupDao.observeGroupDetail(fingerprint).map { rows ->
         val first = rows.firstOrNull() ?: return@map null
         GroupWithMembers(
@@ -47,8 +51,9 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
             fingerprint = first.fingerprint,
             tier = MatchTier.valueOf(first.tier),
             kind = MediaKind.valueOf(rows.minOf { it.mediaKind }),
-            members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, name = it.name) }.toImmutableList(),
+            members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, quality = it.quality, name = it.name) }.toImmutableList(),
             keepChoice = first.keepChoice,
+            score = first.score,
         )
     }
 
@@ -107,8 +112,9 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
                 fingerprint = header.fingerprint,
                 tier = MatchTier.valueOf(header.tier),
                 kind = MediaKind.valueOf(header.mediaKind),
-                members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, name = it.name) }.toImmutableList(),
+                members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, quality = it.quality, name = it.name) }.toImmutableList(),
                 keepChoice = header.keepChoice,
+                score = header.score,
             )
         }
         GroupPage(groups, fetched = headers.size)

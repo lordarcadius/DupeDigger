@@ -19,9 +19,9 @@ data class GroupState(
 ) : UiState
 
 @Immutable
-data class GroupDetailUi(val title: String, val summary: UiText, val members: ImmutableList<MemberUi>)
+data class GroupDetailUi(val title: String, val summary: UiText, val similar: Boolean, val members: ImmutableList<MemberUi>)
 
-/** [thumbnail] is the file's own URI for images and videos, null for kinds without one. */
+/** [thumbnail] is the file's own URI for images and videos; [comparable] offers a side-by-side with the keeper. */
 @Immutable
 data class MemberUi(
     val fileId: Long,
@@ -31,16 +31,19 @@ data class MemberUi(
     val details: UiText,
     val isKeeper: Boolean,
     val thumbnail: String?,
+    val comparable: Boolean = false,
 )
 
 sealed interface GroupIntent : UiIntent {
     data class KeepClicked(val fileId: Long) : GroupIntent
     data class OpenClicked(val fileId: Long) : GroupIntent
     data object NotDuplicatesClicked : GroupIntent
+    data class CompareClicked(val fileId: Long) : GroupIntent
 }
 
 sealed interface GroupEffect : UiEffect {
     data class OpenFile(val uri: String, val mimeType: String?) : GroupEffect
     data class ShowMessage(val message: UiText) : GroupEffect
     data object Close : GroupEffect
+    data class OpenCompare(val keeperId: Long, val otherId: Long) : GroupEffect
 }

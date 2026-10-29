@@ -34,6 +34,7 @@ class DuplicateGroupUseCasesTest {
         override suspend fun keepChoice(fingerprint: String) = keepChoices[fingerprint]
         override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
+        override fun observeTierCounts() = emptyFlow<Map<MatchTier, Int>>()
         override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
         override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
         override fun observeGroup(fingerprint: String) = emptyFlow<GroupWithMembers?>()

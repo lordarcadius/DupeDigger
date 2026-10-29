@@ -7,14 +7,19 @@ import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
+import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.usecase.AddScanFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.ExcludeFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.RemoveExcludedPathUseCase
 import com.vipuljha.dupedigger.domain.usecase.RemoveScanFolderUseCase
+import com.vipuljha.dupedigger.domain.usecase.SetNearThresholdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,6 +31,8 @@ class SettingsViewModel @Inject constructor(
     private val removeScanFolder: RemoveScanFolderUseCase,
     private val excludeFolder: ExcludeFolderUseCase,
     private val removeExcludedPath: RemoveExcludedPathUseCase,
+    settings: SettingsRepository,
+    private val setNearThreshold: SetNearThresholdUseCase,
 ) : MviViewModel<SettingsState, SettingsIntent, SettingsEffect>(SettingsState()) {
 
     init {
@@ -38,6 +45,11 @@ class SettingsViewModel @Inject constructor(
                 )
             }
         }.launchIn(viewModelScope)
+        settings.settings
+            .map { it.nearHammingThreshold }
+            .distinctUntilChanged()
+            .onEach { bits -> setState { copy(nearThreshold = bits) } }
+            .launchIn(viewModelScope)
     }
 
     override fun handleIntent(intent: SettingsIntent) {
@@ -45,6 +57,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsIntent.AddFolderClicked -> sendEffect(SettingsEffect.PickFolder(intent.purpose))
             is SettingsIntent.FolderPicked -> intent.treeUri?.let { onPicked(intent.purpose, it) }
             is SettingsIntent.RemoveClicked -> onRemove(intent.purpose, intent.key)
+            is SettingsIntent.NearThresholdChanged -> viewModelScope.launch { setNearThreshold(intent.bits) }
         }
     }
 

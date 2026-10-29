@@ -23,6 +23,7 @@ import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.QuarantinedFile
 import com.vipuljha.dupedigger.domain.model.RemovalResult
@@ -98,10 +99,12 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     val filters = mutableListOf<GroupFilter>()
 
     override fun observeReclaimable() = reclaimable
+    val tierCounts = MutableStateFlow<Map<MatchTier, Int>>(emptyMap())
+    override fun observeTierCounts() = tierCounts
     override fun pagedGroups(filter: GroupFilter) = flowOf(PagingData.from(groups.toList()))
     override suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers> {
         filters += filter
-        return groups.filter { filter.kind == null || it.kind == filter.kind }
+        return groups.filter { (filter.kind == null || it.kind == filter.kind) && (filter.tier == null || it.tier == filter.tier) }
     }
     override suspend fun ignoredFingerprints() = emptySet<String>()
     override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit

@@ -48,3 +48,9 @@ fun formatRelativeTime(epochMillis: Long, nowMillis: Long): UiText {
         )
     }
 }
+
+/** A 0–1 similarity as a whole percentage rounded down and capped at 99%, so a near match never reads as identical. */
+fun formatSimilarity(score: Float): UiText {
+    val percent = kotlin.math.floor(score.coerceIn(0f, 1f) * 100.0).coerceAtMost(99.0) / 100
+    return UiText.Raw(NumberFormat.getPercentInstance().format(percent))
+}

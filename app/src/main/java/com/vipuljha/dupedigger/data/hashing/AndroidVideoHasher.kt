@@ -54,7 +54,10 @@ class AndroidVideoHasher @Inject constructor(
                         frame.recycle()
                     }
                 }
-                VideoSignature(durationMs, frames.toImmutableList())
+                val dimension = { key: Int -> retriever.extractMetadata(key)?.toLongOrNull() }
+                val width = dimension(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                val height = dimension(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                VideoSignature(durationMs, frames.toImmutableList(), if (width != null && height != null) width * height else null)
             }
         } catch (e: CancellationException) {
             throw e

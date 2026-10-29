@@ -8,7 +8,6 @@ import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.model.GroupFilter
-import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.TrashConsent
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
@@ -37,7 +36,8 @@ import javax.inject.Inject
  * Results: saved groups by kind, most space to free first, with selection of the files that could go.
  * - Selection is cleared when the filter changes, a new scan starts, or a keep choice or group changes, so it never
  *   holds files the user can't see, that a rescan regrouped, or that are now a group's keeper.
- * - "Select all but keepers" covers every matching group, not only the loaded pages.
+ * - "Select all but keepers" covers every matching group, not only the loaded pages; under "All" tiers it takes exact
+ *   copies only, similar files only when that tier is chosen.
  * - Delete runs after a confirmation; media the app may not trash directly wait for the system prompt, and
  *   Undo puts back what was trashed directly or quarantined.
  */
@@ -54,7 +54,7 @@ class ResultsViewModel @Inject constructor(
 
     private var pendingConsent: Pair<TrashConsent, Long>? = null
 
-    private val filter: Flow<GroupFilter> = state.map { GroupFilter(kind = it.kind) }.distinctUntilChanged()
+    private val filter: Flow<GroupFilter> = state.map { GroupFilter(kind = it.kind, tier = it.tier) }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val groups: Flow<PagingData<GroupRowUi>> = filter
@@ -68,6 +68,9 @@ class ResultsViewModel @Inject constructor(
     init {
         groupRepository.observeReclaimable()
             .onEach { kinds -> setState { copy(kindChips = kindChips(kinds)) } }
+            .launchIn(viewModelScope)
+        groupRepository.observeTierCounts()
+            .onEach { counts -> setState { copy(tierChips = tierChips(counts)) } }
             .launchIn(viewModelScope)
         scanRuns.observeLatest()
             .map { it?.id }
@@ -91,7 +94,15 @@ class ResultsViewModel @Inject constructor(
                 val row = intent.row
                 select(if (row.selected) currentState.selection - row.removable.keys else currentState.selection + row.removable)
             }
-            ResultsIntent.SelectAllButKeepers -> selectAll(currentState.kind)
+            is ResultsIntent.TierSelected -> if (intent.tier != currentState.tier) {
+                setState { copy(tier = intent.tier) }
+                select(emptyMap())
+            }
+            ResultsIntent.ShowAllClicked -> {
+                setState { copy(kind = null, tier = null) }
+                select(emptyMap())
+            }
+            ResultsIntent.SelectAllButKeepers -> selectAll(GroupFilter(currentState.kind, currentState.tier))
             ResultsIntent.ClearSelection -> select(emptyMap())
             ResultsIntent.StartScanClicked -> sendEffect(ResultsEffect.OpenScan)
             ResultsIntent.DeleteClicked -> if (currentState.selection.isNotEmpty() && !currentState.deleting) {
@@ -145,13 +156,13 @@ class ResultsViewModel @Inject constructor(
         }
     }
 
-    private fun selectAll(kind: MediaKind?) {
+    private fun selectAll(filter: GroupFilter) {
         if (currentState.selecting) return
         setState { copy(selecting = true) }
         viewModelScope.launch {
-            val files = selectAllButKeepers(GroupFilter(kind = kind))
+            val files = selectAllButKeepers(filter)
             setState { copy(selecting = false) }
-            if (currentState.kind == kind) select(files.associate { it.fileId to it.size })
+            if (GroupFilter(currentState.kind, currentState.tier) == filter) select(files.associate { it.fileId to it.size })
         }
     }
 

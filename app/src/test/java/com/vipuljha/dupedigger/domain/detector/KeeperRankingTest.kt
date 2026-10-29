@@ -19,6 +19,25 @@ class KeeperRankingTest {
     }
 
     @Test
+    fun `quality counts only when every member has it, so a mix falls back to location`() {
+        val camera = member("/storage/emulated/0/DCIM/a.jpg", quality = 1_000)
+        val download = member("/storage/emulated/0/Download/a.jpg", quality = null)
+        val sharp = member("/storage/emulated/0/Download/b.jpg", quality = 4_000)
+
+        assertEquals(camera, rankKeeper(listOf(download, camera)))
+        assertEquals(camera, rankKeeper(listOf(sharp, camera, download)))
+        assertEquals(sharp, rankKeeper(listOf(sharp, camera)))
+    }
+
+    @Test
+    fun `a saved keep choice wins over quality`() {
+        val small = member("/storage/emulated/0/Download/a.jpg", quality = 100)
+        val large = member("/storage/emulated/0/DCIM/a.jpg", quality = 9_000)
+
+        assertEquals(small, keeperOf(listOf(small, large), chosenSourceUri = small.sourceUri))
+    }
+
+    @Test
     fun `the camera folder beats messaging, download and app media copies`() {
         val camera = member("$root/DCIM/Camera/IMG_1.jpg", mtime = 9_000)
         val copies = listOf(

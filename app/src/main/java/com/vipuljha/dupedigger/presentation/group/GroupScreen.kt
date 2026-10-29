@@ -111,6 +111,14 @@ private fun Members(detail: GroupDetailUi, resolutions: ImmutableMap<Long, UiTex
                 Column(Modifier.padding(bottom = Dimens.spaceSm).animateItem()) {
                     Text(detail.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(detail.summary.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (detail.similar) {
+                        Text(
+                            stringResource(R.string.group_similar_note),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.padding(top = Dimens.spaceXs),
+                        )
+                    }
                 }
             }
             items(detail.members, key = { it.fileId }, contentType = { "member" }) { member ->
@@ -147,6 +155,9 @@ private fun MemberCard(member: MemberUi, resolution: UiText?, onIntent: (GroupIn
             Column(horizontalAlignment = Alignment.End) {
                 if (!member.isKeeper) {
                     AppButton(stringResource(R.string.group_action_keep), { onIntent(GroupIntent.KeepClicked(member.fileId)) }, kind = ButtonKind.Tonal)
+                }
+                if (member.comparable) {
+                    AppButton(stringResource(R.string.group_action_compare), { onIntent(GroupIntent.CompareClicked(member.fileId)) }, kind = ButtonKind.Text)
                 }
                 AppButton(stringResource(R.string.group_action_open), { onIntent(GroupIntent.OpenClicked(member.fileId)) }, kind = ButtonKind.Text)
             }

@@ -9,31 +9,40 @@ import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.presentation.common.label
+import com.vipuljha.dupedigger.presentation.common.tierTag
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 
 fun DuplicateGroupItem.toRow(): GroupRowUi {
-    val copies = removable.size + 1
+    val files = removable.size + 1
+    val exact = tier == MatchTier.EXACT
     return GroupRowUi(
         groupId = groupId,
         fingerprint = fingerprint,
         kind = kind,
         title = keeper.name.ifEmpty { keeper.sourceUri.substringAfterLast('/') },
-        detail = UiText.res(
-            R.string.results_row_detail,
-            UiText.plural(R.plurals.results_copies, copies, formatCount(copies), formatBytes(keeper.size)),
+        detail = if (exact) {
             UiText.res(
-                when (tier) {
-                    MatchTier.EXACT -> R.string.results_tier_exact
-                    MatchTier.NEAR -> R.string.results_tier_near
-                    MatchTier.SEMANTIC -> R.string.results_tier_semantic
-                },
-            ),
-        ),
+                R.string.results_row_detail,
+                UiText.plural(R.plurals.results_copies, files, formatCount(files), formatBytes(keeper.size)),
+                tier.label(),
+            )
+        } else {
+            UiText.plural(R.plurals.results_similar_files, files, formatCount(files))
+        },
         reclaim = UiText.res(R.string.results_frees, formatBytes(reclaimableBytes)),
+        tierTag = if (exact) null else tierTag(tier, score),
         removable = removable.associate { it.fileId to it.size }.toImmutableMap(),
     )
+}
+
+/** "All" then each tier that has groups, in a fixed order, each with its group count. */
+fun tierChips(counts: Map<MatchTier, Int>): ImmutableList<TierChipUi> {
+    val all = TierChipUi(null, UiText.res(R.string.results_chip_count, UiText.res(R.string.results_chip_all), formatCount(counts.values.sum())))
+    return (listOf(all) + MatchTier.entries.mapNotNull { tier ->
+        counts[tier]?.takeIf { it > 0 }?.let { TierChipUi(tier, UiText.res(R.string.results_chip_count, tier.label(), formatCount(it))) }
+    }).toImmutableList()
 }
 
 /** "All" then each kind that has groups, in a fixed order, each with its group count. */

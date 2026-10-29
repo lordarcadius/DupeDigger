@@ -73,6 +73,7 @@ import com.vipuljha.dupedigger.core.designsystem.Dimens
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SkeletonBarFractions
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
+import com.vipuljha.dupedigger.core.designsystem.TierTag
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
 import com.vipuljha.dupedigger.core.designsystem.shimmer
@@ -98,6 +99,7 @@ fun ResultsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.kindChips.size > 1) KindChips(state, onIntent)
+            if (state.tierChips.size > 2) TierChips(state, onIntent)
             GroupList(state, groups, onIntent, onOpenGroup, Modifier.weight(1f))
         }
     }
@@ -127,6 +129,24 @@ private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
             FilterChip(
                 selected = chip.kind == state.kind,
                 onClick = { onIntent(ResultsIntent.KindSelected(chip.kind)) },
+                label = { Text(chip.label.asString()) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TierChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
+    val gutter = LocalPaneMetrics.current.gutter
+    LazyRow(
+        modifier = Modifier.padding(top = Dimens.spaceSm),
+        contentPadding = PaddingValues(horizontal = gutter),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+    ) {
+        items(state.tierChips, key = { it.tier?.name ?: "all" }, contentType = { "chip" }) { chip ->
+            FilterChip(
+                selected = chip.tier == state.tier,
+                onClick = { onIntent(ResultsIntent.TierSelected(chip.tier)) },
                 label = { Text(chip.label.asString()) },
             )
         }
@@ -165,7 +185,7 @@ private fun GroupList(
                 isError = true,
                 action = { AppButton(stringResource(R.string.action_retry), groups::retry, loading = refresh is LoadState.Loading) },
             )
-            Phase.Empty -> if (state.kind == null) {
+            Phase.Empty -> if (state.kind == null && state.tier == null) {
                 StateMessage(
                     icon = Icons.Outlined.FindInPage,
                     title = stringResource(R.string.results_empty_title),
@@ -177,7 +197,7 @@ private fun GroupList(
                     icon = Icons.Outlined.FindInPage,
                     title = stringResource(R.string.results_empty_kind_title),
                     subtitle = stringResource(R.string.results_empty_kind_body),
-                    action = { AppButton(stringResource(R.string.results_action_show_all), { onIntent(ResultsIntent.KindSelected(null)) }) },
+                    action = { AppButton(stringResource(R.string.results_action_show_all), { onIntent(ResultsIntent.ShowAllClicked) }) },
                 )
             }
             Phase.Content -> GroupRows(state, groups, onIntent, onOpenGroup)
@@ -239,7 +259,10 @@ private fun GroupRow(row: GroupRowUi, onOpen: () -> Unit, onToggle: () -> Unit, 
         KindBadge(row.kind)
         Spacer(Modifier.width(Dimens.spaceLg))
         Column(Modifier.weight(1f)) {
-            Text(row.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
+                Text(row.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                row.tierTag?.let { TierTag(it.asString()) }
+            }
             Text(
                 row.detail.asString(),
                 style = MaterialTheme.typography.bodyMedium,

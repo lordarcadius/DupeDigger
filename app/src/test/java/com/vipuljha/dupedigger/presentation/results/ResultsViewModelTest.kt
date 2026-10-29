@@ -186,7 +186,7 @@ class ResultsViewModelTest {
         vm.onIntent(ResultsIntent.KindSelected(MediaKind.IMAGE))
         vm.onIntent(ResultsIntent.SelectAllButKeepers)
 
-        assertEquals(GroupFilter(kind = MediaKind.IMAGE), repo.filters.last())
+        assertEquals(GroupFilter(kind = MediaKind.IMAGE, tier = MatchTier.EXACT), repo.filters.last())
         assertEquals(setOf(2L), vm.state.value.selection.keys)
 
         vm.onIntent(ResultsIntent.KindSelected(null))
@@ -225,6 +225,36 @@ class ResultsViewModelTest {
         repo.decisions.tryEmit(Unit)
 
         assertTrue(vm.state.value.selection.isEmpty())
+    }
+
+    @Test
+    fun `tier chips appear per tier and choosing one filters the list and clears the selection`() {
+        repo.tierCounts.value = mapOf(MatchTier.EXACT to 3, MatchTier.NEAR to 2)
+        val vm = viewModel()
+        assertEquals(listOf(null, MatchTier.EXACT, MatchTier.NEAR), vm.state.value.tierChips.map { it.tier })
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+
+        vm.onIntent(ResultsIntent.TierSelected(MatchTier.NEAR))
+
+        assertTrue(vm.state.value.selection.isEmpty())
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        assertEquals(GroupFilter(tier = MatchTier.NEAR), repo.filters.last())
+    }
+
+    @Test
+    fun `under all tiers, select duplicates takes exact groups only`() {
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        assertEquals(GroupFilter(tier = MatchTier.EXACT), repo.filters.last())
+    }
+
+    @Test
+    fun `a near row is tagged with its similarity, capped below 100 percent, and exact rows are not`() {
+        val near = images.copy(tier = MatchTier.NEAR, score = 1f).toItem().toRow()
+
+        assertEquals(UiText.res(R.string.results_tier_tag, UiText.res(R.string.results_tier_near), UiText.Raw("99%")), near.tierTag)
+        assertEquals(UiText.plural(R.plurals.results_similar_files, 2, "2"), near.detail)
+        assertNull(images.toItem().toRow().tierTag)
     }
 
     @Test

@@ -15,6 +15,7 @@ import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.KindReclaim
+import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.RemovalResult
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -97,6 +98,7 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
         override suspend fun keepChoice(fingerprint: String): String? = null
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
+        override fun observeTierCounts() = emptyFlow<Map<MatchTier, Int>>()
         override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
         override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
         override fun observeGroup(fingerprint: String) = emptyFlow<GroupWithMembers?>()

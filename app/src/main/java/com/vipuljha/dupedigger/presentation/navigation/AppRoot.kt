@@ -26,6 +26,8 @@ import com.vipuljha.dupedigger.core.designsystem.NavRow
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
+import com.vipuljha.dupedigger.presentation.compare.CompareRoute
+import com.vipuljha.dupedigger.presentation.compare.compareViewModel
 import com.vipuljha.dupedigger.presentation.group.GroupRoute
 import com.vipuljha.dupedigger.presentation.group.groupViewModel
 import com.vipuljha.dupedigger.presentation.home.HomeRoute
@@ -78,7 +80,14 @@ fun AppRoot(modifier: Modifier = Modifier) {
             )
         }
         entry<Destination.Group> { key ->
-            GroupRoute(onBack = back, viewModel = groupViewModel(key.fingerprint))
+            GroupRoute(
+                onBack = back,
+                onCompare = { left, right -> backStacks.getValue(TopLevelTab.Results).open(Destination.Compare(key.fingerprint, left, right)) },
+                viewModel = groupViewModel(key.fingerprint),
+            )
+        }
+        entry<Destination.Compare> { key ->
+            CompareRoute(onBack = back, viewModel = compareViewModel(key.fingerprint, key.leftId, key.rightId))
         }
         entry<Destination.Quarantine>(metadata = topLevel) {
             QuarantineRoute(onMenuClick = LocalMenuClick.current)

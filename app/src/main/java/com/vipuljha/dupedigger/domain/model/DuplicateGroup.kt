@@ -43,6 +43,7 @@ data class GroupWithMembers(
     val kind: MediaKind,
     val members: ImmutableList<GroupMember>,
     val keepChoice: String?,
+    val score: Float = 1f,
 )
 
 /** A group split into the file to keep and the files that could go. */
@@ -53,6 +54,7 @@ data class DuplicateGroupItem(
     val kind: MediaKind,
     val keeper: GroupMember,
     val removable: ImmutableList<GroupMember>,
+    val score: Float = 1f,
 ) {
     val reclaimableBytes: Long get() = removable.sumOf { it.size }
 }

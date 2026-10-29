@@ -23,6 +23,7 @@ fun groupViewModel(fingerprint: String): GroupViewModel =
 @Composable
 fun GroupRoute(
     onBack: () -> Unit,
+    onCompare: (keeperId: Long, otherId: Long) -> Unit,
     viewModel: GroupViewModel,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -44,6 +45,7 @@ fun GroupRoute(
             }
             is GroupEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
             GroupEffect.Close -> onBack()
+            is GroupEffect.OpenCompare -> onCompare(effect.keeperId, effect.otherId)
         }
     }
 

@@ -224,7 +224,7 @@ Version 1 has not shipped, so it was changed in place: `quarantine_item.sourceUr
 - Near and semantic groups (P5, P6) will need a member-based fingerprint, defined then.
 
 **Default keeper:** computed when groups are read, not stored, so a keep choice or a later metadata measurement needs no rewrite. The ranking (`rankKeeper`), best first:
-1. higher quality (pixels or bitrate), once measured; it is not measured yet and is equal within an exact group anyway;
+1. higher quality (pixels for images and videos, bitrate for audio, stored as `QUALITY` rows since P5-06), only when every member has a value; files hashed before P5-06 have none until they change, so their groups fall through to location. Bitrate isn't comparable across codecs (128 kbps AAC vs 160 kbps MP3);
 2. location: a file under `DCIM/` beats one in an unremarkable folder, which beats a copy under `WhatsApp/`, `Telegram/`, `Download(s)/`, `Messenger/`, `Android/media/`, `.thumbnails/` or `cache/`, matched on whole folder names;
 3. the oldest modification time, with an unknown time (0) ranked last;
 4. `sourceUri`, so the result is always the same.
@@ -279,4 +279,18 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
   - Two different songs with the same title, no artist on one side and the same length would match.
   - Acoustic similarity is left to the AI tier (P6).
   - The keeper ranking doesn't use bitrate yet, so a group can suggest the lower-quality copy (P5-06).
+
+**Near-duplicate UI (P5-06):**
+- Results has tier chips (shown when more than one tier has groups). Near and AI groups carry a "Similar · 96%" tag and read "N similar files".
+  - The similarity is rounded down and capped at 99%, so a near group never reads as identical.
+  - Group detail repeats the tag and warns that the files aren't identical.
+- **"Select duplicates" under "All" tiers selects exact copies only.** Similar files are selected only when the Similar (or AI) chip is chosen.
+  - Bulk-deleting look-alikes such as bursts and edits is the riskiest thing the app can do, so it takes a deliberate choice.
+  - Changing the tier chip clears the selection.
+- **Compare (image groups):** any non-keeper file opens next to the keeper.
+  - Two modes: side by side, or a wipe slider whose divider follows an M3 `Slider`.
+  - One shared zoom and pan: pinch, mouse wheel, double-tap to reset, and zoom buttons. Images decode at up to 2048 px.
+- **Settings → Similar files:** sets the Hamming threshold within 4–12 bits, saved when the slider is released.
+  - It applies from the next scan, because grouping runs during the scan.
+  - Documents keep their fixed SimHash threshold.
 

@@ -83,7 +83,7 @@ class FindNearDuplicatesUseCase @Inject constructor(
         val readAudio = newAudio.chunked(BATCH).flatMap { batch ->
             batch.mapConcurrently { audio ->
                 tagReader.read(audio.sourceUri)?.let { tags ->
-                    audio.copy(signature = AudioSignature(tags.durationMs, tags.title?.let(::audioTitleKey), tags.artist?.let(::audioArtistKey)))
+                    audio.copy(signature = AudioSignature(tags.durationMs, tags.title?.let(::audioTitleKey), tags.artist?.let(::audioArtistKey), tags.bitrate))
                 }.also { step() }
             }.also { done -> fileIndex.saveAudioSignatures(done.associate { it.id to it.signature!! }) }
         }
