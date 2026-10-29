@@ -1,5 +1,7 @@
 package com.vipuljha.dupedigger.presentation.navigation
 
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -7,6 +9,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -41,6 +44,7 @@ import com.vipuljha.dupedigger.presentation.quarantine.QuarantineRoute
 import com.vipuljha.dupedigger.presentation.results.ResultsRoute
 import com.vipuljha.dupedigger.presentation.scan.ScanRoute
 import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
+import kotlinx.coroutines.launch
 
 val LocalMenuClick = compositionLocalOf<(() -> Unit)?> { null }
 
@@ -61,11 +65,14 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
         if (tab == currentTab) backStacks.getValue(tab).backTo(tab.root)
         currentTab = tab
     }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
     val onShortcut by rememberUpdatedState<(AppShortcut) -> Unit> { shortcut ->
-        when (shortcut) {
-            AppShortcut.Home -> selectTab(TopLevelTab.Home)
-            AppShortcut.Back -> back()
-            AppShortcut.Close -> backStacks.getValue(currentTab).back()
+        when {
+            shortcut != AppShortcut.Home && drawerState.isOpen -> scope.launch { drawerState.close() }
+            shortcut == AppShortcut.Home -> selectTab(TopLevelTab.Home)
+            shortcut == AppShortcut.Back -> back()
+            else -> backStacks.getValue(currentTab).back()
         }
     }
     DisposableEffect(shortcuts) {
@@ -145,6 +152,7 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
         AppShell(
             savedPanelWidth = savedPanelWidthDp?.dp,
             onPanelWidthSaved = { savedPanelWidthDp = it.value },
+            drawerState = drawerState,
             drawerGesturesEnabled = backStacks.getValue(currentTab).size == 1,
             navPanel = { showLabels, onNavigated ->
                 NavPanelColumn {

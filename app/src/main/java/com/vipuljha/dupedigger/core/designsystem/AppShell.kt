@@ -37,14 +37,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -84,7 +83,7 @@ val LocalPaneMetrics = compositionLocalOf {
 
 /**
  * The window shell: a `surfaceContainerHigh` field holding the navigation and a `surface` content pane.
- * - Below 600dp: modal drawer; [content] gets a non-null menu click.
+ * - Below 600dp: modal drawer driven by [drawerState]; [content] gets a non-null menu click.
  * - 600–839dp: 72dp icon rail.
  * - From 840dp: labelled panel the user resizes on its seam.
  */
@@ -92,6 +91,7 @@ val LocalPaneMetrics = compositionLocalOf {
 fun AppShell(
     savedPanelWidth: Dp?,
     onPanelWidthSaved: (Dp) -> Unit,
+    drawerState: DrawerState,
     drawerGesturesEnabled: Boolean,
     navPanel: @Composable (showLabels: Boolean, onNavigated: () -> Unit) -> Unit,
     content: @Composable (onMenuClick: (() -> Unit)?) -> Unit,
@@ -107,7 +107,6 @@ fun AppShell(
         MeasureContentBounds(contentBounds)
         val window = maxWidth
         if (window < WindowBreakpoints.Medium) {
-            val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
             ModalNavigationDrawer(
                 drawerState = drawerState,

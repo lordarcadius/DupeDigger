@@ -1,8 +1,13 @@
 package com.vipuljha.dupedigger.presentation
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.DeviceConfigurationOverride
@@ -17,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
+import com.vipuljha.dupedigger.core.designsystem.StateAlpha
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -39,7 +45,8 @@ import org.junit.runner.RunWith
 /**
  * Accessibility checks on Results and Group detail, at the default font size and at 200%:
  * - every clickable control has something for TalkBack to read, and a 48dp touch target when fully on screen;
- * - the controls a card or row needs stay on screen at 200%.
+ * - the controls a card or row needs stay on screen at 200%;
+ * - the colour-role pairs these screens draw text with reach 4.5:1, in light and dark, static and dynamic colour.
  */
 @RunWith(AndroidJUnit4::class)
 class AccessibilityChecksTest {
@@ -52,6 +59,39 @@ class AccessibilityChecksTest {
     @Test fun groupAtDefaultFont() = checkGroup(1f)
 
     @Test fun groupAtDoubleFont() = checkGroup(2f)
+
+    @Test
+    fun textColourPairsReachAaContrast() {
+        val schemes = mutableMapOf<String, ColorScheme>()
+        rule.setContent {
+            for (dark in listOf(false, true)) for (dynamic in listOf(false, true)) {
+                DupeDiggerTheme(darkTheme = dark, dynamicColor = dynamic) { schemes["dark=$dark dynamic=$dynamic"] = MaterialTheme.colorScheme }
+            }
+        }
+        rule.waitForIdle()
+        val failures = schemes.flatMap { (name, c) ->
+            val selectedRow = c.primary.copy(alpha = StateAlpha.Selected).compositeOver(c.surface)
+            listOf(
+                "onSurface/surface" to contrast(c.onSurface, c.surface),
+                "onSurfaceVariant/surface" to contrast(c.onSurfaceVariant, c.surface),
+                "onSurfaceVariant/surfaceContainerLow" to contrast(c.onSurfaceVariant, c.surfaceContainerLow),
+                "primary/surfaceContainerLow" to contrast(c.primary, c.surfaceContainerLow),
+                "primary/surface" to contrast(c.primary, c.surface),
+                "tertiary/surface" to contrast(c.tertiary, c.surface),
+                "onSecondaryContainer/secondaryContainer" to contrast(c.onSecondaryContainer, c.secondaryContainer),
+                "onPrimary/primary" to contrast(c.onPrimary, c.primary),
+                "onSurface/selectedRow" to contrast(c.onSurface, selectedRow),
+                "onSurfaceVariant/selectedRow" to contrast(c.onSurfaceVariant, selectedRow),
+                "onSurface/surfaceContainer" to contrast(c.onSurface, c.surfaceContainer),
+            ).filter { it.second < 4.5f }.map { "$name ${it.first} ${"%.2f".format(it.second)}" }
+        }
+        assertTrue("Below 4.5:1: $failures", failures.isEmpty())
+    }
+
+    private fun contrast(a: Color, b: Color): Float {
+        val (light, dark) = listOf(a.luminance(), b.luminance()).sortedDescending()
+        return (light + 0.05f) / (dark + 0.05f)
+    }
 
     private fun checkResults(fontScale: Float) {
         show(fontScale) {
