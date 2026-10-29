@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.RemovalResult
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -16,6 +17,7 @@ import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileRemover
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -84,6 +86,7 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun ignoredFingerprints() = emptySet<String>()
         override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
         override suspend fun keepChoice(fingerprint: String): String? = null
+        override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
     }
 
     private class FakeIndex(initial: Set<Long>) : FileIndexRepository {

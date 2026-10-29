@@ -9,4 +9,5 @@ sealed interface Destination : NavKey {
     @Serializable data object Results : Destination
     @Serializable data object Quarantine : Destination
     @Serializable data object Settings : Destination
+    @Serializable data object Scan : Destination
 }

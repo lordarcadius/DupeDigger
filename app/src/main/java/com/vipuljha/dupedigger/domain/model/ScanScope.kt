@@ -16,6 +16,15 @@ sealed interface ScanScope {
     data class Folders(val folders: ImmutableList<ScanFolder>) : ScanScope
 }
 
+enum class ScopeKind { WHOLE_DEVICE, MEDIA_ONLY, FOLDERS }
+
+val ScanScope.kind: ScopeKind
+    get() = when (this) {
+        ScanScope.WholeDevice -> ScopeKind.WHOLE_DEVICE
+        ScanScope.MediaOnly -> ScopeKind.MEDIA_ONLY
+        is ScanScope.Folders -> ScopeKind.FOLDERS
+    }
+
 /** The scopes the scan picker may offer, widest first; it never offers one the app can't read. */
 fun availableScopes(access: StorageAccessState, folders: List<ScanFolder>): ImmutableList<ScanScope> = buildList {
     if (access.allFiles) add(ScanScope.WholeDevice)

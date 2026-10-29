@@ -1,8 +1,13 @@
 package com.vipuljha.dupedigger.domain.repository
 
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.KindReclaim
+import kotlinx.coroutines.flow.Flow
 
 interface DuplicateGroupRepository {
+    /** Reclaimable space per kind of file, over groups that still have at least two members. */
+    fun observeReclaimable(): Flow<List<KindReclaim>>
+
     suspend fun ignoredFingerprints(): Set<String>
 
     /** Replaces every saved group with [groups] for [scanId], in one transaction. */

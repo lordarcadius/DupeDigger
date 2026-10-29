@@ -26,6 +26,8 @@ import com.vipuljha.dupedigger.core.designsystem.NavRow
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
+import com.vipuljha.dupedigger.presentation.home.HomeRoute
+import com.vipuljha.dupedigger.presentation.scan.ScanRoute
 import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
 
 val LocalMenuClick = compositionLocalOf<(() -> Unit)?> { null }
@@ -42,13 +44,23 @@ fun AppRoot(modifier: Modifier = Modifier) {
     var savedPanelWidthDp by rememberSaveable { mutableStateOf<Float?>(null) }
     val backStacks = TopLevelTab.entries.associateWith { rememberNavBackStack(it.root) }
     val back: () -> Unit = { if (!backStacks.getValue(currentTab).back()) currentTab = TopLevelTab.Home }
+    val selectTab: (TopLevelTab) -> Unit = { tab ->
+        if (tab == currentTab) backStacks.getValue(tab).backTo(tab.root)
+        currentTab = tab
+    }
 
     val topLevel = NavDisplay.transitionSpec { fadeThrough() } +
         NavDisplay.popTransitionSpec { fadeThrough() } +
         NavDisplay.predictivePopTransitionSpec { fadeThrough() }
     val provider = entryProvider<NavKey> {
         entry<Destination.Home>(metadata = topLevel) {
-            PlaceholderScreen(stringResource(TopLevelTab.Home.label), LocalMenuClick.current)
+            HomeRoute(
+                onMenuClick = LocalMenuClick.current,
+                onOpenScan = { backStacks.getValue(TopLevelTab.Home).open(Destination.Scan) },
+            )
+        }
+        entry<Destination.Scan> {
+            ScanRoute(onBack = back, onViewResults = { selectTab(TopLevelTab.Results) })
         }
         entry<Destination.Results>(metadata = topLevel) {
             PlaceholderScreen(stringResource(TopLevelTab.Results.label), LocalMenuClick.current)
@@ -72,10 +84,6 @@ fun AppRoot(modifier: Modifier = Modifier) {
     }
     val start = entriesByTab.getValue(TopLevelTab.Home)
     val entries = if (currentTab == TopLevelTab.Home) start else start + entriesByTab.getValue(currentTab)
-    val selectTab: (TopLevelTab) -> Unit = { tab ->
-        if (tab == currentTab) backStacks.getValue(tab).backTo(tab.root)
-        currentTab = tab
-    }
 
     CompositionLocalProvider(LocalContentBounds provides remember { mutableStateOf(IntRect.Zero) }) {
         AppShell(

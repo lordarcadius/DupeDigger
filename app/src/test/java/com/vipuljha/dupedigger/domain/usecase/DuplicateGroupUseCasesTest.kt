@@ -3,10 +3,12 @@ package com.vipuljha.dupedigger.domain.usecase
 import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.GroupMember
+import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -27,6 +29,7 @@ class DuplicateGroupUseCasesTest {
         }
         override suspend fun keepChoice(fingerprint: String) = keepChoices[fingerprint]
         override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
+        override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
     }
 
     @Test

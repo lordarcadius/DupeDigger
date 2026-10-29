@@ -7,6 +7,92 @@
     <string name="tab_settings">Settings</string>
     <string name="open_navigation">Open navigation</string>
     <string name="action_back">Back</string>
+    <string name="action_retry">Retry</string>
+
+    <string name="size_b">%1$s B</string>
+    <string name="size_kb">%1$s kB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+    <string name="size_pb">%1$s PB</string>
+    <string name="time_just_now">Just now</string>
+
+    <string name="kind_images">Images</string>
+    <string name="kind_videos">Videos</string>
+    <string name="kind_audio">Audio</string>
+    <string name="kind_documents">Documents</string>
+    <string name="kind_other">Other files</string>
+    <string name="scope_whole_device">Whole device</string>
+    <string name="scope_media">Photos, videos and audio</string>
+    <string name="scope_folders">Picked folders</string>
+
+    <string name="home_reclaim_title">Space you can free</string>
+    <string name="home_reclaim_detail">%1$s · %2$s</string>
+    <string name="home_reclaim_none">No duplicates found yet.</string>
+    <plurals name="home_duplicate_files">
+        <item quantity="one">%1$s duplicate file</item>
+        <item quantity="other">%1$s duplicate files</item>
+    </plurals>
+    <plurals name="home_groups">
+        <item quantity="one">%1$s group</item>
+        <item quantity="other">%1$s groups</item>
+    </plurals>
+    <string name="home_last_scan_title">Last scan</string>
+    <string name="home_last_scan_detail">%1$s · %2$s</string>
+    <string name="home_scan_status_running">Scanning now…</string>
+    <string name="home_scan_status_completed">Finished</string>
+    <string name="home_scan_status_cancelled">Cancelled</string>
+    <string name="home_scan_status_failed">Couldn’t finish</string>
+    <string name="home_scan_status_interrupted">Stopped before it finished</string>
+    <string name="home_action_view_progress">View progress</string>
+    <string name="home_actions_title">Scan</string>
+    <string name="home_action_scan_everything">Scan everything</string>
+    <string name="home_action_scan_media">Scan media</string>
+    <string name="home_action_scan_folder">Scan a folder</string>
+    <string name="home_action_custom_scan">Choose what to scan</string>
+    <string name="home_action_start_scan">Start scan</string>
+    <string name="home_hint_all_files">Needs All files access. Turn on Deep scan to use it.</string>
+    <string name="home_hint_media">Needs access to your photos, videos and audio.</string>
+    <string name="home_empty_title">No scans yet</string>
+    <string name="home_empty_body">Scan your storage to see how much space duplicate files take.</string>
+    <string name="home_error_title">Couldn’t load your summary</string>
+
+    <string name="scan_title">Scan</string>
+    <string name="scan_scope_title">What to scan</string>
+    <string name="scan_scope_whole_device_body">Every file on this device.</string>
+    <string name="scan_scope_media_body">Everything in your media library.</string>
+    <plurals name="scan_scope_folders_body">
+        <item quantity="one">%1$s folder you picked</item>
+        <item quantity="other">%1$s folders you picked</item>
+    </plurals>
+    <string name="scan_no_scope_title">Nothing to scan yet</string>
+    <string name="scan_no_scope_body">Allow storage access, or add a folder in Settings.</string>
+    <string name="scan_tier_title">What to find</string>
+    <string name="scan_tier_exact">Exact copies</string>
+    <string name="scan_tier_exact_body">Files with identical contents. Always on.</string>
+    <string name="scan_tier_near">Similar files</string>
+    <string name="scan_tier_near_body">Look-alike photos and videos, and near-identical documents and audio.</string>
+    <string name="scan_tier_ai">AI matches</string>
+    <string name="scan_tier_ai_body">Download the AI model in Settings to turn this on.</string>
+    <string name="scan_action_start">Start scan</string>
+    <string name="scan_action_cancel_scan">Cancel scan</string>
+    <string name="scan_action_scan_again">Scan again</string>
+    <string name="scan_action_view_results">View results</string>
+    <string name="scan_running_note">You can leave this screen. The scan keeps running.</string>
+    <plurals name="scan_rate">
+        <item quantity="one">%1$s file per second</item>
+        <item quantity="other">%1$s files per second</item>
+    </plurals>
+    <string name="scan_done_title">Scan complete</string>
+    <string name="scan_done_none">No duplicates found.</string>
+    <plurals name="scan_done_found">
+        <item quantity="one">Found %1$s duplicate file. You can free %2$s.</item>
+        <item quantity="other">Found %1$s duplicate files. You can free %2$s.</item>
+    </plurals>
+    <string name="scan_cancelled_title">Scan cancelled</string>
+    <string name="scan_cancelled_body">What it found so far is saved, so the next scan is faster.</string>
+    <string name="scan_failed_title">Couldn’t finish the scan</string>
+    <string name="scan_failed_body">Check that Dupe Digger can still read your storage, then try again.</string>
 
     <string name="onboarding_title">Find duplicate files safely</string>
     <string name="onboarding_body">Dupe Digger looks through your files to find copies and near copies. It needs access to your storage to do that, and it never deletes anything without asking you first.</string>

@@ -68,6 +68,8 @@ interface FileHashDao {
     suspend fun hashStateForScan(scanId: Long): List<FileHashState>
 }
 
+data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)
+
 data class FileHashState(
     val id: Long,
     val sourceUri: String,
@@ -117,6 +119,18 @@ interface DuplicateGroupDao {
 
     @Query("DELETE FROM duplicate_group")
     suspend fun deleteAll()
+
+    // Per group, everything but the largest copy can be freed; groups pruned below two members don't count.
+    @Query(
+        """
+        SELECT mediaKind, COUNT(*) AS groupCount, SUM(members - 1) AS files, SUM(total - largest) AS bytes FROM (
+            SELECT MIN(f.mediaKind) AS mediaKind, COUNT(*) AS members, SUM(f.size) AS total, MAX(f.size) AS largest
+            FROM group_member m JOIN file_index f ON f.id = m.fileId
+            GROUP BY m.groupId HAVING COUNT(*) >= 2
+        ) GROUP BY mediaKind
+        """,
+    )
+    fun observeReclaimable(): Flow<List<KindReclaimRow>>
 
     @Transaction
     suspend fun insertGroupWithMembers(group: DuplicateGroupEntity, members: List<GroupMemberEntity>): Long {

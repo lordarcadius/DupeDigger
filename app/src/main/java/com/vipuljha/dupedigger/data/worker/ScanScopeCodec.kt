@@ -4,6 +4,7 @@ import androidx.work.Data
 import androidx.work.workDataOf
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.ScopeKind
 import kotlinx.collections.immutable.toImmutableList
 
 /** Stores a scope as work input by kind and tree URIs; folders are resolved against the current grants when read back. */
@@ -34,6 +35,14 @@ object ScanScopeCodec {
     fun key(scope: ScanScope): String = when (scope) {
         is ScanScope.Folders -> "$FOLDERS:" + scope.folders.map { it.uri }.sorted().joinToString("|")
         else -> kindOf(scope)
+    }
+
+    /** The scope kind behind a [key]; null for a key this build doesn't know. */
+    fun kindOf(key: String): ScopeKind? = when (key.substringBefore(':')) {
+        WHOLE_DEVICE -> ScopeKind.WHOLE_DEVICE
+        MEDIA_ONLY -> ScopeKind.MEDIA_ONLY
+        FOLDERS -> ScopeKind.FOLDERS
+        else -> null
     }
 
     private fun kindOf(scope: ScanScope) = when (scope) {

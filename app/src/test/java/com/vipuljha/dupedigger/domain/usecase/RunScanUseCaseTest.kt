@@ -12,6 +12,7 @@ import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanProgress
+import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
@@ -32,6 +33,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -281,5 +283,7 @@ class RunScanUseCaseTest {
         override suspend fun finish(scanId: Long, status: ScanStatus, summary: ScanSummary?) {
             runs[(scanId - 1).toInt()] = Triple(scanId, status, summary)
         }
+
+        override fun observeLatest() = emptyFlow<ScanRunInfo?>()
     }
 }

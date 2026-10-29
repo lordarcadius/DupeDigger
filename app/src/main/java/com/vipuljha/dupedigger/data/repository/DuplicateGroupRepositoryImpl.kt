@@ -8,7 +8,11 @@ import com.vipuljha.dupedigger.data.local.db.dao.KeepChoiceDao
 import com.vipuljha.dupedigger.data.local.db.entity.DuplicateGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.GroupMemberEntity
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.KindReclaim
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +23,10 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
     private val ignoredDao: IgnoredGroupDao,
     private val keepChoiceDao: KeepChoiceDao,
 ) : DuplicateGroupRepository {
+
+    override fun observeReclaimable(): Flow<List<KindReclaim>> = groupDao.observeReclaimable().map { rows ->
+        rows.map { KindReclaim(MediaKind.valueOf(it.mediaKind), it.groupCount, it.files, it.bytes) }
+    }
 
     override suspend fun ignoredFingerprints(): Set<String> = ignoredDao.fingerprints().toSet()
 
