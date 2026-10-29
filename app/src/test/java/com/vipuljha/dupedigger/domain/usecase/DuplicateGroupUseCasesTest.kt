@@ -89,6 +89,19 @@ class DuplicateGroupUseCasesTest {
     }
 
     @Test
+    fun `semantic groups are saved with their tier unless marked not duplicates`() = runTest {
+        repo.ignored += "SEMANTIC:ignored"
+        val kept = SaveGroupsUseCase(repo)(
+            scanId = 10,
+            exactGroups = emptyList(),
+            semanticGroups = listOf(NearGroup("SEMANTIC:a", persistentListOf(1, 2), 0.95f), NearGroup("SEMANTIC:ignored", persistentListOf(3, 4), 0.95f)),
+        )
+
+        assertEquals(listOf("SEMANTIC:a"), kept.semantic.map { it.fingerprint })
+        assertEquals(listOf(MatchTier.SEMANTIC), repo.saved!!.second.map { it.tier })
+    }
+
+    @Test
     fun `nothing left still replaces the previous results`() = runTest {
         repo.ignored += exactFingerprint(100, "aaa")
 

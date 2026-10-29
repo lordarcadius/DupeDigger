@@ -4,6 +4,7 @@ import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -62,6 +63,8 @@ class IndexFilesUseCaseTest {
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
         override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
+        override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
+        override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
 
         override suspend fun remove(ids: Collection<Long>) = Unit

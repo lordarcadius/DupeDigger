@@ -59,7 +59,7 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
                  → multi-index hashing (banding, D-012) to find pairs within the Hamming threshold
                  → union-find into groups  ⇒ MatchTier.NEAR
 4. Semantic   ── (opt-in, model downloaded) EmbeddingGemma → L2-normalised vector
-                 → brute-force cosine within each MediaKind bucket (ANN only if measured too slow)
+                 → cosine within each MediaKind bucket via random-hyperplane signatures + multi-index search (brute force measured too slow)
                  → pairs ≥ threshold → union-find  ⇒ MatchTier.SEMANTIC
 5. Rank       ── SuggestKeeper picks the file to keep in each group:
                  highest resolution/bitrate > original location (DCIM over WhatsApp/Download) > oldest

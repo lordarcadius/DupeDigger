@@ -22,7 +22,7 @@ fun groupNearHashes(items: List<Pair<Long, Long>>, threshold: Int): List<List<Lo
     groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second }, threshold) { _, _ -> true }
 
 /** Union-find over every pair of [hashes] within [threshold] bits that [confirm] also accepts. */
-private inline fun groupWithinHamming(
+internal inline fun groupWithinHamming(
     ids: List<Long>,
     hashes: LongArray,
     threshold: Int,

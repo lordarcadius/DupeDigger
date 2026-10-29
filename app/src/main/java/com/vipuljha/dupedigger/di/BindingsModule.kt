@@ -1,5 +1,6 @@
 package com.vipuljha.dupedigger.di
 
+import com.vipuljha.dupedigger.data.ai.AndroidEmbeddingInputReader
 import com.vipuljha.dupedigger.data.ai.LiteRtEmbedder
 import com.vipuljha.dupedigger.data.ai.LiteRtModelLoader
 import com.vipuljha.dupedigger.data.ai.ModelLoader
@@ -26,6 +27,7 @@ import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.Embedder
+import com.vipuljha.dupedigger.domain.repository.EmbeddingInputReader
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
@@ -102,6 +104,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindEmbedder(impl: LiteRtEmbedder): Embedder
+
+    @Binds
+    abstract fun bindEmbeddingInputReader(impl: AndroidEmbeddingInputReader): EmbeddingInputReader
 
     @Binds
     abstract fun bindModelLoader(impl: LiteRtModelLoader): ModelLoader

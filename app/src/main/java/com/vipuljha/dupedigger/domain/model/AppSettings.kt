@@ -10,6 +10,9 @@ data class AppSettings(
     val minFileSizeBytes: Long = 1L,
     val skipHiddenFiles: Boolean = true,
     val modelDownloadWifiOnly: Boolean = true,
+    /** The downloaded model the AI tier uses; null until one is chosen. */
+    val aiModelId: String? = null,
+    val aiBackend: EmbeddingBackend = EmbeddingBackend.CPU,
 ) {
     companion object {
         val HammingRange = 0..64

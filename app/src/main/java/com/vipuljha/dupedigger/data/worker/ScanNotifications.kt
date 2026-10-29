@@ -33,6 +33,8 @@ class ScanNotifications @Inject constructor(
                 progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
             ScanStage.NEAR -> context.getString(R.string.scan_stage_near) to
                 progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
+            ScanStage.SEMANTIC -> context.getString(R.string.scan_stage_semantic) to
+                progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
         }
         val total = progress?.total?.takeIf { it > 0 }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)

@@ -34,6 +34,7 @@ fun ScanProgress.toUi(rate: Int?) = ScanProgressUi(
             ScanStage.INDEXING -> R.string.scan_stage_indexing
             ScanStage.EXACT -> R.string.scan_stage_exact
             ScanStage.NEAR -> R.string.scan_stage_near
+            ScanStage.SEMANTIC -> R.string.scan_stage_semantic
         },
     ),
     count = when {

@@ -9,6 +9,9 @@ import com.vipuljha.dupedigger.domain.model.AudioTags
 import com.vipuljha.dupedigger.domain.model.ContentHashes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
+import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
+import com.vipuljha.dupedigger.domain.model.EmbeddingInput
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -16,6 +19,7 @@ import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaAccess
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.ModelVariant
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanProgress
@@ -32,6 +36,8 @@ import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.AudioTagReader
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
+import com.vipuljha.dupedigger.domain.repository.Embedder
+import com.vipuljha.dupedigger.domain.repository.EmbeddingInputReader
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
@@ -107,11 +113,30 @@ class RunScanUseCaseTest {
                 override suspend fun read(sourceUri: String): AudioTags? = null
             },
         ),
+        findSemantic = FindSemanticDuplicatesUseCase(
+            index,
+            object : Embedder {
+                override suspend fun embed(variant: ModelVariant, inputs: List<EmbeddingInput>, dim: Int, backend: EmbeddingBackend) =
+                    Outcome.Success(inputs.map { input -> FloatArray(4) { if (it == (input as EmbeddingInput.Image).encoded[0].toInt()) 1f else 0f } })
+                override suspend fun close() = Unit
+            },
+            object : EmbeddingInputReader {
+                override suspend fun image(sourceUri: String): ByteArray? = scenes[sourceUri]?.let { byteArrayOf(it.toByte()) }
+                override suspend fun audio(sourceUri: String): ByteArray? = null
+            },
+            object : DocumentTextReader {
+                override fun supports(name: String, mimeType: String?) = false
+                override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? = null
+            },
+        ),
         saveGroups = SaveGroupsUseCase(groups),
     )
 
     /** sourceUri → perceptual hashes for images that decode. */
     private val imageHashes = mutableMapOf<String, ImageHashes>()
+
+    /** sourceUri → the scene an image shows; images of one scene embed identically. */
+    private val scenes = mutableMapOf<String, Int>()
 
     private fun put(name: String, content: String) {
         disk["file:/storage/emulated/0/$name"] = content
@@ -135,6 +160,38 @@ class RunScanUseCaseTest {
         assertEquals(listOf(1L, 3L), saved.last().fileIds)
         assertEquals(2, summary.duplicateFiles)
         assertEquals(7L + 7L, summary.reclaimableBytes)
+    }
+
+    @Test
+    fun `with the AI tier on and a model chosen, similar images are saved as a semantic group and counted`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false, semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        val summary = (runScan(ScanScope.WholeDevice) { progress += it } as Outcome.Success).data
+
+        assertEquals(listOf(MatchTier.SEMANTIC), groups.saved!!.second.map { it.tier })
+        assertEquals(1, summary.duplicateFiles)
+        assertEquals(8L, summary.reclaimableBytes)
+        assertEquals(ScanStage.SEMANTIC, progress.last().stage)
+    }
+
+    @Test
+    fun `with the AI tier off there is no semantic stage`() = runTest {
+        settings = settings.copy(aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.SEMANTIC })
+        assertTrue(groups.saved!!.second.none { it.tier == MatchTier.SEMANTIC })
     }
 
     @Test
@@ -313,6 +370,10 @@ class RunScanUseCaseTest {
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
         override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
+        override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) =
+            rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId && MediaKind.IMAGE in kinds }
+                .map { EmbeddedFile(it.id, it.sourceUri, it.sourceUri.substringAfterLast('/'), "image/jpeg", MediaKind.IMAGE, it.size, null) }
+        override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
         private var nextId = 1L
 

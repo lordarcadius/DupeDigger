@@ -4,10 +4,12 @@ import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.model.VideoFile
@@ -44,6 +46,12 @@ interface FileIndexRepository {
     suspend fun audioSeenIn(scanId: Long): List<AudioFile>
 
     suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>)
+
+    /** Files of [kinds] seen in [scanId], each with its stored vector under [modelKey] if there is one. */
+    suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>): List<EmbeddedFile>
+
+    /** Stores normalised vectors under [modelKey]; other models' vectors are left alone. */
+    suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>)
 
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 

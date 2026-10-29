@@ -9,7 +9,9 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -46,6 +48,8 @@ class SettingsRepositoryImpl @Inject constructor(
             minFileSizeBytes = (this[KEY_MIN_FILE_SIZE] ?: defaults.minFileSizeBytes).coerceAtLeast(0L),
             skipHiddenFiles = this[KEY_SKIP_HIDDEN] ?: defaults.skipHiddenFiles,
             modelDownloadWifiOnly = this[KEY_MODEL_WIFI_ONLY] ?: defaults.modelDownloadWifiOnly,
+            aiModelId = this[KEY_AI_MODEL],
+            aiBackend = EmbeddingBackend.entries.firstOrNull { it.name == this[KEY_AI_BACKEND] } ?: defaults.aiBackend,
         )
     }
 
@@ -58,6 +62,8 @@ class SettingsRepositoryImpl @Inject constructor(
         this[KEY_MIN_FILE_SIZE] = settings.minFileSizeBytes.coerceAtLeast(0L)
         this[KEY_SKIP_HIDDEN] = settings.skipHiddenFiles
         this[KEY_MODEL_WIFI_ONLY] = settings.modelDownloadWifiOnly
+        settings.aiModelId?.let { this[KEY_AI_MODEL] = it } ?: remove(KEY_AI_MODEL)
+        this[KEY_AI_BACKEND] = settings.aiBackend.name
     }
 
     private companion object {
@@ -69,5 +75,7 @@ class SettingsRepositoryImpl @Inject constructor(
         val KEY_MIN_FILE_SIZE = longPreferencesKey("min_file_size_bytes")
         val KEY_SKIP_HIDDEN = booleanPreferencesKey("skip_hidden_files")
         val KEY_MODEL_WIFI_ONLY = booleanPreferencesKey("model_download_wifi_only")
+        val KEY_AI_MODEL = stringPreferencesKey("ai_model_id")
+        val KEY_AI_BACKEND = stringPreferencesKey("ai_backend")
     }
 }

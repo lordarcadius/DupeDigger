@@ -174,7 +174,27 @@ interface EmbeddingDao {
 
     @Query("DELETE FROM embedding WHERE modelId != :modelId")
     suspend fun deleteOtherModels(modelId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(embeddings: List<EmbeddingEntity>)
+
+    @Query(
+        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.mediaKind, f.size, e.vector FROM file_index f " +
+            "LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +
+            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind IN (:kinds)",
+    )
+    suspend fun candidates(scanId: Long, modelKey: String, kinds: List<String>): List<EmbeddingCandidateRow>
 }
+
+class EmbeddingCandidateRow(
+    val id: Long,
+    val sourceUri: String,
+    val name: String,
+    val mimeType: String?,
+    val mediaKind: String,
+    val size: Long,
+    val vector: ByteArray?,
+)
 
 @Dao
 interface DuplicateGroupDao {

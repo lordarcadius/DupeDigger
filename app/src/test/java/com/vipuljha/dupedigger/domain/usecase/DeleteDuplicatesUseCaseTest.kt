@@ -9,6 +9,7 @@ import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
@@ -118,6 +119,8 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
         override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
+        override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
+        override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) =
             ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.IMAGE, 10) }
         override suspend fun remove(ids: Collection<Long>) {

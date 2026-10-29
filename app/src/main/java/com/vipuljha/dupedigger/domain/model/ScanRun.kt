@@ -1,6 +1,6 @@
 package com.vipuljha.dupedigger.domain.model
 
-enum class ScanStage { INDEXING, EXACT, NEAR }
+enum class ScanStage { INDEXING, EXACT, NEAR, SEMANTIC }
 
 /** [total] is null while the amount of work is still unknown. */
 data class ScanProgress(val stage: ScanStage, val done: Int, val total: Int?)

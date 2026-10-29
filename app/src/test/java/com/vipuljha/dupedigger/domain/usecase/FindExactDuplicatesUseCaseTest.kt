@@ -5,11 +5,13 @@ import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.model.VideoFile
@@ -54,6 +56,8 @@ class FindExactDuplicatesUseCaseTest {
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
         override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
+        override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
+        override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
         override suspend fun remove(ids: Collection<Long>) = Unit
     }

@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.data.local.db.dao.EmbeddingDao
 import com.vipuljha.dupedigger.data.local.db.dao.FileHashDao
 import com.vipuljha.dupedigger.data.local.db.dao.FileIndexDao
 import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
+import com.vipuljha.dupedigger.data.local.db.entity.EmbeddingEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
@@ -13,6 +14,7 @@ import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
@@ -26,6 +28,8 @@ import com.vipuljha.dupedigger.domain.model.VideoFile
 import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.collections.immutable.toImmutableList
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -150,6 +154,16 @@ class FileIndexRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>): List<EmbeddedFile> =
+        embeddingDao.candidates(scanId, modelKey, kinds.map { it.name }).map {
+            EmbeddedFile(it.id, it.sourceUri, it.name, it.mimeType, MediaKind.valueOf(it.mediaKind), it.size, it.vector?.let(::decodeVector))
+        }
+
+    override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) {
+        if (vectors.isEmpty()) return
+        embeddingDao.upsertAll(vectors.map { (id, v) -> EmbeddingEntity(id, modelKey, v.size, encodeVector(v)) })
+    }
+
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
             StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)
@@ -185,3 +199,10 @@ class FileIndexRepositoryImpl @Inject constructor(
         const val ALGO_AUDIO_ARTIST = "AUDIO_ARTIST"
     }
 }
+
+/** Vectors are stored as float32 little-endian (ARCHITECTURE.md). */
+internal fun encodeVector(vector: FloatArray): ByteArray =
+    ByteBuffer.allocate(vector.size * Float.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN).apply { asFloatBuffer().put(vector) }.array()
+
+internal fun decodeVector(bytes: ByteArray): FloatArray =
+    FloatArray(bytes.size / Float.SIZE_BYTES).also { ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(it) }

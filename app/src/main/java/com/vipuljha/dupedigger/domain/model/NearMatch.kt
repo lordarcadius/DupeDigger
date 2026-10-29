@@ -45,7 +45,10 @@ data class NearScanResult(
 )
 
 /** A near group is identified by its members (D-012): `NEAR:` and the SHA-256 of their sorted source URIs. */
-fun nearFingerprint(sourceUris: Collection<String>): String {
+fun nearFingerprint(sourceUris: Collection<String>): String = memberFingerprint(MatchTier.NEAR, sourceUris)
+
+/** A member-based fingerprint (D-012) for near and semantic groups: the tier and the SHA-256 of the sorted source URIs. */
+fun memberFingerprint(tier: MatchTier, sourceUris: Collection<String>): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(sourceUris.sorted().joinToString("\n").toByteArray())
-    return "${MatchTier.NEAR}:" + digest.joinToString("") { "%02x".format(it) }
+    return "$tier:" + digest.joinToString("") { "%02x".format(it) }
 }

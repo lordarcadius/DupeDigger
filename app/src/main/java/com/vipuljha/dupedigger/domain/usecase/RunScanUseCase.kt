@@ -5,6 +5,7 @@ import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.ModelCatalog
 import com.vipuljha.dupedigger.domain.model.NearScanResult
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanProgress
@@ -26,7 +27,8 @@ import javax.inject.Inject
 /**
  * One scan of a scope, recorded as a scan run.
  * - Fails with PermissionDenied before touching the index when the scope can't be read.
- * - Runs the stages in order (index, exact, then near when similar files are on) and reports progress for each.
+ * - Runs the stages in order (index, exact, near when similar files are on, semantic when the AI tier is on and its
+ *   model is chosen) and reports progress for each.
  * - Only a scan that completes replaces the saved groups; a cancelled or failed one leaves the previous results.
  * - Every stage caches per file, so a scan restarted after process death redoes nothing it already finished.
  * - The run always ends with a status; if the process dies first, the next run marks it interrupted.
@@ -40,6 +42,7 @@ class RunScanUseCase @Inject constructor(
     private val indexFiles: IndexFilesUseCase,
     private val findExact: FindExactDuplicatesUseCase,
     private val findNear: FindNearDuplicatesUseCase,
+    private val findSemantic: FindSemanticDuplicatesUseCase,
     private val saveGroups: SaveGroupsUseCase,
 ) {
     suspend operator fun invoke(
@@ -70,7 +73,16 @@ class RunScanUseCase @Inject constructor(
                 } else {
                     null
                 }
-                exact.toSummary(index, near, saveGroups(scanId, exact.groups, near?.groups.orEmpty()))
+                val model = appSettings.aiModelId?.let(ModelCatalog::byId)
+                val semantic = if (appSettings.semanticEnabled && model != null) {
+                    onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
+                    findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, exact.groups, near?.groups.orEmpty()) { done, total ->
+                        onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
+                    }
+                } else {
+                    null
+                }
+                exact.toSummary(index, near, semantic, saveGroups(scanId, exact.groups, near?.groups.orEmpty(), semantic?.groups.orEmpty()))
             }
             summary = result.getOrNull()
             status = if (summary != null) ScanStatus.COMPLETED else ScanStatus.FAILED
@@ -83,14 +95,18 @@ class RunScanUseCase @Inject constructor(
         }
     }
 
-    /** Near groups count like the reclaim query: every copy but the largest. */
-    private fun ExactScanResult.toSummary(index: IndexStats, near: NearScanResult?, kept: SavedGroups) = ScanSummary(
-        index = index,
-        exactGroups = kept.exact.size,
-        duplicateFiles = kept.exact.sumOf { it.fileIds.size - 1 } + kept.near.sumOf { it.fileIds.size - 1 },
-        reclaimableBytes = kept.exact.sumOf { it.size * (it.fileIds.size - 1) } +
-            kept.near.sumOf { group -> group.fileIds.map { near!!.sizes.getValue(it) }.let { it.sum() - it.max() } },
-        hashesComputed = partialHashed + fullHashed + (near?.hashed ?: 0),
-        unreadable = unreadable + (near?.unreadable ?: 0),
-    )
+    /** Near and semantic groups count like the reclaim query: every copy but the largest. */
+    private fun ExactScanResult.toSummary(index: IndexStats, near: NearScanResult?, semantic: NearScanResult?, kept: SavedGroups): ScanSummary {
+        val sizes = near?.sizes.orEmpty() + semantic?.sizes.orEmpty()
+        val similar = kept.near + kept.semantic
+        return ScanSummary(
+            index = index,
+            exactGroups = kept.exact.size,
+            duplicateFiles = kept.exact.sumOf { it.fileIds.size - 1 } + similar.sumOf { it.fileIds.size - 1 },
+            reclaimableBytes = kept.exact.sumOf { it.size * (it.fileIds.size - 1) } +
+                similar.sumOf { group -> group.fileIds.map { sizes.getValue(it) }.let { it.sum() - it.max() } },
+            hashesComputed = partialHashed + fullHashed + (near?.hashed ?: 0) + (semantic?.hashed ?: 0),
+            unreadable = unreadable + (near?.unreadable ?: 0) + (semantic?.unreadable ?: 0),
+        )
+    }
 }

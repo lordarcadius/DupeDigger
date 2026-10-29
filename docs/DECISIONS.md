@@ -192,6 +192,30 @@ The 270M and 740M downloads matched their SHA-256 exactly. The 440M file's size 
 - **440M verified:** its SHA-256 now matches an actual download (P6-02 device test).
 - **Measured** on an API 36 x86_64 emulator, CPU, 440M text + vision: three texts and one 512 × 384 JPEG took 10.2 s including the engine load, and 1.6 s again with it loaded. All vectors had norm 1.0000 at 256 and 768 dimensions. "A cat sleeping on a sofa" against "a kitten asleep on a couch" scored 0.971, against a tax report 0.711.
 
+**Semantic tier (P6-03, P6-04):**
+- **When it runs:** a SEMANTIC scan stage, after near, when the AI tier is on and a model is chosen (`aiModelId`; backend from `aiBackend`, default CPU). Without a loadable model it is skipped and the scan carries on.
+- **Inputs, by what the model reads:**
+  - images re-encoded as JPEG with a 512 px long side;
+  - audio as a 10 s clip from a quarter of the way in, mixed to mono and resampled to 16 kHz PCM16 WAV;
+  - document text with `task: sentence similarity | query: ` in front, whitespace collapsed, cut to 1,500 characters. Documents under 20 words are skipped.
+  - Videos aren't embedded.
+- **Storage:**
+  - Vectors are 256 floats (D-006), stored as float32 little-endian BLOBs in `embedding` keyed by `<variant>@<dim>`.
+  - Switching model leaves the other model's vectors in place and never compares across them.
+  - A changed file loses all its vectors (P2-04).
+- **Grouping:**
+  - Per media kind, cosine ≥ the semantic threshold (default 0.90), joined with union-find.
+  - Each exact group takes part through one member. A semantic group whose files all sit in one near group is dropped.
+  - Score is the mean cosine to the first member; the fingerprint is `SEMANTIC:` plus the SHA-256 of the sorted URIs.
+- **Search:**
+  - Comparing every pair took 39 s for 20,000 vectors on a 16-core desktop (single thread), over the 10 s limit, so candidates come from 64-bit random-hyperplane signatures through the multi-index Hamming search.
+  - The bit budget sits 2.5 standard deviations above the expected distance at the threshold (17 bits at 0.90), and every candidate is confirmed with the exact cosine.
+  - It matched all-pairs exactly on three seeded test sets, including pairs near the threshold.
+- **Measured:**
+  - 20,000 vectors: 0.55 s on the desktop, 2.1 s on an API 36 x86_64 emulator (debuggable). Not measured on the Primebook.
+  - Golden set with the real 440M model on the emulator: three burst shots of one scene scored 0.992–0.995 against each other, and an unrelated photo scored 0.873–0.877 against them. The default 0.90 groups the bursts only, but the margin to unrelated photos is small; P6-05's threshold slider should not go much below 0.90.
+- **Engine failures:** a batch the engine rejects is retried file by file, so one bad file costs only itself.
+
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
 
