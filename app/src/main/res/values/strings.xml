@@ -1,6 +1,13 @@
 <resources>
     <string name="app_name">Dupe Digger</string>
 
+    <string name="tab_home">Home</string>
+    <string name="tab_results">Results</string>
+    <string name="tab_quarantine">Quarantine</string>
+    <string name="tab_settings">Settings</string>
+    <string name="open_navigation">Open navigation</string>
+    <string name="action_back">Back</string>
+
     <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
     <string name="error_not_found">The file is no longer there.</string>
     <string name="error_io">Couldn’t read the file. Check the storage and try again.</string>
