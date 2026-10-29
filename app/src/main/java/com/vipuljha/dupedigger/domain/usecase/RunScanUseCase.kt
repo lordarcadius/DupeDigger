@@ -39,7 +39,7 @@ class RunScanUseCase @Inject constructor(
     private val scanRuns: ScanRunRepository,
     private val indexFiles: IndexFilesUseCase,
     private val findExact: FindExactDuplicatesUseCase,
-    private val findNearImages: FindNearImagesUseCase,
+    private val findNear: FindNearDuplicatesUseCase,
     private val saveGroups: SaveGroupsUseCase,
 ) {
     suspend operator fun invoke(
@@ -64,7 +64,7 @@ class RunScanUseCase @Inject constructor(
                 }
                 val near = if (appSettings.nearDuplicatesEnabled) {
                     onProgress(ScanProgress(ScanStage.NEAR, 0, null))
-                    findNearImages(scanId, appSettings.nearHammingThreshold, exact.groups) { done, total ->
+                    findNear(scanId, appSettings.nearHammingThreshold, exact.groups) { done, total ->
                         onProgress(ScanProgress(ScanStage.NEAR, done, total))
                     }
                 } else {

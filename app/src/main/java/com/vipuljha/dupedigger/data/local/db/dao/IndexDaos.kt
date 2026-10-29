@@ -123,7 +123,17 @@ interface PerceptualHashDao {
             "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'IMAGE'",
     )
     suspend fun imagesForScan(scanId: Long): List<ImageHashRow>
+
+    /** One row per stored signature part (duration, then frames), or one row with no part for an unsigned video. */
+    @Query(
+        "SELECT f.id, f.sourceUri, f.size, p.algo, p.frameIndex, p.value FROM file_index f " +
+            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('VIDEO_DURATION', 'VIDEO_PHASH') " +
+            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
+    )
+    suspend fun videosForScan(scanId: Long): List<VideoHashRow>
 }
+
+data class VideoHashRow(val id: Long, val sourceUri: String, val size: Long, val algo: String?, val frameIndex: Int?, val value: Long?)
 
 data class ImageHashRow(val id: Long, val sourceUri: String, val size: Long, val dHash: Long?, val pHash: Long?)
 

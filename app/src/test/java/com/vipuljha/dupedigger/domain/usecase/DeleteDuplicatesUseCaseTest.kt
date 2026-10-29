@@ -17,6 +17,8 @@ import com.vipuljha.dupedigger.domain.model.RemovalResult
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.model.TrashConsent
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileRemover
@@ -105,6 +107,8 @@ class DeleteDuplicatesUseCaseTest {
 
         override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
+        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) =
             ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.IMAGE, 10) }
         override suspend fun remove(ids: Collection<Long>) {

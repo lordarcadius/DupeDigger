@@ -9,6 +9,15 @@ data class ImageHashes(val dHash: Long, val pHash: Long)
 /** An image seen in a scan, with its cached perceptual hashes if they were computed before. */
 data class ImageFile(val id: Long, val sourceUri: String, val size: Long, val hashes: ImageHashes?)
 
+/** How many frames a video signature samples, evenly spaced through the video. */
+const val VIDEO_FRAMES = 8
+
+/** A video's duration and the pHash of each sampled frame, in order. */
+data class VideoSignature(val durationMs: Long, val frames: ImmutableList<Long>)
+
+/** A video seen in a scan, with its cached signature if it was computed before. */
+data class VideoFile(val id: Long, val sourceUri: String, val size: Long, val signature: VideoSignature?)
+
 /** [score] is the group's similarity, 1 for identical hashes. */
 data class NearGroup(val fingerprint: String, val fileIds: ImmutableList<Long>, val score: Float)
 

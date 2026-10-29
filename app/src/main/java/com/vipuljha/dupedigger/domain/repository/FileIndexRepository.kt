@@ -7,6 +7,8 @@ import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
 
 interface FileIndexRepository {
     /** Marks [files] as seen in [scanId]; a file whose size or mtime changed loses its cached hashes and embeddings. */
@@ -24,6 +26,11 @@ interface FileIndexRepository {
     suspend fun imagesSeenIn(scanId: Long): List<ImageFile>
 
     suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>)
+
+    /** Videos seen in [scanId], each with its cached signature when every part of it is stored. */
+    suspend fun videosSeenIn(scanId: Long): List<VideoFile>
+
+    suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>)
 
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 

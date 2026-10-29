@@ -1,6 +1,7 @@
 package com.vipuljha.dupedigger.di
 
 import com.vipuljha.dupedigger.data.hashing.AndroidImageHasher
+import com.vipuljha.dupedigger.data.hashing.AndroidVideoHasher
 import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
 import com.vipuljha.dupedigger.data.local.prefs.SettingsRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
@@ -28,6 +29,7 @@ import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
+import com.vipuljha.dupedigger.domain.repository.VideoHasher
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -75,6 +77,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindImageHasher(impl: AndroidImageHasher): ImageHasher
+
+    @Binds
+    abstract fun bindVideoHasher(impl: AndroidVideoHasher): VideoHasher
 
     @Binds
     abstract fun bindQuarantineRepository(impl: QuarantineRepositoryImpl): QuarantineRepository

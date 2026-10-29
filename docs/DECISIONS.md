@@ -249,3 +249,11 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **Fingerprint:** a near group is `NEAR:` plus the SHA-256 of its members' sorted `sourceUri`s. Unlike an exact fingerprint it changes whenever the membership does, so "not duplicates" and a keep choice stop applying once a copy is added, removed or moved; the group then shows again for the user to decide.
 
 **Known gap:** the keeper ranking doesn't use resolution yet, so a near group can suggest keeping the smaller copy. Rank by pixels when P5-06 adds near-group detail (Group detail already reads dimensions on demand).
+
+**Videos (P5-03):** a video's signature is its duration and the pHash of 8 frames, each from the middle of an equal slice of the video, so the very first and last frames (often black) are skipped.
+- Frames come from `MediaMetadataRetriever.getScaledFrameAtTime` (128 px box) with `OPTION_CLOSEST`. That gives the exact frame rather than the nearest keyframe, so a re-encode with other keyframe spacing samples the same picture. The cost is a decode from the previous keyframe per sample, and videos are signed one at a time.
+- Stored in `perceptual_hash` as `VIDEO_PHASH` rows (frame 0–7) plus one `VIDEO_DURATION` row (value in ms), so there is no schema change. A signature missing any part is computed again.
+- Two videos match when their durations differ by at most 1 s or 2 % of the longer, whichever is more, and at least 6 of the 8 frames, compared in order, are within the Hamming threshold. Candidates come from a duration-sorted sliding window; groups from union-find, like images.
+- Whether the retriever applies the rotation metadata to the frames was not checked. A re-encode that keeps the metadata hashes the same either way; one that bakes the rotation into the pixels may not match.
+- On an API 35 emulator with software codecs, a 3 s 640 × 360 clip re-encoded at 320 × 180, 300 kbps and other keyframe spacing matched at per-frame distances 0–2. A clip with a different layout and motion was at 24–40, and the same scene at twice the length was rejected on duration. Each signature took 0.2–0.3 s.
+- Limit seen while building the test: a clip with the same moving shapes over a changed background scored 4–12 per frame and would have matched. Synthetic clips with little detail are weak evidence for real footage.

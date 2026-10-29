@@ -18,7 +18,11 @@ import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.VIDEO_FRAMES
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
+import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -91,6 +95,24 @@ class FileIndexRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun videosSeenIn(scanId: Long): List<VideoFile> =
+        perceptualHashDao.videosForScan(scanId).groupBy { it.id }.map { (id, rows) ->
+            val duration = rows.firstOrNull { it.algo == ALGO_VIDEO_DURATION }?.value
+            val frames = rows.filter { it.algo == ALGO_VIDEO_PHASH }.sortedBy { it.frameIndex }.map { it.value!! }
+            val complete = duration != null && frames.size == VIDEO_FRAMES
+            VideoFile(id, rows.first().sourceUri, rows.first().size, if (complete) VideoSignature(duration!!, frames.toImmutableList()) else null)
+        }
+
+    override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) {
+        if (signatures.isEmpty()) return
+        perceptualHashDao.upsertAll(
+            signatures.flatMap { (id, s) ->
+                listOf(PerceptualHashEntity(id, ALGO_VIDEO_DURATION, 0, s.durationMs)) +
+                    s.frames.mapIndexed { i, frame -> PerceptualHashEntity(id, ALGO_VIDEO_PHASH, i, frame) }
+            },
+        )
+    }
+
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
             StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)
@@ -117,5 +139,7 @@ class FileIndexRepositoryImpl @Inject constructor(
         const val MAX_QUERY_ARGS = 500
         const val ALGO_DHASH = "DHASH"
         const val ALGO_PHASH = "PHASH"
+        const val ALGO_VIDEO_PHASH = "VIDEO_PHASH"
+        const val ALGO_VIDEO_DURATION = "VIDEO_DURATION"
     }
 }

@@ -9,6 +9,8 @@ import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -43,6 +45,8 @@ class FindExactDuplicatesUseCaseTest {
         override suspend fun saveHashes(files: List<IndexedFile>) = synchronized(this) { files.forEach { this.files[it.id] = it } }
         override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
+        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
         override suspend fun remove(ids: Collection<Long>) = Unit
     }

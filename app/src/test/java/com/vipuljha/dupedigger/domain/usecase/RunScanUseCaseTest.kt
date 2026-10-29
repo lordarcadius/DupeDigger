@@ -22,6 +22,8 @@ import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
 import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
@@ -32,6 +34,7 @@ import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
+import com.vipuljha.dupedigger.domain.repository.VideoHasher
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.awaitCancellation
@@ -82,10 +85,13 @@ class RunScanUseCaseTest {
         scanRuns = runs,
         indexFiles = IndexFilesUseCase(enumerator, index),
         findExact = FindExactDuplicatesUseCase(index, hasher),
-        findNearImages = FindNearImagesUseCase(
+        findNear = FindNearDuplicatesUseCase(
             index,
             object : ImageHasher {
                 override suspend fun hash(sourceUri: String) = imageHashes[sourceUri]
+            },
+            object : VideoHasher {
+                override suspend fun signature(sourceUri: String): VideoSignature? = null
             },
         ),
         saveGroups = SaveGroupsUseCase(groups),
@@ -288,6 +294,8 @@ class RunScanUseCaseTest {
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
             imageHashes += hashes
         }
+        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
         private var nextId = 1L
 
