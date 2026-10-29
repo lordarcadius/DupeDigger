@@ -1,6 +1,6 @@
 package com.vipuljha.dupedigger.domain.usecase
 
-import com.vipuljha.dupedigger.domain.detector.rankKeeper
+import com.vipuljha.dupedigger.domain.detector.keeperOf
 import com.vipuljha.dupedigger.domain.model.GroupMember
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import javax.inject.Inject
@@ -9,8 +9,6 @@ import javax.inject.Inject
 class SuggestKeeperUseCase @Inject constructor(
     private val groups: DuplicateGroupRepository,
 ) {
-    suspend operator fun invoke(fingerprint: String, members: List<GroupMember>): GroupMember {
-        val chosen = groups.keepChoice(fingerprint)
-        return members.firstOrNull { it.sourceUri == chosen } ?: rankKeeper(members)
-    }
+    suspend operator fun invoke(fingerprint: String, members: List<GroupMember>): GroupMember =
+        keeperOf(members, groups.keepChoice(fingerprint))
 }

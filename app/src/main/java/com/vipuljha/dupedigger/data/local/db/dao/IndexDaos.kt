@@ -70,6 +70,18 @@ interface FileHashDao {
 
 data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)
 
+data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val mediaKind: String, val keepChoice: String?)
+
+data class GroupMemberRow(
+    val groupId: Long,
+    val fileId: Long,
+    val sourceUri: String,
+    val path: String?,
+    val name: String,
+    val size: Long,
+    val mtime: Long,
+)
+
 data class FileHashState(
     val id: Long,
     val sourceUri: String,
@@ -131,6 +143,34 @@ interface DuplicateGroupDao {
         """,
     )
     fun observeReclaimable(): Flow<List<KindReclaimRow>>
+
+    /** Groups with two or more members, most space to free first; a [limit] of -1 returns them all. */
+    @Query(
+        """
+        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, MIN(f.mediaKind) AS mediaKind,
+            kc.keeperSourceUri AS keepChoice
+        FROM duplicate_group g
+        JOIN group_member m ON m.groupId = g.groupId
+        JOIN file_index f ON f.id = m.fileId
+        LEFT JOIN keep_choice kc ON kc.fingerprint = g.fingerprint
+        WHERE (:tier IS NULL OR g.tier = :tier)
+        GROUP BY g.groupId
+        HAVING COUNT(*) >= 2 AND (:kind IS NULL OR MIN(f.mediaKind) = :kind)
+        ORDER BY SUM(f.size) - MAX(f.size) DESC, g.groupId
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun groupHeaders(kind: String?, tier: String?, limit: Int, offset: Int): List<GroupHeaderRow>
+
+    @Query(
+        """
+        SELECT m.groupId AS groupId, f.id AS fileId, f.sourceUri AS sourceUri, f.path AS path, f.name AS name,
+            f.size AS size, f.mtime AS mtime
+        FROM group_member m JOIN file_index f ON f.id = m.fileId
+        WHERE m.groupId IN (:groupIds)
+        """,
+    )
+    suspend fun membersOfGroups(groupIds: List<Long>): List<GroupMemberRow>
 
     @Transaction
     suspend fun insertGroupWithMembers(group: DuplicateGroupEntity, members: List<GroupMemberEntity>): Long {

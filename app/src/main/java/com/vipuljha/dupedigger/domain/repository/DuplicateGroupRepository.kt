@@ -1,12 +1,20 @@
 package com.vipuljha.dupedigger.domain.repository
 
+import androidx.paging.PagingData
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.GroupFilter
+import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import kotlinx.coroutines.flow.Flow
 
 interface DuplicateGroupRepository {
     /** Reclaimable space per kind of file, over groups that still have at least two members. */
     fun observeReclaimable(): Flow<List<KindReclaim>>
+
+    /** Matching groups with at least two members, most space to free first; refreshes when groups or keep choices change. */
+    fun pagedGroups(filter: GroupFilter): Flow<PagingData<GroupWithMembers>>
+
+    suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers>
 
     suspend fun ignoredFingerprints(): Set<String>
 

@@ -57,6 +57,31 @@
     <string name="home_empty_body">Scan your storage to see how much space duplicate files take.</string>
     <string name="home_error_title">Couldn’t load your summary</string>
 
+    <string name="results_chip_all">All</string>
+    <string name="results_chip_count">%1$s · %2$s</string>
+    <plurals name="results_copies">
+        <item quantity="one">%1$s copy, %2$s</item>
+        <item quantity="other">%1$s copies, %2$s each</item>
+    </plurals>
+    <string name="results_row_detail">%1$s · %2$s</string>
+    <string name="results_tier_exact">Exact</string>
+    <string name="results_tier_near">Similar</string>
+    <string name="results_tier_semantic">AI match</string>
+    <string name="results_frees">Frees %1$s</string>
+    <plurals name="results_selected">
+        <item quantity="one">%1$s file selected · %2$s</item>
+        <item quantity="other">%1$s files selected · %2$s</item>
+    </plurals>
+    <string name="results_action_select_duplicates">Select duplicates</string>
+    <string name="results_action_clear">Clear</string>
+    <string name="results_action_show_all">Show all</string>
+    <string name="results_empty_title">No duplicates found</string>
+    <string name="results_empty_body">Run a scan to look for duplicate files.</string>
+    <string name="results_empty_kind_title">Nothing in this category</string>
+    <string name="results_empty_kind_body">Pick another category, or show all groups.</string>
+    <string name="results_error_title">Couldn’t load the results</string>
+    <string name="results_error_more">Couldn’t load more groups.</string>
+
     <string name="scan_title">Scan</string>
     <string name="scan_scope_title">What to scan</string>
     <string name="scan_scope_whole_device_body">Every file on this device.</string>

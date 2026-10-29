@@ -1,5 +1,8 @@
 package com.vipuljha.dupedigger.domain.usecase
 
+import androidx.paging.PagingData
+import com.vipuljha.dupedigger.domain.model.GroupFilter
+import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
@@ -87,6 +90,8 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
         override suspend fun keepChoice(fingerprint: String): String? = null
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
+        override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
+        override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
     }
 
     private class FakeIndex(initial: Set<Long>) : FileIndexRepository {

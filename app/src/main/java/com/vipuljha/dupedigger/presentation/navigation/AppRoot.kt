@@ -27,6 +27,7 @@ import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
 import com.vipuljha.dupedigger.presentation.home.HomeRoute
+import com.vipuljha.dupedigger.presentation.results.ResultsRoute
 import com.vipuljha.dupedigger.presentation.scan.ScanRoute
 import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
 
@@ -63,7 +64,14 @@ fun AppRoot(modifier: Modifier = Modifier) {
             ScanRoute(onBack = back, onViewResults = { selectTab(TopLevelTab.Results) })
         }
         entry<Destination.Results>(metadata = topLevel) {
-            PlaceholderScreen(stringResource(TopLevelTab.Results.label), LocalMenuClick.current)
+            ResultsRoute(
+                onMenuClick = LocalMenuClick.current,
+                onStartScan = {
+                    val home = backStacks.getValue(TopLevelTab.Home)
+                    if (home.lastOrNull() != Destination.Scan) home.open(Destination.Scan)
+                    selectTab(TopLevelTab.Home)
+                },
+            )
         }
         entry<Destination.Quarantine>(metadata = topLevel) {
             PlaceholderScreen(stringResource(TopLevelTab.Quarantine.label), LocalMenuClick.current)

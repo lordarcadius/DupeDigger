@@ -1,5 +1,8 @@
 package com.vipuljha.dupedigger.presentation
 
+import androidx.paging.PagingData
+import com.vipuljha.dupedigger.domain.model.GroupFilter
+import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.domain.model.FoundGroup
@@ -22,6 +25,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 
 class FakeScheduler : ScanScheduler {
@@ -70,7 +74,15 @@ class FakeSettings : SettingsRepository {
 class FakeReclaimGroups : DuplicateGroupRepository {
     val reclaimable = MutableStateFlow<List<KindReclaim>>(emptyList())
 
+    val groups = mutableListOf<GroupWithMembers>()
+    val filters = mutableListOf<GroupFilter>()
+
     override fun observeReclaimable() = reclaimable
+    override fun pagedGroups(filter: GroupFilter) = flowOf(PagingData.from(groups.toList()))
+    override suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers> {
+        filters += filter
+        return groups.filter { filter.kind == null || it.kind == filter.kind }
+    }
     override suspend fun ignoredFingerprints() = emptySet<String>()
     override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
     override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()

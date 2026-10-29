@@ -61,9 +61,9 @@ Single `:app` module, with Clean Architecture layers as packages under `com.vipu
 
 ### Layers
 - **Dependency rule:** `presentation → domain ← data`, wired by Hilt. Presentation sees only domain types, never an entity, DAO, `File` wrapper or repository implementation.
-- **Domain is plain Kotlin:** no `android.*`, Compose, Room or LiteRT imports, and no `Uri`, `Bitmap` or `Context`. Check before finishing:
+- **Domain is plain Kotlin:** no `android.*`, Compose, Room or LiteRT imports, and no `Uri`, `Bitmap` or `Context`. Paging-common's `androidx.paging.*` types are the one exception, because they are pure Kotlin and paged lists cross the domain as `PagingData`. Check before finishing:
   ```bash
-  grep -rnE '^import (android|androidx|com\.google\.ai)' app/src/main/java/com/vipuljha/dupedigger/domain || echo "domain clean"
+  grep -rnE '^import (android|androidx|com\.google\.ai)' app/src/main/java/com/vipuljha/dupedigger/domain | grep -vE ':import androidx\.paging\.[A-Za-z]+$' || echo "domain clean"
   ```
 - **Business rules live in use cases** (for example "which file to keep" or "group by threshold"), never in a ViewModel or composable.
 - **Map at the boundaries:** entity → domain model inside `data/`; domain model → `@Immutable` UI model (with display-ready strings and sizes) through `toUiModel()` in the ViewModel.
