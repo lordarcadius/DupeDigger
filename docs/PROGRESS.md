@@ -3,8 +3,8 @@
 Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
-**Current phase:** P1, core foundations
-**Next task:** P1-05
+**Current phase:** P2, storage access and file indexing
+**Next task:** P2-01
 
 ## Status
 
@@ -19,7 +19,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P1-02 | MviViewModel, UiText, ContentState | done | |
 | P1-03 | Design system (M3 Expressive) | done | Placeholder brand seed (D-009) |
 | P1-04 | Navigation 3 host + adaptive nav | done | Drawer / rail / panel, no bottom bar |
-| P1-05 | Room DB + DataStore | todo | |
+| P1-05 | Room DB + DataStore | done | One DB, schema v1 exported (D-010) |
 | P2-01 | Onboarding + permissions | todo | |
 | P2-02 | StorageAccess + ScanScope + SAF picker | todo | |
 | P2-03 | File enumerators | todo | |
@@ -54,6 +54,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P1-05: added `DupeDiggerDatabase` v1 (all 11 ARCHITECTURE.md tables, cascading deletes from `file_index`, DAOs, `exportSchema` with `app/schemas/.../1.json`, `ALL_MIGRATIONS` plus a `MigrationTestHelper` harness that checks user decisions survive) and DataStore `SettingsRepository` (domain model + interface, clamped values). `duplicate_group` gained a `fingerprint` column; PLAN.md P1-05 drops the theme setting and moves excluded paths to Room (D-010). Tests: 3 new JVM settings tests pass (13 unit tests total); on the Primebook, `DaoTest` (5) and `DatabaseMigrationTest` (1) pass; domain purity grep clean. Next: P2-01.
 - 2026-10-29: P1-04: added `presentation/navigation` (`@Serializable` `Destination` keys, `open/back/backTo`, `TopLevelTab`, `AppRoot` with one decorated back stack per tab, placeholder screens) and the design-system shell (`AppShell` field and pane, drawer/rail/resizable panel with seam, `NavRow`, `AppTopBar`, tooltip icon buttons, popup content-bounds clamping, push/pop/fade-through transitions); window background follows the chrome tone; predictive back enabled. PLAN.md P1-04 now says drawer/rail/panel instead of "bottom bar or nav rail", because the house design has no bottom bar. Verified on an API 35 phone emulator: drawer opens and switches tabs, Back from Results returns to Home and Back on Home leaves the app, and the selected tab survives portrait→landscape→portrait while the drawer becomes the labelled panel. The panel width is kept only for the session (`rememberSaveable`); P1-05's DataStore can persist it. Next: P1-05.
 - 2026-10-29: P1-03: added `core/designsystem` (`DupeDiggerTheme` on `MaterialExpressiveTheme` with expressive motion and dynamic colour, generated 48-role brand fallback schemes, Inter 4.1 with its OFL text, `AppShapes`, `AppTypography` + `SectionLabelStyle`, `Dimens`/`StateAlpha`/`WindowBreakpoints`/`Motion.kt` tokens, Expressive wrappers for loading indicator, wavy progress, connected button group and extended FAB, and a light/dark preview gallery); removed the template `ui/theme` and unused `colors.xml`. The gallery, shown temporarily as the app's content on the Primebook, rendered in light and dark. Next: P1-04, which also sets the window background tone.
 - 2026-10-29: P1-01, P1-02: added `core/common` (`Outcome`, sealed `DomainError`, `runSuspendCatching`, dispatcher and `@ApplicationScope` qualifiers) with `di/DispatchersModule`, `core/mvi` (`MviViewModel`, `UiState/UiIntent/UiEffect`, `ObserveAsEvents`) and `core/ui` (`UiText`, `ContentState`, `DomainError.toUiText()` with error strings). Unit tests cover cancellation rethrow, atomic `setState` under 40k concurrent updates, effects delivered exactly once, and `ContentState` mapping; breaking `setState` or the cancellation rethrow made the matching tests fail. Added `kotlinx-coroutines-test` 1.11.0 (the resolved coroutines version). Next: P1-03.

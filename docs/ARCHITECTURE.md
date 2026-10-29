@@ -81,7 +81,7 @@ Rules:
 | `file_hash` | fileId, partialHash, fullHash, computedAtMtime |
 | `perceptual_hash` | fileId, algo (DHASH/PHASH/SIMHASH/VIDEO_PHASH), frameIndex, value (Long) |
 | `embedding` | fileId, modelId, dim, vector (BLOB, float32 LE, normalised) |
-| `duplicate_group` / `group_member` | groupId, tier, score, scanId / groupId, fileId, similarity |
+| `duplicate_group` / `group_member` | groupId, tier, score, scanId, fingerprint / groupId, fileId, similarity |
 | `scan_run` | id, scope, tiers, startedAt, finishedAt, status, stats |
 
 **User-decision tables.** These hold user data and need a real `Migration` plus a test:
@@ -89,9 +89,11 @@ Rules:
 | Table | Purpose |
 |---|---|
 | `ignored_group` | a group fingerprint the user marked "not duplicates" |
-| `keep_choice` | the user's chosen keeper for a group fingerprint |
+| `keep_choice` | the user's chosen keeper for a group fingerprint, stored by its `sourceUri` |
 | `quarantine_item` | original path, quarantine path, size, movedAt (non-media soft delete) |
 | `excluded_path` | folders that are never scanned |
+
+All tables live in one database, `dupedigger.db`, under the user-data policy (D-010). User-decision tables never reference the index tables, which may be rebuilt. Rows derived from a file cascade when its `file_index` row is deleted.
 
 ## Storage access
 

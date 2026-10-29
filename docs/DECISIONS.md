@@ -192,3 +192,22 @@ Keep the template's minSdk 31, compile/target 37, AGP 9.5 built-in Kotlin and th
 - `AppLoadingIndicator` (plain or contained), `AppProgressBar` (wavy, determinate or indeterminate), `AppConnectedButtonGroup` (connected toggle buttons, one or many selected) and `AppExtendedFab`.
 - Split buttons are not wrapped yet; no planned screen needs one.
 - Shape morphing comes only from these stock components, never from app code.
+
+## D-010: One Room database and the settings store (accepted, P1-05)
+**Decision:** all tables live in one database, `dupedigger.db`, under the user-data policy:
+- the schema is exported and committed (`app/schemas/`);
+- every version bump ships a real `Migration` in `ALL_MIGRATIONS`, and `DatabaseMigrationTest` must pass;
+- there is never a destructive fallback.
+
+**Why one database:**
+- Splitting the index/cache tables into a disposable database would let them use a destructive fallback. But ARCHITECTURE.md asks for real migrations on them too where that's cheap.
+- A single database keeps the group and member queries in one place. It also lets `file_index` deletions cascade to the hashes, embeddings and memberships derived from it.
+
+**Keys:**
+- User-decision rows never reference the rebuildable index tables.
+- `ignored_group` and `keep_choice` match on a group fingerprint, which P3-03 defines. `keep_choice` stores the keeper's `sourceUri`, not a row id.
+
+**Settings:** settings are in Preferences DataStore (`settings` file): near and semantic tier toggles, the Hamming and semantic thresholds, the minimum file size and hidden-file skipping.
+- Defaults: near on, semantic off, Hamming 10, semantic 0.90 (D-006), minimum size 1 byte (empty files skipped), hidden files skipped.
+- Excluded paths are in Room `excluded_path`.
+- PLAN.md listed a theme setting. It was dropped, because the house design has the theme follow the system with no in-app toggle (D-009).
