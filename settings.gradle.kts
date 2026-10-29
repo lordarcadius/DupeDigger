@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Dupe Digger"
 include(":app")
+include(":benchmark")
  

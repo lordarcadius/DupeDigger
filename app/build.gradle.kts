@@ -30,6 +30,17 @@ android {
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
+        // Release-like builds for :benchmark: not debuggable, signed with the debug key. The non-minified one generates
+        // the baseline profile with source class names; R8 then maps them when the release build packs the profile.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
+        create("nonMinifiedBenchmark") {
+            initWith(getByName("benchmark"))
+            optimization { enable = false }
+        }
     }
     buildFeatures {
         compose = true
@@ -53,6 +64,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
