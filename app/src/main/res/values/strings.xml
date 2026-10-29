@@ -27,6 +27,18 @@
     <string name="onboarding_action_turn_on">Turn on</string>
     <string name="onboarding_action_continue">Continue</string>
 
+    <string name="settings_folders_title">Folders to scan</string>
+    <string name="settings_folders_body">Dupe Digger can scan every file type in these folders, even without other permissions.</string>
+    <string name="settings_folders_empty">No folders yet.</string>
+    <string name="settings_folders_add">Add folder</string>
+    <string name="settings_folder_add_failed">Couldn’t add the folder. Pick it again.</string>
+    <string name="settings_excluded_title">Excluded folders</string>
+    <string name="settings_excluded_body">Scans skip these folders and everything inside them.</string>
+    <string name="settings_excluded_empty">Nothing excluded.</string>
+    <string name="settings_excluded_add">Exclude folder</string>
+    <string name="settings_exclude_failed">Couldn’t exclude that folder. Pick a folder on this device’s storage.</string>
+    <string name="settings_remove">Remove</string>
+
     <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
     <string name="error_not_found">The file is no longer there.</string>
     <string name="error_io">Couldn’t read the file. Check the storage and try again.</string>

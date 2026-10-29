@@ -26,6 +26,7 @@ import com.vipuljha.dupedigger.core.designsystem.NavRow
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
+import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
 
 val LocalMenuClick = compositionLocalOf<(() -> Unit)?> { null }
 
@@ -56,7 +57,7 @@ fun AppRoot(modifier: Modifier = Modifier) {
             PlaceholderScreen(stringResource(TopLevelTab.Quarantine.label), LocalMenuClick.current)
         }
         entry<Destination.Settings>(metadata = topLevel) {
-            PlaceholderScreen(stringResource(TopLevelTab.Settings.label), LocalMenuClick.current)
+            SettingsRoute(onMenuClick = LocalMenuClick.current)
         }
     }
     val entriesByTab = TopLevelTab.entries.associateWith { tab ->

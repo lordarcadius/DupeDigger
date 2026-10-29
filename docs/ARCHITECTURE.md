@@ -103,7 +103,10 @@ All tables live in one database, `dupedigger.db`, under the user-data policy (D-
 | Targeted folders | SAF `OpenDocumentTree` + persisted URI permission | On API 30+, SAF can't pick the storage root or `Download/` itself. |
 | Whole device, all file types | `MANAGE_EXTERNAL_STORAGE` + `java.io.File` walk | Google Play restricts it. See D-004 in DECISIONS.md. |
 
-`StorageAccess` (domain interface) reports which modes are granted, and the scan scope picker only offers what is reachable.
+`StorageAccess` (domain interface) reports which modes are granted, and the scan scope picker only offers what is reachable (`availableScopes()`: WholeDevice needs All files access, MediaOnly needs media access, Folders needs at least one picked folder).
+
+- **Picked folders** are the app's persisted SAF tree grants (`contentResolver.persistedUriPermissions`). Nothing else stores them, so they survive restarts, and removing one releases its grant. Read and write are both kept when granted, so non-media duplicates can be quarantined later.
+- **Excluded folders** are absolute paths in `excluded_path` (for example `/storage/emulated/0/Private`), mapped from the picked tree's ExternalStorageProvider document id. Walkers skip any file whose path starts with one of them.
 
 ## Deletion
 
