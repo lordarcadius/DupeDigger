@@ -11,7 +11,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Opens the oldest shipped schema with user decisions in it, migrates to the current version, and checks nothing was lost. */
+/**
+ * Migration checks against the schemas exported to `app/schemas`:
+ * - user decisions written in the oldest schema survive the migration to the current version;
+ * - every exported version migrates to the latest and matches it exactly;
+ * - the database the app builds is the latest exported version, so a version bump can't ship without its schema.
+ */
 @RunWith(AndroidJUnit4::class)
 class DatabaseMigrationTest {
 
@@ -39,6 +44,32 @@ class DatabaseMigrationTest {
         assertEquals("content://k", db.keepChoiceDao().get("fp")?.keeperSourceUri)
         assertEquals(listOf("/q/a"), db.quarantineDao().observeAll().first().map { it.quarantinePath })
         assertEquals(listOf("/sdcard/Private"), db.excludedPathDao().observeAll().first().map { it.path })
+    }
+
+    @Test
+    fun everyExportedVersionMigratesToTheLatestSchema() {
+        exportedVersions.forEach { version ->
+            val name = "$TEST_DB-$version"
+            helper.createDatabase(name, version).close()
+            helper.runMigrationsAndValidate(name, exportedVersions.max(), true, *ALL_MIGRATIONS).close()
+        }
+    }
+
+    @Test
+    fun theBuiltDatabaseIsTheLatestExportedVersion() {
+        val db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, DupeDiggerDatabase::class.java).build()
+        try {
+            assertEquals(exportedVersions.max(), db.openHelper.readableDatabase.version)
+        } finally {
+            db.close()
+        }
+    }
+
+    private val exportedVersions: List<Int> by lazy {
+        InstrumentationRegistry.getInstrumentation().context.assets
+            .list(DupeDiggerDatabase::class.java.canonicalName!!)!!
+            .map { it.removeSuffix(".json").toInt() }
+            .also { check(FIRST_VERSION in it) }
     }
 
     private companion object {

@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -32,6 +33,7 @@ fun ResultsRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val groups = viewModel.groups.collectAsLazyPagingItems()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val trashPrompt = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
@@ -43,7 +45,7 @@ fun ResultsRoute(
             ResultsEffect.OpenScan -> onStartScan()
             is ResultsEffect.LaunchTrash -> trashPrompt.launch(IntentSenderRequest.Builder(effect.request as IntentSender).build())
             is ResultsEffect.ShowMessage -> scope.launch {
-                val undoLabel = effect.undo?.let { context.getString(R.string.action_undo) }
+                val undoLabel = effect.undo?.let { resources.getString(R.string.action_undo) }
                 val answer = snackbarHostState.showSnackbar(effect.message.asString(context), actionLabel = undoLabel, duration = SnackbarDuration.Long)
                 if (answer == SnackbarResult.ActionPerformed) effect.undo?.let { viewModel.onIntent(ResultsIntent.UndoClicked(it)) }
             }

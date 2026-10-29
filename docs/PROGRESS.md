@@ -4,7 +4,7 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P7, hardening
-**Next task:** P7-04
+**Next task:** P7-05
 
 ## Status
 
@@ -47,13 +47,23 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P7-01 | Performance + baseline profile | done | 2026-10-29 |
 | P7-02 | Adaptive layouts | done | 2026-10-29 |
 | P7-03 | Accessibility | done | Labels, 48dp targets, 200% font, AA contrast in a Compose test |
-| P7-04 | Test coverage | todo | |
+| P7-04 | Test coverage | done | Domain 98.4% lines, 87.0% branches; lint 0 errors |
 | P7-05 | Release build | todo | |
 
 ## Log
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P7-04: tests and a green lint.
+  - **Coverage:** the debug build type now sets `enableUnitTestCoverage`, so `./gradlew createDebugUnitTestCoverageReport` writes JaCoCo results to `app/build/reports/coverage/test/debug/`. The domain (`domain/usecase`, `domain/model`, `domain/detector`; `domain/repository` holds interfaces only) is at 814/827 lines (98.4%), 407/468 branches (87.0%) and 94.2% of instructions, from the existing 211 unit tests. No new unit tests were needed to reach 80%. The lowest files are `FindNearDuplicatesUseCase` (70/75 lines) and `FindSemanticDuplicatesUseCase` (70/72).
+  - **Room migrations:** `DatabaseMigrationTest` now also migrates every schema exported in `app/schemas` to the latest one and validates it, with dropped tables checked. It also checks that the database the app builds is the latest exported version, so a version bump can't ship without its schema and migration. Only version 1 exists, so each migration step is still the identity.
+  - **Delete-safety UI test:** `DeleteSafetyFlowTest` (androidTest) drives the real `ResultsRoute`, `ResultsViewModel` and use cases over an in-memory database seeded with two exact groups of three files; only file removal and quarantine restore are faked.
+    - Select duplicates → Delete shows a confirmation naming 4 files and their size, and Cancel removes nothing and keeps the selection.
+    - Confirm removes only the 4 copies, leaves exactly one file in each group and offers Undo, which restores all 4.
+    - When Cancel was temporarily made to delete, the cancel test failed.
+  - **Lint:** the 2 `LocalContextGetResourceValueCall` errors in `GroupRoute` and `ResultsRoute` are fixed with `LocalResources`. `./gradlew lint testDebugUnitTest` is green: 0 lint errors, 39 warnings, 211 unit tests.
+  - **On a temporary API 36 phone emulator** (created and deleted; the Primebook is still off adb): the new and changed tests passed (5), then all app instrumented tests: OK (62 tests; the gated benchmark, model download, GPU and seed tests skip themselves).
+  - Next: P7-05.
 - 2026-10-29: P7-02, P7-03: adaptive layouts and accessibility. List-detail: a Navigation 3 `ListDetailSceneStrategy` (no new dependency) shows Results beside the open group when the content pane is at least 600dp wide, with a "No group open" placeholder when none is open; the pairing is a pure function (`listDetailIndices`) over entry metadata. The scene is keyed on the Results entry, so switching groups swaps only the detail pane, and it carries Results' fade-through. Each pane gets its own `PaneMetrics` (list 45% of the pane, 300–420dp). Opening a group replaces the open one instead of stacking it; the open row has the `primary` @ 0.12 selected layer and `selected` semantics. Compare still takes the whole pane. Keyboard and mouse: window-level shortcuts in `MainActivity.dispatchKeyEvent` (`AppShortcuts`): Ctrl+H goes Home, Alt+Left goes back, Esc and Alt+Left first close an open navigation drawer (its state now lives in `AppRoot`), then Esc pops the current tab and never leaves the app; both key halves are consumed so the key up can't reach the system as Back. The mouse Back button should arrive as system Back, but that wasn't checked on a device. Ctrl+F doesn't apply, since the app has no search. Arrow keys and Tab move focus through the list with the focus layer visible, and Enter opens the focused group. Accessibility: the Results row checkbox reads "Select <name>" (it had no label, so TalkBack said only "checkbox"), and the row's click is labelled "Open group". On narrow rows (under 360dp, scaled by the font size) the "Frees …" size moves under the name. Group member actions now wrap in a row under the file details instead of a side column that squeezed the text. Tests: 7 new JVM tests (211 unit tests total): pane pairing and the shortcut map. `AccessibilityChecksTest` (androidTest) renders Results and Group detail at 100% and 200% font and checks that every clickable control has a label and, when fully on screen, a 48dp touch target. Removing the checkbox label makes it fail with "Control without a label". It passed on all three emulators below. A fifth test checks text contrast on the colour-role pairs these screens use, including the selected row's tint, against 4.5:1. It covers light and dark, static and dynamic colour. It passed on a later temporary phone emulator, where Esc and Alt+Left were also seen closing an open drawer and a second Esc stayed in the app. It replaces an Accessibility Scanner pass: the Scanner app needs a Play sign-in. `ui-test-junit4-accessibility` (the same ATF checks) can't resolve against the app's pinned dependencies without overriding several of them for tests (listenablefuture, concurrent-futures, fragment), so it was left out. The contrast test checks colour roles, not rendered pixels the way Accessibility Scanner does. On temporary API 36 emulators, each created and deleted (the Primebook is still off adb), with 5,000 seeded groups:
   - **Pixel Fold:** unfolded (841dp window, 601dp pane), two panes. Opening another group replaced the first, and Esc then showed the placeholder. A second Esc stayed in the app. Ctrl+H went Home and Alt+Left closed the group. Keyboard focus and Enter opened a group. Folding moved the same group to one pane on the outer screen. At 200% font, Results, Group, Settings, Quarantine and Scan stayed readable.
   - **Pixel Tablet:** two panes in landscape. In portrait (rail) they stayed, and the open group survived the rotation. Compare took the whole pane and Back returned to both panes.

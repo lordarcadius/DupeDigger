@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vipuljha.dupedigger.R
@@ -28,6 +29,7 @@ fun GroupRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -40,7 +42,7 @@ fun GroupRoute(
                 try {
                     context.startActivity(intent)
                 } catch (_: ActivityNotFoundException) {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.group_open_no_app)) }
+                    scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.group_open_no_app)) }
                 }
             }
             is GroupEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
