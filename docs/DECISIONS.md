@@ -171,3 +171,24 @@ Deletion is always user-initiated and confirmed. Media goes to the system trash,
 
 ## D-008: Build baseline (accepted)
 Keep the template's minSdk 31, compile/target 37, AGP 9.5 built-in Kotlin and the `optimization {}` release DSL. Move to a Java 21 toolchain in P0-01. Hilt and Room use KSP only.
+
+## D-009: Design system baseline (accepted, P1-03; brand seed is a placeholder)
+**Decision:**
+- **Placement:** the theme, tokens and Expressive wrappers live in `core/designsystem/`, per ARCHITECTURE.md. That overrides the house design skill's `presentation/theme/`.
+- **Theme:** `MaterialExpressiveTheme` with `MotionScheme.expressive()`, the explicit eight-value `AppShapes`, and Inter applied to every style.
+- **Dynamic colour is the default.** It is always available at minSdk 31. The branded static scheme is used only when a caller passes `dynamicColor = false`; today that is only the preview gallery.
+
+**Brand seed `#8A5A2B` (warm amber, "digging").** This is a placeholder, not an owner choice:
+- No brand colour was supplied, so I picked it. The owner should replace it.
+- The 48 light and 48 dark roles in `Color.kt` were generated from it, not hand-picked. The tool was material-color-utilities (the Python port `materialyoucolor` 3.0.4, the same algorithm Material Theme Builder uses), with the TonalSpot variant, standard contrast and the 2021 spec.
+- To change the brand: export a Jetpack Compose scheme for the new seed from Material Theme Builder, and replace the values in `Color.kt` verbatim.
+
+**Font:**
+- Inter 4.1 variable roman and italic come from the official release (`rsms/inter` v4.1), as `res/font/inter_variable*.ttf`, registered at weights 300–700.
+- The OFL 1.1 licence ships as `res/raw/inter_license.txt`.
+- It still needs a place on an open-source notices screen, which P7-05 adds with the privacy note.
+
+**Wrappers:**
+- `AppLoadingIndicator` (plain or contained), `AppProgressBar` (wavy, determinate or indeterminate), `AppConnectedButtonGroup` (connected toggle buttons, one or many selected) and `AppExtendedFab`.
+- Split buttons are not wrapped yet; no planned screen needs one.
+- Shape morphing comes only from these stock components, never from app code.

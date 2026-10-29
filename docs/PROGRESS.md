@@ -4,7 +4,7 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P1, core foundations
-**Next task:** P1-03
+**Next task:** P1-04
 
 ## Status
 
@@ -17,7 +17,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P0-05 | Spike: storage reach | done | Hybrid access; matrix in D-004 |
 | P1-01 | Outcome / DomainError / dispatchers | done | |
 | P1-02 | MviViewModel, UiText, ContentState | done | |
-| P1-03 | Design system (M3 Expressive) | todo | |
+| P1-03 | Design system (M3 Expressive) | done | Placeholder brand seed (D-009) |
 | P1-04 | Navigation 3 host + adaptive nav | todo | |
 | P1-05 | Room DB + DataStore | todo | |
 | P2-01 | Onboarding + permissions | todo | |
@@ -54,6 +54,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P1-03: added `core/designsystem` (`DupeDiggerTheme` on `MaterialExpressiveTheme` with expressive motion and dynamic colour, generated 48-role brand fallback schemes, Inter 4.1 with its OFL text, `AppShapes`, `AppTypography` + `SectionLabelStyle`, `Dimens`/`StateAlpha`/`WindowBreakpoints`/`Motion.kt` tokens, Expressive wrappers for loading indicator, wavy progress, connected button group and extended FAB, and a light/dark preview gallery); removed the template `ui/theme` and unused `colors.xml`. The gallery, shown temporarily as the app's content on the Primebook, rendered in light and dark. Next: P1-04, which also sets the window background tone.
 - 2026-10-29: P1-01, P1-02: added `core/common` (`Outcome`, sealed `DomainError`, `runSuspendCatching`, dispatcher and `@ApplicationScope` qualifiers) with `di/DispatchersModule`, `core/mvi` (`MviViewModel`, `UiState/UiIntent/UiEffect`, `ObserveAsEvents`) and `core/ui` (`UiText`, `ContentState`, `DomainError.toUiText()` with error strings). Unit tests cover cancellation rethrow, atomic `setState` under 40k concurrent updates, effects delivered exactly once, and `ContentState` mapping; breaking `setState` or the cancellation rethrow made the matching tests fail. Added `kotlinx-coroutines-test` 1.11.0 (the resolved coroutines version). Next: P1-03.
 - 2026-10-29: P0-05: measured what MediaStore, media permissions, partial access and `MANAGE_EXTERNAL_STORAGE` reach on API 31, 33, 34, 35 and 36 emulators, and what the SAF tree picker allows on API 35. D-004 is resolved as hybrid: MediaStore and SAF by default, opt-in Deep scan through `MANAGE_EXTERNAL_STORAGE`. Gaps: no SD card on any test device, and the Primebook shell cannot create test files on `/sdcard`. Installed the API 31/33/34 `google_apis` system images (kept for later steps); the spike AVDs and test code were removed. Next: P1-01.
 - 2026-10-29: P0-04: confirmed the LiteRT-LM 0.18.1 embedding API and ran the 270M and 740M models (SHA-256 verified) on a Primebook (MT8781, Android 15), on CPU and GPU. Vectors come back normalised; `outputSize` gives 128/256/512/768. CPU is faster and much lighter than GPU on this Mali; 70 vision tokens cuts image latency from 6.8 s to 2.9 s. The text prefix is corrected to `task: sentence similarity | query:`. D-006 holds the URLs, revisions, checksums and numbers; ARCHITECTURE.md's AI section is updated. The benchmark was a throwaway instrumented test and is not in the repo. Next: P0-05.
