@@ -8,6 +8,25 @@
     <string name="open_navigation">Open navigation</string>
     <string name="action_back">Back</string>
 
+    <string name="onboarding_title">Find duplicate files safely</string>
+    <string name="onboarding_body">Dupe Digger looks through your files to find copies and near copies. It needs access to your storage to do that, and it never deletes anything without asking you first.</string>
+    <string name="onboarding_media_title">Photos, videos and audio</string>
+    <string name="onboarding_media_body">Lets Dupe Digger find duplicate media anywhere on this device.</string>
+    <string name="onboarding_all_files_title">Deep scan (optional)</string>
+    <string name="onboarding_all_files_body">Also finds documents, archives and other files outside the folders you pick. This uses All files access, which you turn on in Settings.</string>
+    <string name="onboarding_privacy">Everything stays on this device. You can still scan folders you pick without either permission.</string>
+    <string name="onboarding_status_allowed">Allowed</string>
+    <string name="onboarding_status_partial">Only the items you selected</string>
+    <string name="onboarding_status_not_allowed">Not allowed</string>
+    <string name="onboarding_status_blocked">Blocked. Allow it in Settings.</string>
+    <string name="onboarding_status_on">On</string>
+    <string name="onboarding_status_off">Off</string>
+    <string name="onboarding_action_allow">Allow access</string>
+    <string name="onboarding_action_allow_all">Allow all</string>
+    <string name="onboarding_action_open_settings">Open settings</string>
+    <string name="onboarding_action_turn_on">Turn on</string>
+    <string name="onboarding_action_continue">Continue</string>
+
     <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
     <string name="error_not_found">The file is no longer there.</string>
     <string name="error_io">Couldn’t read the file. Check the storage and try again.</string>

@@ -4,7 +4,7 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P2, storage access and file indexing
-**Next task:** P2-01
+**Next task:** P2-02
 
 ## Status
 
@@ -20,7 +20,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P1-03 | Design system (M3 Expressive) | done | Placeholder brand seed (D-009) |
 | P1-04 | Navigation 3 host + adaptive nav | done | Drawer / rail / panel, no bottom bar |
 | P1-05 | Room DB + DataStore | done | One DB, schema v1 exported (D-010) |
-| P2-01 | Onboarding + permissions | todo | |
+| P2-01 | Onboarding + permissions | done | Shown once; Deep scan opt-in |
 | P2-02 | StorageAccess + ScanScope + SAF picker | todo | |
 | P2-03 | File enumerators | todo | |
 | P2-04 | Incremental indexer | todo | |
@@ -54,6 +54,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P2-01: added onboarding (MVI Route/Screen/ViewModel) shown once via an `onboardingCompleted` setting and `AppEntry`. It covers media permissions by API level (`READ_EXTERNAL_STORAGE` on 31–32, `READ_MEDIA_*` on 33, plus `READ_MEDIA_VISUAL_USER_SELECTED` on 34+), partial access with "Allow all", permanent denial with "Open settings", and opt-in Deep scan via `MANAGE_EXTERNAL_STORAGE` (D-004). It re-checks on resume and always allows Continue. Added the domain `StorageAccess`/`StorageAccessState`, `AndroidStorageAccess`, `CompleteOnboardingUseCase` and the design-system `AppButton`. Tests: 7 new ViewModel tests (20 unit tests total). On the Primebook (API 35): onboarding renders; the system prompt appears; denying twice switches to Open settings; granting in Settings shows Allowed on return; Continue opens the shell, and onboarding stays done after a relaunch. Next: P2-02.
 - 2026-10-29: P1-05: added `DupeDiggerDatabase` v1 (all 11 ARCHITECTURE.md tables, cascading deletes from `file_index`, DAOs, `exportSchema` with `app/schemas/.../1.json`, `ALL_MIGRATIONS` plus a `MigrationTestHelper` harness that checks user decisions survive) and DataStore `SettingsRepository` (domain model + interface, clamped values). `duplicate_group` gained a `fingerprint` column; PLAN.md P1-05 drops the theme setting and moves excluded paths to Room (D-010). Tests: 3 new JVM settings tests pass (13 unit tests total); on the Primebook, `DaoTest` (5) and `DatabaseMigrationTest` (1) pass; domain purity grep clean. Next: P2-01.
 - 2026-10-29: P1-04: added `presentation/navigation` (`@Serializable` `Destination` keys, `open/back/backTo`, `TopLevelTab`, `AppRoot` with one decorated back stack per tab, placeholder screens) and the design-system shell (`AppShell` field and pane, drawer/rail/resizable panel with seam, `NavRow`, `AppTopBar`, tooltip icon buttons, popup content-bounds clamping, push/pop/fade-through transitions); window background follows the chrome tone; predictive back enabled. PLAN.md P1-04 now says drawer/rail/panel instead of "bottom bar or nav rail", because the house design has no bottom bar. Verified on an API 35 phone emulator: drawer opens and switches tabs, Back from Results returns to Home and Back on Home leaves the app, and the selected tab survives portrait→landscape→portrait while the drawer becomes the labelled panel. The panel width is kept only for the session (`rememberSaveable`); P1-05's DataStore can persist it. Next: P1-05.
 - 2026-10-29: P1-03: added `core/designsystem` (`DupeDiggerTheme` on `MaterialExpressiveTheme` with expressive motion and dynamic colour, generated 48-role brand fallback schemes, Inter 4.1 with its OFL text, `AppShapes`, `AppTypography` + `SectionLabelStyle`, `Dimens`/`StateAlpha`/`WindowBreakpoints`/`Motion.kt` tokens, Expressive wrappers for loading indicator, wavy progress, connected button group and extended FAB, and a light/dark preview gallery); removed the template `ui/theme` and unused `colors.xml`. The gallery, shown temporarily as the app's content on the Primebook, rendered in light and dark. Next: P1-04, which also sets the window background tone.

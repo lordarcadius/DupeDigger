@@ -36,6 +36,7 @@ class SettingsRepositoryImpl @Inject constructor(
     private fun Preferences.toSettings(): AppSettings {
         val defaults = AppSettings()
         return AppSettings(
+            onboardingCompleted = this[KEY_ONBOARDING_COMPLETED] ?: defaults.onboardingCompleted,
             nearDuplicatesEnabled = this[KEY_NEAR_ENABLED] ?: defaults.nearDuplicatesEnabled,
             semanticEnabled = this[KEY_SEMANTIC_ENABLED] ?: defaults.semanticEnabled,
             nearHammingThreshold = (this[KEY_NEAR_HAMMING] ?: defaults.nearHammingThreshold)
@@ -48,6 +49,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     private fun MutablePreferences.write(settings: AppSettings) {
+        this[KEY_ONBOARDING_COMPLETED] = settings.onboardingCompleted
         this[KEY_NEAR_ENABLED] = settings.nearDuplicatesEnabled
         this[KEY_SEMANTIC_ENABLED] = settings.semanticEnabled
         this[KEY_NEAR_HAMMING] = settings.nearHammingThreshold.coerceIn(AppSettings.HammingRange)
@@ -57,6 +59,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     private companion object {
+        val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val KEY_NEAR_ENABLED = booleanPreferencesKey("near_duplicates_enabled")
         val KEY_SEMANTIC_ENABLED = booleanPreferencesKey("semantic_enabled")
         val KEY_NEAR_HAMMING = intPreferencesKey("near_hamming_threshold")

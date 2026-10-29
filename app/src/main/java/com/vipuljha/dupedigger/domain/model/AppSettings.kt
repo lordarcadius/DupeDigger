@@ -1,7 +1,8 @@
 package com.vipuljha.dupedigger.domain.model
 
-/** Scan settings; the exact tier always runs. Thresholds apply at query time, so changing them never forces a rehash. */
+/** App and scan settings; the exact tier always runs. Thresholds apply at query time, so changing them never forces a rehash. */
 data class AppSettings(
+    val onboardingCompleted: Boolean = false,
     val nearDuplicatesEnabled: Boolean = true,
     val semanticEnabled: Boolean = false,
     val nearHammingThreshold: Int = 10,
