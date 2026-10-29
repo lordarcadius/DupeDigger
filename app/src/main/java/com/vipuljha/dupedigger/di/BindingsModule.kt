@@ -4,14 +4,18 @@ import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
 import com.vipuljha.dupedigger.data.local.prefs.SettingsRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ExcludedPathRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
+import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
 import com.vipuljha.dupedigger.data.storage.AndroidFileEnumerator
 import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
 import com.vipuljha.dupedigger.data.storage.AndroidStorageAccess
+import com.vipuljha.dupedigger.data.worker.WorkManagerScanScheduler
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
+import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
+import com.vipuljha.dupedigger.domain.repository.ScanScheduler
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import dagger.Binds
@@ -43,4 +47,10 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindContentHasher(impl: StreamingContentHasher): ContentHasher
+
+    @Binds
+    abstract fun bindScanRunRepository(impl: ScanRunRepositoryImpl): ScanRunRepository
+
+    @Binds
+    abstract fun bindScanScheduler(impl: WorkManagerScanScheduler): ScanScheduler
 }

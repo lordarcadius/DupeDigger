@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 /**
@@ -24,13 +25,18 @@ class FindExactDuplicatesUseCase @Inject constructor(
     private val fileIndex: FileIndexRepository,
     private val hasher: ContentHasher,
 ) {
-    suspend operator fun invoke(scanId: Long, minSizeBytes: Long): ExactScanResult {
+    /** [onProgress] gets files attempted so far and the total known so far; it may be called from several threads. */
+    suspend operator fun invoke(
+        scanId: Long,
+        minSizeBytes: Long,
+        onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): ExactScanResult {
         val sameSize = fileIndex.filesSeenIn(scanId).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
 
         val (withPartial, needPartial) = sameSize.partition { it.partialHash != null }
         val partials = withPartial.toMutableList()
         var partialHashed = 0
-        for (batch in needPartial.chunked(PARTIAL_BATCH)) {
+        for ((i, batch) in needPartial.chunked(PARTIAL_BATCH).withIndex()) {
             val hashed = batch.mapConcurrently { file ->
                 hasher.partialHash(file.sourceUri, file.size).getOrNull()
                     ?.let { file.copy(partialHash = it.partial, fullHash = it.full) }
@@ -38,14 +44,18 @@ class FindExactDuplicatesUseCase @Inject constructor(
             fileIndex.saveHashes(hashed)
             partials += hashed
             partialHashed += hashed.size
+            onProgress(minOf((i + 1) * PARTIAL_BATCH, needPartial.size), needPartial.size)
         }
 
         val samePartial = partials.inSharedBuckets { it.size to it.partialHash }
         val (withFull, needFull) = samePartial.partition { it.fullHash != null }
+        val total = needPartial.size + needFull.size
+        val attempted = AtomicInteger(needPartial.size)
         val fullyHashed = needFull.mapConcurrently { file ->
             hasher.fullHash(file.sourceUri, file.size).getOrNull()
                 ?.let { file.copy(fullHash = it) }
                 ?.also { fileIndex.saveHashes(listOf(it)) }
+                .also { onProgress(attempted.incrementAndGet(), total) }
         }
 
         val groups = (withFull + fullyHashed)

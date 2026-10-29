@@ -39,6 +39,18 @@
     <string name="settings_exclude_failed">Couldn’t exclude that folder. Pick a folder on this device’s storage.</string>
     <string name="settings_remove">Remove</string>
 
+    <string name="scan_channel_name">Scans</string>
+    <string name="scan_channel_description">Shows progress while Dupe Digger scans your storage.</string>
+    <string name="scan_notification_starting">Starting scan…</string>
+    <string name="scan_stage_indexing">Finding files…</string>
+    <string name="scan_stage_exact">Comparing files…</string>
+    <plurals name="scan_files_found">
+        <item quantity="one">%1$s file found</item>
+        <item quantity="other">%1$s files found</item>
+    </plurals>
+    <string name="scan_compared">%1$s of %2$s</string>
+    <string name="scan_action_cancel">Cancel</string>
+
     <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
     <string name="error_not_found">The file is no longer there.</string>
     <string name="error_io">Couldn’t read the file. Check the storage and try again.</string>

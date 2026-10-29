@@ -131,6 +131,12 @@ interface ScanRunDao {
     @Update
     suspend fun update(run: ScanRunEntity)
 
+    @Query("UPDATE scan_run SET status = :status, finishedAt = :finishedAt WHERE status = :running")
+    suspend fun closeRunning(status: String, finishedAt: Long, running: String)
+
+    @Query("UPDATE scan_run SET status = :status, finishedAt = :finishedAt, stats = :stats WHERE id = :id")
+    suspend fun finish(id: Long, status: String, finishedAt: Long, stats: String)
+
     @Query("SELECT * FROM scan_run ORDER BY id DESC LIMIT 1")
     fun observeLatest(): Flow<ScanRunEntity?>
 }

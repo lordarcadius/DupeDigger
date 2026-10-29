@@ -2,6 +2,7 @@ package com.vipuljha.dupedigger.domain.model
 
 import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -29,5 +30,16 @@ class ScanScopeTest {
             listOf(ScanScope.Folders(persistentListOf(folder))),
             availableScopes(StorageAccessState(MediaAccess.NONE, false), listOf(folder)),
         )
+    }
+
+    @Test
+    fun `a scope stops being reachable when its access or folder grant is gone`() {
+        val none = StorageAccessState(MediaAccess.NONE, allFiles = false)
+        assertTrue(ScanScope.MediaOnly.isReachable(StorageAccessState(MediaAccess.PARTIAL, false), emptyList()))
+        assertFalse(ScanScope.MediaOnly.isReachable(none, emptyList()))
+        assertFalse(ScanScope.WholeDevice.isReachable(StorageAccessState(MediaAccess.FULL, allFiles = false), emptyList()))
+        assertTrue(ScanScope.Folders(persistentListOf(folder)).isReachable(none, listOf(folder)))
+        assertFalse(ScanScope.Folders(persistentListOf(folder)).isReachable(none, emptyList()))
+        assertFalse(ScanScope.Folders(persistentListOf()).isReachable(none, listOf(folder)))
     }
 }

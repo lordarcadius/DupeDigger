@@ -86,6 +86,12 @@ Rules:
   - a file of at most 32 KiB is read once and gets both hashes;
   - a file whose length no longer matches the index is skipped, never matched;
   - partial hashes are saved per 500 files, and each full hash as soon as it is computed.
+- `ScanWorker` is unique work (`scan`, `KEEP`) started through the domain `ScanScheduler`, and calls `RunScanUseCase`:
+  - it refuses a scope that is no longer readable, so revoked access never empties the index;
+  - each execution gets a new `scan_run`; a run left `RUNNING` by process death is closed as `INTERRUPTED`;
+  - a restart redoes nothing cached, because the caches are keyed by file, not by scan;
+  - it runs as a `dataSync` foreground service when allowed, and as a plain job when restarted from the background;
+  - progress (`stage`, `done`, `total`) reaches WorkManager and the notification at most every 500 ms per stage.
 
 ## Data model (Room)
 

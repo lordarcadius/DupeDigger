@@ -18,17 +18,28 @@ class IndexFilesUseCase @Inject constructor(
     private val enumerator: FileEnumerator,
     private val fileIndex: FileIndexRepository,
 ) {
-    suspend operator fun invoke(scope: ScanScope, filter: ScanFilter, scanId: Long): IndexStats {
+    suspend operator fun invoke(
+        scope: ScanScope,
+        filter: ScanFilter,
+        scanId: Long,
+        onProgress: suspend (filesIndexed: Int) -> Unit = {},
+    ): IndexStats {
         var stats = IndexStats()
+        var indexed = 0
         val batch = ArrayList<DiscoveredFile>(BATCH_SIZE)
         enumerator.enumerate(scope, filter).collect { file ->
             batch += file
             if (batch.size == BATCH_SIZE) {
                 stats += fileIndex.record(batch.toList(), scanId)
+                indexed += batch.size
                 batch.clear()
+                onProgress(indexed)
             }
         }
-        if (batch.isNotEmpty()) stats += fileIndex.record(batch.toList(), scanId)
+        if (batch.isNotEmpty()) {
+            stats += fileIndex.record(batch.toList(), scanId)
+            onProgress(indexed + batch.size)
+        }
         return stats.copy(removed = fileIndex.removeNotSeen(scope, scanId))
     }
 
