@@ -81,6 +81,8 @@
         <item quantity="other">%1$s files selected · %2$s</item>
     </plurals>
     <string name="results_action_select_duplicates">Select duplicates</string>
+    <string name="results_open_group">Open group</string>
+    <string name="results_select_group">Select %1$s</string>
     <string name="results_action_clear">Clear</string>
     <string name="results_action_show_all">Show all</string>
     <string name="results_empty_title">No duplicates found</string>
@@ -151,6 +153,8 @@
     <string name="group_action_not_duplicates">Not duplicates</string>
     <string name="group_gone_title">This group is no longer here</string>
     <string name="group_gone_body">A newer scan or a delete changed it.</string>
+    <string name="group_none_open_title">No group open</string>
+    <string name="group_none_open_body">Choose a group from the list to see its files.</string>
     <string name="group_error_title">Couldn’t load this group</string>
     <string name="group_open_failed">Couldn’t open this file.</string>
     <string name="group_open_no_app">No app on this device can open this file.</string>

@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ResultsRoute(
     onMenuClick: (() -> Unit)?,
+    openGroup: String?,
     onOpenGroup: (fingerprint: String) -> Unit,
     onStartScan: () -> Unit,
     viewModel: ResultsViewModel = hiltViewModel(),
@@ -53,6 +54,7 @@ fun ResultsRoute(
         state = state,
         groups = groups,
         onIntent = viewModel::onIntent,
+        openGroup = openGroup,
         onOpenGroup = onOpenGroup,
         snackbarHostState = snackbarHostState,
         onMenuClick = onMenuClick,

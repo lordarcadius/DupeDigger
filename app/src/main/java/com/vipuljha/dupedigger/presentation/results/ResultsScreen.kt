@@ -54,7 +54,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +74,7 @@ import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SkeletonBarFractions
+import com.vipuljha.dupedigger.core.designsystem.StateAlpha
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
 import com.vipuljha.dupedigger.core.designsystem.TierTag
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
@@ -85,6 +88,7 @@ fun ResultsScreen(
     state: ResultsState,
     groups: LazyPagingItems<GroupRowUi>,
     onIntent: (ResultsIntent) -> Unit,
+    openGroup: String?,
     onOpenGroup: (fingerprint: String) -> Unit,
     snackbarHostState: SnackbarHostState,
     onMenuClick: (() -> Unit)?,
@@ -100,7 +104,7 @@ fun ResultsScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.kindChips.size > 1) KindChips(state, onIntent)
             if (state.tierChips.size > 2) TierChips(state, onIntent)
-            GroupList(state, groups, onIntent, onOpenGroup, Modifier.weight(1f))
+            GroupList(state, groups, onIntent, openGroup, onOpenGroup, Modifier.weight(1f))
         }
     }
     state.confirmDelete?.let { DeleteDialog(it, onIntent) }
@@ -159,6 +163,7 @@ private fun GroupList(
     state: ResultsState,
     groups: LazyPagingItems<GroupRowUi>,
     onIntent: (ResultsIntent) -> Unit,
+    openGroup: String?,
     onOpenGroup: (String) -> Unit,
     modifier: Modifier,
 ) {
@@ -200,7 +205,7 @@ private fun GroupList(
                     action = { AppButton(stringResource(R.string.results_action_show_all), { onIntent(ResultsIntent.ShowAllClicked) }) },
                 )
             }
-            Phase.Content -> GroupRows(state, groups, onIntent, onOpenGroup)
+            Phase.Content -> GroupRows(state, groups, onIntent, openGroup, onOpenGroup)
         }
     }
 }
@@ -208,7 +213,13 @@ private fun GroupList(
 private enum class Phase { Loading, Error, Empty, Content }
 
 @Composable
-private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, onIntent: (ResultsIntent) -> Unit, onOpenGroup: (String) -> Unit) {
+private fun GroupRows(
+    state: ResultsState,
+    groups: LazyPagingItems<GroupRowUi>,
+    onIntent: (ResultsIntent) -> Unit,
+    openGroup: String?,
+    onOpenGroup: (String) -> Unit,
+) {
     val gutter = LocalPaneMetrics.current.gutter
     LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
         item(key = "actions", contentType = "actions") {
@@ -223,7 +234,13 @@ private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
         }
         items(count = groups.itemCount, key = groups.itemKey { it.groupId }, contentType = groups.itemContentType { "group" }) { index ->
             groups[index]?.let { row ->
-                GroupRow(row, onOpen = { onOpenGroup(row.fingerprint) }, onToggle = { onIntent(ResultsIntent.GroupToggled(row)) }, Modifier.animateItem())
+                GroupRow(
+                    row,
+                    open = row.fingerprint == openGroup,
+                    onOpen = { onOpenGroup(row.fingerprint) },
+                    onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
+                    modifier = Modifier.animateItem(),
+                )
             }
         }
         when (groups.loadState.append) {
@@ -246,13 +263,18 @@ private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
 }
 
 @Composable
-private fun GroupRow(row: GroupRowUi, onOpen: () -> Unit, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val gutter = LocalPaneMetrics.current.gutter
+private fun GroupRow(row: GroupRowUi, open: Boolean, onOpen: () -> Unit, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val metrics = LocalPaneMetrics.current
+    val gutter = metrics.gutter
+    val narrow = metrics.width < NarrowRowWidth * LocalDensity.current.fontScale
+    val selectLabel = stringResource(R.string.results_select_group, row.title)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = GroupRowMinHeight)
-            .clickable(onClick = onOpen)
+            .then(if (open) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = StateAlpha.Selected)) else Modifier)
+            .semantics { selected = open }
+            .clickable(onClickLabel = stringResource(R.string.results_open_group), onClick = onOpen)
             .padding(horizontal = gutter, vertical = Dimens.spaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -270,10 +292,17 @@ private fun GroupRow(row: GroupRowUi, onOpen: () -> Unit, onToggle: () -> Unit, 
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (narrow) Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
         }
-        Spacer(Modifier.width(Dimens.spaceMd))
-        Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
-        Checkbox(checked = row.selected, onCheckedChange = { onToggle() }, modifier = Modifier.padding(start = Dimens.spaceXs))
+        if (!narrow) {
+            Spacer(Modifier.width(Dimens.spaceMd))
+            Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
+        }
+        Checkbox(
+            checked = row.selected,
+            onCheckedChange = { onToggle() },
+            modifier = Modifier.padding(start = Dimens.spaceXs).semantics { contentDescription = selectLabel },
+        )
     }
 }
 
@@ -349,4 +378,7 @@ private fun ResultsSkeleton() {
 }
 
 private val GroupRowMinHeight = 72.dp
+
+// Below this (scaled with the font size) the size moves under the name, so the name keeps its room.
+private val NarrowRowWidth = 360.dp
 private val KindBadgeSize = 40.dp

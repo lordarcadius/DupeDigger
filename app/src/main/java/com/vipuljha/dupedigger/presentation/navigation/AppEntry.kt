@@ -25,11 +25,11 @@ class AppEntryViewModel @Inject constructor(settings: SettingsRepository) : View
 
 /** Shows onboarding once, then the app shell. */
 @Composable
-fun AppEntry(viewModel: AppEntryViewModel = hiltViewModel()) {
+fun AppEntry(shortcuts: AppShortcuts, viewModel: AppEntryViewModel = hiltViewModel()) {
     val completed by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
     when (completed) {
         null -> Unit
         false -> OnboardingRoute()
-        true -> AppRoot()
+        true -> AppRoot(shortcuts)
     }
 }

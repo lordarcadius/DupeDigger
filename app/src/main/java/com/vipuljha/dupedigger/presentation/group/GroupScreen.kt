@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOff
@@ -98,6 +100,17 @@ fun GroupScreen(
     }
 }
 
+/** The detail pane's content while no group is open beside the list. */
+@Composable
+fun GroupPlaceholder(modifier: Modifier = Modifier) {
+    StateMessage(
+        icon = Icons.Outlined.ContentCopy,
+        title = stringResource(R.string.group_none_open_title),
+        subtitle = stringResource(R.string.group_none_open_body),
+        modifier = modifier,
+    )
+}
+
 @Composable
 private fun Members(detail: GroupDetailUi, resolutions: ImmutableMap<Long, UiText>, onIntent: (GroupIntent) -> Unit) {
     val gutter = LocalPaneMetrics.current.gutter
@@ -131,35 +144,40 @@ private fun Members(detail: GroupDetailUi, resolutions: ImmutableMap<Long, UiTex
 @Composable
 private fun MemberCard(member: MemberUi, resolution: UiText?, onIntent: (GroupIntent) -> Unit, modifier: Modifier = Modifier) {
     Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Row(Modifier.padding(Dimens.spaceLg), verticalAlignment = Alignment.CenterVertically) {
-            Thumbnail(member)
-            Spacer(Modifier.width(Dimens.spaceLg))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)) {
-                Text(member.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    member.location.asString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    (resolution?.let { UiText.res(R.string.group_member_details_with_resolution, member.details, it) } ?: member.details).asString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (member.isKeeper) {
-                    Text(stringResource(R.string.group_keeping), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Column(Modifier.padding(Dimens.spaceLg)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Thumbnail(member)
+                Spacer(Modifier.width(Dimens.spaceLg))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)) {
+                    Text(member.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        member.location.asString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        (resolution?.let { UiText.res(R.string.group_member_details_with_resolution, member.details, it) } ?: member.details).asString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (member.isKeeper) {
+                        Text(stringResource(R.string.group_keeping), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                if (!member.isKeeper) {
-                    AppButton(stringResource(R.string.group_action_keep), { onIntent(GroupIntent.KeepClicked(member.fileId)) }, kind = ButtonKind.Tonal)
-                }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = Dimens.spaceSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.End),
+            ) {
                 if (member.comparable) {
                     AppButton(stringResource(R.string.group_action_compare), { onIntent(GroupIntent.CompareClicked(member.fileId)) }, kind = ButtonKind.Text)
                 }
                 AppButton(stringResource(R.string.group_action_open), { onIntent(GroupIntent.OpenClicked(member.fileId)) }, kind = ButtonKind.Text)
+                if (!member.isKeeper) {
+                    AppButton(stringResource(R.string.group_action_keep), { onIntent(GroupIntent.KeepClicked(member.fileId)) }, kind = ButtonKind.Tonal)
+                }
             }
         }
     }
