@@ -229,6 +229,9 @@
     <string name="settings_remove">Remove</string>
 
     <string name="scan_channel_name">Scans</string>
+    <string name="model_channel_name">AI model downloads</string>
+    <string name="model_notification_title">Downloading the AI model…</string>
+    <string name="model_notification_progress">%1$s of %2$s</string>
     <string name="scan_channel_description">Shows progress while Dupe Digger scans your storage.</string>
     <string name="scan_notification_starting">Starting scan…</string>
     <string name="scan_stage_indexing">Finding files…</string>

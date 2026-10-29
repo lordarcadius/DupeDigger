@@ -166,6 +166,21 @@ The 270M and 740M downloads matched their SHA-256 exactly. I did not download th
 - Behaviour on API 31–34.
 - Whether Hugging Face keeps these revisions available long term.
 
+**Downloads (P6-01):**
+- **Catalog:** `ModelCatalog` in the domain lists the three variants above (URL pinned to the revision, size, SHA-256, capabilities) with the measured peak RSS on CPU. It is null for 440M, which wasn't measured.
+- **Storage:** files go to `filesDir/models`. The download writes `<file>.<sha prefix>.part`, resumes with `Range: bytes=<size>-`, and is renamed to the final name only after the size and SHA-256 match. So a final file is always a verified one.
+  - Hugging Face `resolve/` URLs redirect (302) to a CDN that answers a Range request with 206 and the right `Content-Range`.
+  - A 200 or a mismatched 206 restarts the file.
+- **Failures:**
+  - A checksum mismatch deletes the partial file and never retries.
+  - Network errors, 5xx and 429 retry with exponential backoff (30 s start, up to 6 runs) and resume.
+  - Other 4xx and too little space (the rest of the file plus 50 MB) fail for good, with a reason.
+  - A stopped or cancelled worker keeps its partial file, for example when Wi-Fi drops or Cancel is tapped in the notification. Only `ModelDownloads.cancel()` deletes it.
+- **One download at a time:** one unique work name with KEEP, so two large files never compete for space.
+- **Wi-Fi only (default on):** maps to `NetworkType.UNMETERED`, which also allows Ethernet and excludes metered Wi-Fi. The constraint is fixed when the work is queued, so a settings change has to queue again (P6-05).
+- **Foreground notification:** `dataSync` type with bytes, a progress bar and Cancel.
+- **Permission:** the app now declares `INTERNET`; this is its only network use.
+
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
 

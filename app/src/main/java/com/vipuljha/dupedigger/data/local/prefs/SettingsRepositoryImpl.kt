@@ -45,6 +45,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 .coerceIn(AppSettings.SemanticRange),
             minFileSizeBytes = (this[KEY_MIN_FILE_SIZE] ?: defaults.minFileSizeBytes).coerceAtLeast(0L),
             skipHiddenFiles = this[KEY_SKIP_HIDDEN] ?: defaults.skipHiddenFiles,
+            modelDownloadWifiOnly = this[KEY_MODEL_WIFI_ONLY] ?: defaults.modelDownloadWifiOnly,
         )
     }
 
@@ -56,6 +57,7 @@ class SettingsRepositoryImpl @Inject constructor(
         this[KEY_SEMANTIC_THRESHOLD] = settings.semanticThreshold.coerceIn(AppSettings.SemanticRange)
         this[KEY_MIN_FILE_SIZE] = settings.minFileSizeBytes.coerceAtLeast(0L)
         this[KEY_SKIP_HIDDEN] = settings.skipHiddenFiles
+        this[KEY_MODEL_WIFI_ONLY] = settings.modelDownloadWifiOnly
     }
 
     private companion object {
@@ -66,5 +68,6 @@ class SettingsRepositoryImpl @Inject constructor(
         val KEY_SEMANTIC_THRESHOLD = floatPreferencesKey("semantic_threshold")
         val KEY_MIN_FILE_SIZE = longPreferencesKey("min_file_size_bytes")
         val KEY_SKIP_HIDDEN = booleanPreferencesKey("skip_hidden_files")
+        val KEY_MODEL_WIFI_ONLY = booleanPreferencesKey("model_download_wifi_only")
     }
 }

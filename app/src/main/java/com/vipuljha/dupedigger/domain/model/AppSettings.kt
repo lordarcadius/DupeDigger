@@ -9,6 +9,7 @@ data class AppSettings(
     val semanticThreshold: Float = 0.90f,
     val minFileSizeBytes: Long = 1L,
     val skipHiddenFiles: Boolean = true,
+    val modelDownloadWifiOnly: Boolean = true,
 ) {
     companion object {
         val HammingRange = 0..64
