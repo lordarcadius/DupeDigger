@@ -33,5 +33,15 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun groupsContaining(fileIds: Set<Long>): List<Set<Long>> =
+        fileIds.chunked(MAX_QUERY_ARGS)
+            .flatMap { groupDao.membersOfGroupsContaining(it) }
+            .groupBy({ it.groupId }, { it.fileId })
+            .values.map { it.toSet() }
+
     override suspend fun keepChoice(fingerprint: String): String? = keepChoiceDao.get(fingerprint)?.keeperSourceUri
+
+    private companion object {
+        const val MAX_QUERY_ARGS = 500
+    }
 }

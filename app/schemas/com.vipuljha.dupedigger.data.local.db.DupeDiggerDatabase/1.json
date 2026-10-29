@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "2368896cc50e57b96cd9c88f9bd5a93a",
+    "identityHash": "2fc27f733269358d09e3a141e22d46a2",
     "entities": [
       {
         "tableName": "file_index",
@@ -547,12 +547,18 @@
       },
       {
         "tableName": "quarantine_item",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `originalPath` TEXT NOT NULL, `quarantinePath` TEXT NOT NULL, `size` INTEGER NOT NULL, `movedAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceUri` TEXT NOT NULL, `originalPath` TEXT NOT NULL, `quarantinePath` TEXT NOT NULL, `size` INTEGER NOT NULL, `movedAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "sourceUri",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -625,7 +631,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2368896cc50e57b96cd9c88f9bd5a93a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2fc27f733269358d09e3a141e22d46a2')"
     ]
   }
 }

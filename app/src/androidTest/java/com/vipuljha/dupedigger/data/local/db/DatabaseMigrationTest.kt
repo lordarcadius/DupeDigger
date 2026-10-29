@@ -23,7 +23,7 @@ class DatabaseMigrationTest {
         helper.createDatabase(TEST_DB, FIRST_VERSION).apply {
             execSQL("INSERT INTO ignored_group (fingerprint, ignoredAt) VALUES ('fp', 1)")
             execSQL("INSERT INTO keep_choice (fingerprint, keeperSourceUri, chosenAt) VALUES ('fp', 'content://k', 2)")
-            execSQL("INSERT INTO quarantine_item (originalPath, quarantinePath, size, movedAt) VALUES ('/a', '/q/a', 3, 4)")
+            execSQL("INSERT INTO quarantine_item (sourceUri, originalPath, quarantinePath, size, movedAt) VALUES ('file:/a', '/a', '/q/a', 3, 4)")
             execSQL("INSERT INTO excluded_path (path, addedAt) VALUES ('/sdcard/Private', 5)")
             close()
         }

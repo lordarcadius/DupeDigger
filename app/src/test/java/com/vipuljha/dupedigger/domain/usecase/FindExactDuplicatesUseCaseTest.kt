@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -38,6 +39,8 @@ class FindExactDuplicatesUseCaseTest {
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
         override suspend fun filesSeenIn(scanId: Long) = synchronized(this) { files.values.toList() }
         override suspend fun saveHashes(files: List<IndexedFile>) = synchronized(this) { files.forEach { this.files[it.id] = it } }
+        override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
+        override suspend fun remove(ids: Collection<Long>) = Unit
     }
 
     private fun add(name: String, bytes: ByteArray): Long {

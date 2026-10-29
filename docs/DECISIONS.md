@@ -169,6 +169,8 @@ The 270M and 740M downloads matched their SHA-256 exactly. I did not download th
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
 
+**Known limit (P3-04):** the quarantine lives in the app's external files folder, so uninstalling the app or clearing its storage deletes quarantined files for good. The Quarantine screen (P4-05) should say so. `android:hasFragileUserData="true"` would make the uninstall dialog offer to keep app data; I have not verified that it covers this folder, and it isn't set yet.
+
 ## D-008: Build baseline (accepted)
 Keep the template's minSdk 31, compile/target 37, AGP 9.5 built-in Kotlin and the `optimization {}` release DSL. Move to a Java 21 toolchain in P0-01. Hilt and Room use KSP only.
 
@@ -198,6 +200,8 @@ Keep the template's minSdk 31, compile/target 37, AGP 9.5 built-in Kotlin and th
 - the schema is exported and committed (`app/schemas/`);
 - every version bump ships a real `Migration` in `ALL_MIGRATIONS`, and `DatabaseMigrationTest` must pass;
 - there is never a destructive fallback.
+
+Version 1 has not shipped, so it was changed in place: `quarantine_item.sourceUri` was added in P3-04. From the first release on, every schema change bumps the version with a `Migration`.
 
 **Why one database:**
 - Splitting the index/cache tables into a disposable database would let them use a destructive fallback. But ARCHITECTURE.md asks for real migrations on them too where that's cheap.

@@ -137,9 +137,9 @@ All tables live in one database, `dupedigger.db`, under the user-data policy (D-
 
 ## Deletion
 
-- **Media:** `MediaStore.createTrashRequest` (system trash, recoverable for 30 days) through an `IntentSender` effect handled in the Route.
-- **Non-media:** move to the app's quarantine dir → `quarantine_item`. Undo restores it. Permanent delete happens only from the Quarantine screen.
-- `DeleteDuplicatesUseCase` refuses any request that would remove every member of a group.
+- **Media:** the system trash (recoverable for 30 days). `AndroidFileRemover` finds the file's row in its images, video or audio collection (by id, or by path for `file:` and picked-folder files); the trash prompt rejects Files-collection URIs. It trashes directly where the platform allows (`IS_TRASHED = 1`, which works for media the app owns), otherwise it returns one `TrashConsent` whose `IntentSender` the Route launches. `ConfirmTrashUseCase` removes the files from the index after the user accepts.
+- **Non-media,** and media MediaStore has no row for: quarantined in the app's external files folder. The order is copy, check against the indexed size, insert the `quarantine_item` row (with the `sourceUri`), then delete the source; if that delete fails, the row and copy are removed and the file is reported as failed. Restore and permanent delete come with the Quarantine screen (P4-05).
+- `DeleteDuplicatesUseCase` refuses, before anything moves, a file in no saved group or any request that would remove every member of a group it touches. Removed files leave the index (their memberships cascade); failed ones and ones awaiting consent stay.
 
 ## AI subsystem
 

@@ -17,6 +17,7 @@ import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
+import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
@@ -261,6 +262,10 @@ class RunScanUseCaseTest {
         override suspend fun filesSeenIn(scanId: Long) = rows.values.filter { lastSeen[it.sourceUri] == scanId }
 
         override suspend fun saveHashes(files: List<IndexedFile>) = files.forEach { rows[it.sourceUri] = it }
+
+        override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
+
+        override suspend fun remove(ids: Collection<Long>) = Unit
     }
 
     private class FakeScanRuns : ScanRunRepository {

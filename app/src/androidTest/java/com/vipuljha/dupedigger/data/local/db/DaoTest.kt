@@ -111,7 +111,7 @@ class DaoTest {
     fun userDecisionsRoundTrip() = runTest {
         db.ignoredGroupDao().upsert(IgnoredGroupEntity("fp1", 1))
         db.keepChoiceDao().upsert(KeepChoiceEntity("fp2", "content://keep", 2))
-        val qid = db.quarantineDao().insert(QuarantineItemEntity(originalPath = "/a.pdf", quarantinePath = "/q/a.pdf", size = 5, movedAt = 3))
+        val qid = db.quarantineDao().insert(QuarantineItemEntity(sourceUri = "file:/a.pdf", originalPath = "/a.pdf", quarantinePath = "/q/a.pdf", size = 5, movedAt = 3))
         db.excludedPathDao().upsert(ExcludedPathEntity("/sdcard/Private", 4))
 
         assertEquals(listOf("fp1"), db.ignoredGroupDao().observeFingerprints().first())

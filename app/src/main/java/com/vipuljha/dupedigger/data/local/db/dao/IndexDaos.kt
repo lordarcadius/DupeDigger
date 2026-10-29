@@ -23,6 +23,12 @@ interface FileIndexDao {
     @Query("SELECT * FROM file_index WHERE sourceUri IN (:sourceUris)")
     suspend fun findBySourceUris(sourceUris: List<String>): List<FileIndexEntity>
 
+    @Query("SELECT * FROM file_index WHERE id IN (:ids)")
+    suspend fun findByIds(ids: List<Long>): List<FileIndexEntity>
+
+    @Query("DELETE FROM file_index WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     /** Rows are updated in place, never replaced, so cached hashes keyed by the row id survive. */
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(file: FileIndexEntity): Long
@@ -124,6 +130,9 @@ interface DuplicateGroupDao {
 
     @Query("SELECT * FROM group_member WHERE groupId = :groupId")
     suspend fun membersOf(groupId: Long): List<GroupMemberEntity>
+
+    @Query("SELECT * FROM group_member WHERE groupId IN (SELECT groupId FROM group_member WHERE fileId IN (:fileIds))")
+    suspend fun membersOfGroupsContaining(fileIds: List<Long>): List<GroupMemberEntity>
 
     @Query("DELETE FROM duplicate_group WHERE scanId != :scanId")
     suspend fun deleteOtherScans(scanId: Long)

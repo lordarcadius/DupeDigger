@@ -26,6 +26,7 @@ class DuplicateGroupUseCasesTest {
             saved = scanId to groups
         }
         override suspend fun keepChoice(fingerprint: String) = keepChoices[fingerprint]
+        override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +46,10 @@ class IndexFilesUseCaseTest {
         override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
 
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
+
+        override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
+
+        override suspend fun remove(ids: Collection<Long>) = Unit
     }
 
     @Test

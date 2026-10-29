@@ -22,6 +22,8 @@ data class KeepChoiceEntity(
 @Entity(tableName = "quarantine_item", indices = [Index(value = ["movedAt"])])
 data class QuarantineItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Where the file came from, so restore can recreate it inside a picked folder without All files access. */
+    val sourceUri: String,
     val originalPath: String,
     val quarantinePath: String,
     val size: Long,

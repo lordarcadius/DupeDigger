@@ -12,7 +12,9 @@ import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,6 +75,15 @@ class FileIndexRepositoryImpl @Inject constructor(
         fileHashDao.upsertAll(files.map { FileHashEntity(it.id, it.partialHash, it.fullHash, computedAtMtime = it.mtime) })
     }
 
+    override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
+        ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
+            StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)
+        }
+
+    override suspend fun remove(ids: Collection<Long>) = db.withTransaction {
+        ids.chunked(MAX_QUERY_ARGS).forEach { fileIndexDao.deleteByIds(it) }
+    }
+
     private fun DiscoveredFile.toEntity(id: Long, scanId: Long) = FileIndexEntity(
         id = id,
         sourceUri = sourceUri,
@@ -85,4 +96,8 @@ class FileIndexRepositoryImpl @Inject constructor(
         volume = volume,
         lastSeenScanId = scanId,
     )
+
+    private companion object {
+        const val MAX_QUERY_ARGS = 500
+    }
 }

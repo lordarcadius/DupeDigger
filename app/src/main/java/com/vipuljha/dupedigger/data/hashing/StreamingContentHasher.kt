@@ -1,12 +1,11 @@
 package com.vipuljha.dupedigger.data.hashing
 
-import android.content.ContentResolver
 import android.content.Context
-import android.net.Uri
 import com.vipuljha.dupedigger.core.common.DefaultDispatcher
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
+import com.vipuljha.dupedigger.data.storage.openSource
 import com.vipuljha.dupedigger.domain.model.ContentHashes
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -15,12 +14,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.EOFException
-import java.io.File
-import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
-import java.net.URI
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +38,7 @@ class StreamingContentHasher(
     constructor(
         @ApplicationContext context: Context,
         @DefaultDispatcher dispatcher: CoroutineDispatcher,
-    ) : this({ uri -> openSource(context.contentResolver, uri) }, dispatcher)
+    ) : this({ uri -> context.contentResolver.openSource(uri) }, dispatcher)
 
     override suspend fun partialHash(sourceUri: String, size: Long): Outcome<ContentHashes> = hashing {
         openStream(sourceUri).use { input ->
@@ -96,13 +92,6 @@ class StreamingContentHasher(
     private companion object {
         const val WINDOW = 16 * 1024
         const val BUFFER = 256 * 1024
-
-        fun openSource(resolver: ContentResolver, sourceUri: String): InputStream =
-            if (sourceUri.startsWith("file:")) {
-                FileInputStream(File(URI(sourceUri)))
-            } else {
-                resolver.openInputStream(Uri.parse(sourceUri)) ?: throw FileNotFoundException(sourceUri)
-            }
 
         fun sha256(): MessageDigest = MessageDigest.getInstance("SHA-256")
 
