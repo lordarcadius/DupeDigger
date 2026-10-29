@@ -14,13 +14,51 @@ ADR-lite. Each entry gives the decision, why it was made and its status (`accept
 **Decision:** Exact → Near (perceptual hashes) → Semantic (EmbeddingGemma).
 **Why:** exact hashing is cheap and certain, and covers most reclaimable space. Perceptual hashes catch re-encodes more cheaply and more reliably than embeddings. Embeddings add "similar shots" and cross-format matches, but cost a 165–485 MB download and hundreds of MB of RAM, so they must never block the MVP.
 
-## D-004: Storage access strategy (open, resolved by P0-05)
+## D-004: Storage access strategy (accepted, P0-05)
 Options:
 1. **MediaStore + SAF only.** Play-safe. Covers media device-wide and user-picked folders, but SAF can't pick the storage root or `Download/` on API 30+.
 2. **`MANAGE_EXTERNAL_STORAGE`.** True whole-device scan of every file type. Play allows it only for approved use cases (file managers and similar), so a declaration is needed and it may be rejected.
 3. **Hybrid (leaning):** default to 1. Offer 2 as an explicit "Deep scan" toggle with an explainer. If Play distribution needs it, ship a flavor without it.
 
-**Needs from the owner:** is Play Store distribution a goal, or is sideload/F-Droid acceptable?
+**Owner's answer:** PRM2-8737 says the app "is meant to be published on Google Play in the future".
+
+**Decision: option 3, hybrid.**
+- **Default access** is MediaStore with the media permissions, plus SAF folders the user picks. These cover photos, video and audio anywhere on the device, and every file type inside a picked folder.
+- **"Deep scan"** is an explicit opt-in that requests `MANAGE_EXTERNAL_STORAGE` behind an explainer. It is the only way to reach documents, archives and other non-media files outside a picked folder, including those directly in `Download/`, which SAF cannot pick.
+- **A Play build without it:** if the Play declaration is rejected, ship a flavor without the permission. Deep scan then hides itself, because `StorageAccess` reports it unavailable.
+
+**Measured matrix (P0-05).** Method:
+- A throwaway instrumented test (not kept) probed 14 files that another uid (the shell) had created.
+- It checked each file three ways, and the three always agreed: a row in `MediaStore.Files`, opening that row's content URI, and reading it with `java.io.File`.
+- Emulators: API 31, 33, 34 (`google_apis`), and 35, 36 (`google_apis_playstore`).
+- Media permissions were `READ_EXTERNAL_STORAGE` on 31–32 and `READ_MEDIA_IMAGES/VIDEO/AUDIO` on 33+.
+- "Partial" means only `READ_MEDIA_VISUAL_USER_SELECTED` granted, with nothing selected.
+
+| File (created by another app) | No permission | Media permissions (31, 33, 34, 35, 36) | Partial, 34+ (nothing selected) | `MANAGE_EXTERNAL_STORAGE` (31–36) |
+|---|---|---|---|---|
+| `DCIM/Camera`, `Pictures` jpg; `Movies` mp4; `Music` mp3 | no | **yes** | no | yes |
+| `Download/` jpg | no | **yes** | no | yes |
+| `Download/` pdf, zip, unknown `.dat` | no | no | no | **yes** |
+| `Documents/` pdf, txt | no | no | no | **yes** |
+| `Android/media/<pkg>/…` jpg (WhatsApp-style path) | no | **yes** | no | yes |
+| `Android/media/<pkg>/…` pdf | no | no | no | **yes** |
+| Custom top-level folder: jpg / pdf | no / no | **yes** / no | no / no | yes / **yes** |
+| List `Android/data`, `Android/obb` | denied | denied | denied | **denied** |
+
+The SAF tree picker (`ACTION_OPEN_DOCUMENT_TREE`), checked by UI on the API 35 emulator:
+- **"Can't use this folder"** (blocked): the storage root, `Download/`, and `Android/`, where only `media` is listed.
+- **Allowed:** `Android/media`, a subfolder of `Download/`, `DCIM`, `Documents` and a custom top-level folder.
+
+**Findings that shape P2:**
+- **Media permissions cover all media, anywhere.** That includes `Download/` and app media folders, on every level from 31 to 36. Non-media files are never visible to MediaStore without `MANAGE_EXTERNAL_STORAGE`.
+- **`MANAGE_EXTERNAL_STORAGE` still cannot reach `Android/data` or `Android/obb`.** The exclusion rule in AGENTS.md costs nothing.
+- **Partial access (34+) exposes only what the user selected.** Onboarding must say so and offer to widen it.
+- **MediaStore can lag behind the file system.** On a freshly booted API 36 emulator, files copied in 3 s earlier were readable through `File` but had no MediaStore row yet; after a 60 s wait they did. The enumerator must not treat MediaStore as instantly complete, so a rescan picks up late rows.
+
+**Gaps:**
+- **SD card not tested:** none of the emulators, nor the Primebook, had a secondary volume. `MediaStore.getExternalVolumeNames` returned only `external_primary` everywhere.
+- **The real device couldn't be probed:** on the Primebook (API 35, PrimeOS) the shell cannot create files on `/sdcard` ("Bad address"). There I could only confirm the `Android/data` and `Android/obb` denials and directory counts that grow with each permission tier.
+- **SAF on other API levels:** the picker was checked only on API 35. The same restrictions are documented for API 30+.
 
 ## D-005: Content hash algorithm (accepted, P0-03)
 Candidates: SHA-256 (built-in `MessageDigest`, no dependency) or XXH3-128 (faster, needs a library). Collision safety isn't a concern for either at this scale, so speed decides.
