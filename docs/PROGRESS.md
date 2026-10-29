@@ -4,7 +4,7 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P2, storage access and file indexing
-**Next task:** P2-03
+**Next task:** P2-04
 
 ## Status
 
@@ -22,7 +22,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P1-05 | Room DB + DataStore | done | One DB, schema v1 exported (D-010) |
 | P2-01 | Onboarding + permissions | done | Shown once; Deep scan opt-in |
 | P2-02 | StorageAccess + ScanScope + SAF picker | done | Folders = persisted SAF grants |
-| P2-03 | File enumerators | todo | |
+| P2-03 | File enumerators | done | 50k files: 8.7 s, +8 MB heap; cancel in 6 ms |
 | P2-04 | Incremental indexer | todo | |
 | P3-01 | Size → partial → full hash | todo | |
 | P3-02 | ScanWorker (foreground, resumable) | todo | |
@@ -54,6 +54,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P2-03: added `FileEnumerator` with three cancellable cold flows (File walk for WholeDevice, MediaStore cursor for MediaOnly, `DocumentsContract` BFS for picked folders), the domain `DiscoveredFile`/`MediaKind`/`ScanFilter`, and `FileTreeWalker` (iterative, symlink-skipping, cancellation checked per folder and file). Used `DocumentsContract` directly instead of `DocumentFile`: it needs no new dependency and makes one query per folder. Tests: 8 new JVM tests (40 unit tests total), including a 50k-file walk and a cancellation timing test. On the Primebook, `EnumeratorDeviceTest`: 50,000 files enumerated in 8.7 s with 8 MB peak heap growth (384 MB max); cancellation stopped the walk in 6 ms; a MediaStore pass returned 114 files. The SAF walk was not run on a device. Next: P2-04.
 - 2026-10-29: P2-02: added `ScanScope` (WholeDevice, MediaOnly, Folders) with the `availableScopes()` reachability rule; `ScanFolderRepository` backed by persisted SAF tree grants (read+write kept when granted); `ExcludedPathRepository` over Room, mapping a picked tree to an absolute path; folder use cases; and a real Settings screen (MVI) with "Folders to scan" and "Excluded folders" sections, plus the design-system `SectionHeader`. Tests: 12 new (32 unit tests total). On the Primebook, through the real Files picker: a picked folder (Ringtones) survives a force-stop and relaunch, removing it releases the grant and stays removed after a restart, and excluding then removing a folder works. Next: P2-03.
 - 2026-10-29: P2-01: added onboarding (MVI Route/Screen/ViewModel) shown once via an `onboardingCompleted` setting and `AppEntry`. It covers media permissions by API level (`READ_EXTERNAL_STORAGE` on 31–32, `READ_MEDIA_*` on 33, plus `READ_MEDIA_VISUAL_USER_SELECTED` on 34+), partial access with "Allow all", permanent denial with "Open settings", and opt-in Deep scan via `MANAGE_EXTERNAL_STORAGE` (D-004). It re-checks on resume and always allows Continue. Added the domain `StorageAccess`/`StorageAccessState`, `AndroidStorageAccess`, `CompleteOnboardingUseCase` and the design-system `AppButton`. Tests: 7 new ViewModel tests (20 unit tests total). On the Primebook (API 35): onboarding renders; the system prompt appears; denying twice switches to Open settings; granting in Settings shows Allowed on return; Continue opens the shell, and onboarding stays done after a relaunch. Next: P2-02.
 - 2026-10-29: P1-05: added `DupeDiggerDatabase` v1 (all 11 ARCHITECTURE.md tables, cascading deletes from `file_index`, DAOs, `exportSchema` with `app/schemas/.../1.json`, `ALL_MIGRATIONS` plus a `MigrationTestHelper` harness that checks user decisions survive) and DataStore `SettingsRepository` (domain model + interface, clamped values). `duplicate_group` gained a `fingerprint` column; PLAN.md P1-05 drops the theme setting and moves excluded paths to Room (D-010). Tests: 3 new JVM settings tests pass (13 unit tests total); on the Primebook, `DaoTest` (5) and `DatabaseMigrationTest` (1) pass; domain purity grep clean. Next: P2-01.

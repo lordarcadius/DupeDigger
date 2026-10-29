@@ -70,6 +70,12 @@ Rules:
 - A file can appear in groups of several tiers. The UI shows the strongest tier first.
 - Thresholds live in DataStore and are applied at query time where possible, so changing them doesn't force a rehash.
 - Every stage checks `isStopped` / `ensureActive()` between files.
+- Enumeration (`FileEnumerator`) is one cold `Flow` per scope:
+  - WholeDevice walks every storage volume with `java.io.File`, iteratively and skipping symlinks.
+  - MediaOnly is a single MediaStore cursor over images, video and audio.
+  - Folders is a breadth-first `DocumentsContract` walk of each picked tree.
+
+  All three apply the same `ScanFilter`: user exclusions, `Android/data` and `Android/obb` on every volume, and hidden entries when that setting is on.
 
 ## Data model (Room)
 

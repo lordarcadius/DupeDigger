@@ -2,9 +2,11 @@ package com.vipuljha.dupedigger.di
 
 import com.vipuljha.dupedigger.data.local.prefs.SettingsRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ExcludedPathRepositoryImpl
+import com.vipuljha.dupedigger.data.storage.AndroidFileEnumerator
 import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
 import com.vipuljha.dupedigger.data.storage.AndroidStorageAccess
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
+import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
@@ -28,4 +30,7 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindExcludedPathRepository(impl: ExcludedPathRepositoryImpl): ExcludedPathRepository
+
+    @Binds
+    abstract fun bindFileEnumerator(impl: AndroidFileEnumerator): FileEnumerator
 }
