@@ -63,7 +63,7 @@ class DaoTest {
         db.fileHashDao().upsert(FileHashEntity(stale, "p", "f", 10))
         db.embeddingDao().upsert(EmbeddingEntity(stale, "m", 2, byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)))
 
-        assertEquals(1, files.deleteNotSeenSince(2))
+        assertEquals(1, files.deleteNotSeenSince(2, uriPrefix = ""))
 
         assertNull(files.findBySourceUri("old.jpg"))
         assertNull(db.fileHashDao().get(stale))

@@ -76,6 +76,11 @@ Rules:
   - Folders is a breadth-first `DocumentsContract` walk of each picked tree.
 
   All three apply the same `ScanFilter`: user exclusions, `Android/data` and `Android/obb` on every volume, and hidden entries when that setting is on.
+- Indexing (`IndexFilesUseCase` → `FileIndexRepository`) writes 500 files per transaction:
+  - an unchanged file (same size and mtime) keeps its row id and every cached hash and embedding;
+  - a changed file is updated in place, and its `file_hash`, `perceptual_hash` and `embedding` rows are deleted;
+  - unseen rows are pruned only after a completed enumeration, and only within the scanned scope's `sourceUri` prefixes (`file:`, `content://media/`, or each picked tree), so switching scope keeps the other scopes' cache.
+- Later stages consider only files with `lastSeenScanId` equal to the current scan.
 
 ## Data model (Room)
 

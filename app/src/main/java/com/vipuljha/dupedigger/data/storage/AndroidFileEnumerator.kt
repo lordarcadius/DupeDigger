@@ -27,6 +27,16 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** The `sourceUri` prefixes [AndroidFileEnumerator] can emit for [scope]; must match how each branch builds its URIs. */
+fun sourceUriPrefixes(scope: ScanScope): List<String> = when (scope) {
+    ScanScope.WholeDevice -> listOf("file:")
+    ScanScope.MediaOnly -> listOf("${ContentResolver.SCHEME_CONTENT}://${MediaStore.AUTHORITY}/")
+    is ScanScope.Folders -> scope.folders.map { folder ->
+        val tree = Uri.parse(folder.uri)
+        "${DocumentsContract.buildTreeDocumentUri(tree.authority, DocumentsContract.getTreeDocumentId(tree))}/document/"
+    }
+}
+
 @Singleton
 class AndroidFileEnumerator @Inject constructor(
     @param:ApplicationContext private val context: Context,

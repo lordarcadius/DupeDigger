@@ -20,6 +20,9 @@ interface FileIndexDao {
     @Query("SELECT * FROM file_index WHERE sourceUri = :sourceUri")
     suspend fun findBySourceUri(sourceUri: String): FileIndexEntity?
 
+    @Query("SELECT * FROM file_index WHERE sourceUri IN (:sourceUris)")
+    suspend fun findBySourceUris(sourceUris: List<String>): List<FileIndexEntity>
+
     /** Rows are updated in place, never replaced, so cached hashes keyed by the row id survive. */
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(file: FileIndexEntity): Long
@@ -27,8 +30,12 @@ interface FileIndexDao {
     @Update
     suspend fun update(file: FileIndexEntity)
 
-    @Query("DELETE FROM file_index WHERE lastSeenScanId < :scanId")
-    suspend fun deleteNotSeenSince(scanId: Long): Int
+    @Query("UPDATE file_index SET lastSeenScanId = :scanId WHERE id IN (:ids)")
+    suspend fun markSeen(ids: List<Long>, scanId: Long)
+
+    // substr instead of LIKE, because `_` and `%` occur in URIs.
+    @Query("DELETE FROM file_index WHERE lastSeenScanId < :scanId AND substr(sourceUri, 1, length(:uriPrefix)) = :uriPrefix")
+    suspend fun deleteNotSeenSince(scanId: Long, uriPrefix: String): Int
 
     @Query("SELECT COUNT(*) FROM file_index")
     fun observeCount(): Flow<Int>
@@ -41,6 +48,9 @@ interface FileHashDao {
 
     @Query("SELECT * FROM file_hash WHERE fileId = :fileId")
     suspend fun get(fileId: Long): FileHashEntity?
+
+    @Query("DELETE FROM file_hash WHERE fileId = :fileId")
+    suspend fun deleteForFile(fileId: Long)
 }
 
 @Dao
@@ -62,6 +72,9 @@ interface EmbeddingDao {
 
     @Query("SELECT * FROM embedding WHERE modelId = :modelId")
     suspend fun forModel(modelId: String): List<EmbeddingEntity>
+
+    @Query("DELETE FROM embedding WHERE fileId = :fileId")
+    suspend fun deleteForFile(fileId: Long)
 
     @Query("DELETE FROM embedding WHERE modelId != :modelId")
     suspend fun deleteOtherModels(modelId: String)
