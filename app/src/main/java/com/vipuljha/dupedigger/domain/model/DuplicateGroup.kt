@@ -56,3 +56,9 @@ data class DuplicateGroupItem(
 ) {
     val reclaimableBytes: Long get() = removable.sumOf { it.size }
 }
+
+/** Dimensions read from the file itself, already turned upright; null fields weren't readable. */
+data class MediaInfo(val width: Int?, val height: Int?)
+
+/** A file as another app can open it: a shareable URI and its type. */
+data class ViewTarget(val uri: String, val mimeType: String?)

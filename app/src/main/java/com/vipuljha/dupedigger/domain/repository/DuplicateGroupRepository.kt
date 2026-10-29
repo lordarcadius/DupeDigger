@@ -16,6 +16,17 @@ interface DuplicateGroupRepository {
 
     suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers>
 
+    /** The saved group with this fingerprint and its keep choice, read in one query; null when there is none. */
+    fun observeGroup(fingerprint: String): Flow<GroupWithMembers?>
+
+    /** Emits whenever keep choices or saved groups change. */
+    fun observeDecisionChanges(): Flow<Unit>
+
+    suspend fun setKeepChoice(fingerprint: String, sourceUri: String)
+
+    /** Records the fingerprint in `ignored_group` and deletes its saved group, in one transaction. */
+    suspend fun markNotDuplicates(fingerprint: String)
+
     suspend fun ignoredFingerprints(): Set<String>
 
     /** Replaces every saved group with [groups] for [scanId], in one transaction. */

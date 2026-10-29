@@ -28,6 +28,7 @@ data class KindChipUi(val kind: MediaKind?, val label: UiText)
 @Immutable
 data class GroupRowUi(
     val groupId: Long,
+    val fingerprint: String,
     val kind: MediaKind,
     val title: String,
     val detail: UiText,

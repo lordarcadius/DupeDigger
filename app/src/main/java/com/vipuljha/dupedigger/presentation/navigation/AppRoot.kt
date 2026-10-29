@@ -26,6 +26,8 @@ import com.vipuljha.dupedigger.core.designsystem.NavRow
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
+import com.vipuljha.dupedigger.presentation.group.GroupRoute
+import com.vipuljha.dupedigger.presentation.group.groupViewModel
 import com.vipuljha.dupedigger.presentation.home.HomeRoute
 import com.vipuljha.dupedigger.presentation.results.ResultsRoute
 import com.vipuljha.dupedigger.presentation.scan.ScanRoute
@@ -66,12 +68,16 @@ fun AppRoot(modifier: Modifier = Modifier) {
         entry<Destination.Results>(metadata = topLevel) {
             ResultsRoute(
                 onMenuClick = LocalMenuClick.current,
+                onOpenGroup = { backStacks.getValue(TopLevelTab.Results).open(Destination.Group(it)) },
                 onStartScan = {
                     val home = backStacks.getValue(TopLevelTab.Home)
                     if (home.lastOrNull() != Destination.Scan) home.open(Destination.Scan)
                     selectTab(TopLevelTab.Home)
                 },
             )
+        }
+        entry<Destination.Group> { key ->
+            GroupRoute(onBack = back, viewModel = groupViewModel(key.fingerprint))
         }
         entry<Destination.Quarantine>(metadata = topLevel) {
             PlaceholderScreen(stringResource(TopLevelTab.Quarantine.label), LocalMenuClick.current)

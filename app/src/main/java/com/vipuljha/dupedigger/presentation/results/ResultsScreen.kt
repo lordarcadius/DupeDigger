@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
@@ -50,7 +50,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -81,6 +80,7 @@ fun ResultsScreen(
     state: ResultsState,
     groups: LazyPagingItems<GroupRowUi>,
     onIntent: (ResultsIntent) -> Unit,
+    onOpenGroup: (fingerprint: String) -> Unit,
     onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -92,7 +92,7 @@ fun ResultsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.kindChips.size > 1) KindChips(state, onIntent)
-            GroupList(state, groups, onIntent, Modifier.weight(1f))
+            GroupList(state, groups, onIntent, onOpenGroup, Modifier.weight(1f))
         }
     }
 }
@@ -116,7 +116,13 @@ private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
 
 /** Phases in the paged order: items on screen win, then a refresh error, then the first load, then empty. */
 @Composable
-private fun GroupList(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, onIntent: (ResultsIntent) -> Unit, modifier: Modifier) {
+private fun GroupList(
+    state: ResultsState,
+    groups: LazyPagingItems<GroupRowUi>,
+    onIntent: (ResultsIntent) -> Unit,
+    onOpenGroup: (String) -> Unit,
+    modifier: Modifier,
+) {
     val refresh = groups.loadState.refresh
     var lastError by remember(state.kind) { mutableStateOf<LoadState.Error?>(null) }
     LaunchedEffect(refresh) {
@@ -155,7 +161,7 @@ private fun GroupList(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
                     action = { AppButton(stringResource(R.string.results_action_show_all), { onIntent(ResultsIntent.KindSelected(null)) }) },
                 )
             }
-            Phase.Content -> GroupRows(state, groups, onIntent)
+            Phase.Content -> GroupRows(state, groups, onIntent, onOpenGroup)
         }
     }
 }
@@ -163,7 +169,7 @@ private fun GroupList(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
 private enum class Phase { Loading, Error, Empty, Content }
 
 @Composable
-private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, onIntent: (ResultsIntent) -> Unit) {
+private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, onIntent: (ResultsIntent) -> Unit, onOpenGroup: (String) -> Unit) {
     val gutter = LocalPaneMetrics.current.gutter
     LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
         item(key = "actions", contentType = "actions") {
@@ -177,7 +183,9 @@ private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
             }
         }
         items(count = groups.itemCount, key = groups.itemKey { it.groupId }, contentType = groups.itemContentType { "group" }) { index ->
-            groups[index]?.let { row -> GroupRow(row, { onIntent(ResultsIntent.GroupToggled(row)) }, Modifier.animateItem()) }
+            groups[index]?.let { row ->
+                GroupRow(row, onOpen = { onOpenGroup(row.fingerprint) }, onToggle = { onIntent(ResultsIntent.GroupToggled(row)) }, Modifier.animateItem())
+            }
         }
         when (groups.loadState.append) {
             is LoadState.Loading -> item(key = "append", contentType = "append") {
@@ -199,13 +207,13 @@ private fun GroupRows(state: ResultsState, groups: LazyPagingItems<GroupRowUi>, 
 }
 
 @Composable
-private fun GroupRow(row: GroupRowUi, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+private fun GroupRow(row: GroupRowUi, onOpen: () -> Unit, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val gutter = LocalPaneMetrics.current.gutter
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = GroupRowMinHeight)
-            .toggleable(value = row.selected, role = Role.Checkbox, onValueChange = { onToggle() })
+            .clickable(onClick = onOpen)
             .padding(horizontal = gutter, vertical = Dimens.spaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -223,7 +231,7 @@ private fun GroupRow(row: GroupRowUi, onToggle: () -> Unit, modifier: Modifier =
         }
         Spacer(Modifier.width(Dimens.spaceMd))
         Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
-        Checkbox(checked = row.selected, onCheckedChange = null, modifier = Modifier.padding(start = Dimens.spaceMd))
+        Checkbox(checked = row.selected, onCheckedChange = { onToggle() }, modifier = Modifier.padding(start = Dimens.spaceXs))
     }
 }
 

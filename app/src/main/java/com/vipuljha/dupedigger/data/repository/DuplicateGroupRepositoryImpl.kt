@@ -10,6 +10,8 @@ import com.vipuljha.dupedigger.data.local.db.dao.IgnoredGroupDao
 import com.vipuljha.dupedigger.data.local.db.dao.KeepChoiceDao
 import com.vipuljha.dupedigger.data.local.db.entity.DuplicateGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.GroupMemberEntity
+import com.vipuljha.dupedigger.data.local.db.entity.IgnoredGroupEntity
+import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
 import com.vipuljha.dupedigger.data.paging.GroupPage
 import com.vipuljha.dupedigger.data.paging.GroupPagingSource
 import com.vipuljha.dupedigger.domain.model.FoundGroup
@@ -36,6 +38,29 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
 
     override fun observeReclaimable(): Flow<List<KindReclaim>> = groupDao.observeReclaimable().map { rows ->
         rows.map { KindReclaim(MediaKind.valueOf(it.mediaKind), it.groupCount, it.files, it.bytes) }
+    }
+
+    override fun observeGroup(fingerprint: String): Flow<GroupWithMembers?> = groupDao.observeGroupDetail(fingerprint).map { rows ->
+        val first = rows.firstOrNull() ?: return@map null
+        GroupWithMembers(
+            groupId = first.groupId,
+            fingerprint = first.fingerprint,
+            tier = MatchTier.valueOf(first.tier),
+            kind = MediaKind.valueOf(rows.minOf { it.mediaKind }),
+            members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, name = it.name) }.toImmutableList(),
+            keepChoice = first.keepChoice,
+        )
+    }
+
+    override fun observeDecisionChanges(): Flow<Unit> =
+        db.invalidationTracker.createFlow("keep_choice", "duplicate_group", emitInitialState = false).map { }
+
+    override suspend fun setKeepChoice(fingerprint: String, sourceUri: String) =
+        keepChoiceDao.upsert(KeepChoiceEntity(fingerprint, sourceUri, chosenAt = System.currentTimeMillis()))
+
+    override suspend fun markNotDuplicates(fingerprint: String) = db.withTransaction {
+        ignoredDao.upsert(IgnoredGroupEntity(fingerprint, ignoredAt = System.currentTimeMillis()))
+        groupDao.deleteByFingerprint(fingerprint)
     }
 
     override suspend fun ignoredFingerprints(): Set<String> = ignoredDao.fingerprints().toSet()

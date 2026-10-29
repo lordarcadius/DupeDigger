@@ -82,6 +82,25 @@
     <string name="results_error_title">Couldn’t load the results</string>
     <string name="results_error_more">Couldn’t load more groups.</string>
 
+    <string name="value_unknown">—</string>
+    <string name="group_title">Duplicate group</string>
+    <plurals name="group_summary">
+        <item quantity="one">%1$s copy · frees %2$s</item>
+        <item quantity="other">%1$s copies · frees %2$s</item>
+    </plurals>
+    <string name="group_member_details">%1$s · Modified %2$s</string>
+    <string name="group_member_details_with_resolution">%1$s · %2$s</string>
+    <string name="group_resolution">%1$d × %2$d</string>
+    <string name="group_keeping">Keeping this one</string>
+    <string name="group_action_keep">Keep this</string>
+    <string name="group_action_open">Open</string>
+    <string name="group_action_not_duplicates">Not duplicates</string>
+    <string name="group_gone_title">This group is no longer here</string>
+    <string name="group_gone_body">A newer scan or a delete changed it.</string>
+    <string name="group_error_title">Couldn’t load this group</string>
+    <string name="group_open_failed">Couldn’t open this file.</string>
+    <string name="group_open_no_app">No app on this device can open this file.</string>
+
     <string name="scan_title">Scan</string>
     <string name="scan_scope_title">What to scan</string>
     <string name="scan_scope_whole_device_body">Every file on this device.</string>

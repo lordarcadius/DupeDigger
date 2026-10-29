@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.core.mvi.ObserveAsEvents
 @Composable
 fun ResultsRoute(
     onMenuClick: (() -> Unit)?,
+    onOpenGroup: (fingerprint: String) -> Unit,
     onStartScan: () -> Unit,
     viewModel: ResultsViewModel = hiltViewModel(),
 ) {
@@ -22,5 +23,5 @@ fun ResultsRoute(
         }
     }
 
-    ResultsScreen(state = state, groups = groups, onIntent = viewModel::onIntent, onMenuClick = onMenuClick)
+    ResultsScreen(state = state, groups = groups, onIntent = viewModel::onIntent, onOpenGroup = onOpenGroup, onMenuClick = onMenuClick)
 }

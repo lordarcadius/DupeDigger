@@ -100,7 +100,8 @@ Rules:
 - Results pages saved groups with `GroupPagingSource` (offset paging, 50 per page, most space to free first, then `groupId`):
   - it invalidates itself through Room's invalidation tracker on `duplicate_group`, `group_member` and `keep_choice`, not `file_index`, which changes on every batch of a running scan; a deleted file still refreshes the list through the membership cascade;
   - a page's headers and members are read in one transaction, and each group is split into keeper and removable files by the shared `keeperOf` rule;
-  - "Select duplicates" selects every removable file in the matching groups, not just the loaded pages; the selection clears when the filter changes or a new scan starts.
+  - "Select duplicates" selects every removable file in the matching groups, not just the loaded pages; the selection clears when the filter changes, a new scan starts, or a keep choice or group changes.
+- Group detail is keyed by fingerprint and reads one joined Flow query; "Open" hands other apps a typed MediaStore URI, the picked-folder document URI, or a `FileProvider` URI, never `file:`.
 
 ## Data model (Room)
 

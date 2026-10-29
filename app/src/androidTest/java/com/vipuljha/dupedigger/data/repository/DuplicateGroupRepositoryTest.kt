@@ -7,13 +7,18 @@ import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.local.db.entity.IgnoredGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
+import com.vipuljha.dupedigger.domain.detector.toItem
+import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.exactFingerprint
+import com.vipuljha.dupedigger.domain.usecase.SaveExactGroupsUseCase
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -57,6 +62,29 @@ class DuplicateGroupRepositoryTest {
         val saved = db.duplicateGroupDao().observeForScan(2).first().sortedBy { it.fingerprint }
         assertEquals(listOf("EXACT:10:a", "EXACT:10:b"), saved.map { it.fingerprint })
         assertEquals(listOf(3, 2), saved.map { db.duplicateGroupDao().membersOf(it.groupId).size })
+    }
+
+    @Test
+    fun keepAndNotDuplicatesChoicesHoldAcrossRescans() = runBlocking {
+        val (a, b, c, d) = (1..4).map { file("g$it") }
+        val save = SaveExactGroupsUseCase(repository)
+        val fingerprint = exactFingerprint(10, "aaa")
+        save(1, listOf(ExactGroup(10, "aaa", persistentListOf(a, b))))
+        repository.setKeepChoice(fingerprint, "file:/g2")
+
+        // A rescan finds the same content again under new group ids.
+        save(2, listOf(ExactGroup(10, "aaa", persistentListOf(a, b)), ExactGroup(10, "bbb", persistentListOf(c, d))))
+        val group = repository.observeGroup(fingerprint).first()!!
+        assertEquals("file:/g2", group.keepChoice)
+        assertEquals(b, group.toItem().keeper.fileId)
+
+        repository.markNotDuplicates(fingerprint)
+        assertNull(repository.observeGroup(fingerprint).first())
+        assertEquals(setOf(fingerprint), repository.ignoredFingerprints())
+
+        val kept = save(3, listOf(ExactGroup(10, "aaa", persistentListOf(a, b)), ExactGroup(10, "bbb", persistentListOf(c, d))))
+        assertEquals(listOf("bbb"), kept.map { it.fullHash })
+        assertNull(repository.observeGroup(fingerprint).first())
     }
 
     @Test

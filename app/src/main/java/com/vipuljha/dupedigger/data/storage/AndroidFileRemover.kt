@@ -1,7 +1,6 @@
 package com.vipuljha.dupedigger.data.storage
 
 import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -53,7 +52,7 @@ class AndroidFileRemover @Inject constructor(
         val needsConsent = mutableListOf<Pair<Long, Uri>>()
         for (file in files) {
             ensureActive()
-            val mediaUri = if (file.mediaKind in MEDIA_KINDS) mediaStoreUri(file) else null
+            val mediaUri = if (file.mediaKind in MEDIA_KINDS) resolver.mediaCollectionUri(file.sourceUri, file.path) else null
             if (mediaUri != null) {
                 if (trashDirectly(mediaUri)) {
                     removed += file.id
@@ -84,39 +83,6 @@ class AndroidFileRemover @Inject constructor(
             },
             failedIds = failed.toImmutableList(),
         )
-    }
-
-    /**
-     * The file's row in its images, video or audio collection, found by id for MediaStore scans and by path otherwise.
-     * The trash prompt rejects Files-collection URIs, so the type-specific one is needed. Null when MediaStore has no media row.
-     */
-    private fun mediaStoreUri(file: StoredFile): Uri? {
-        val (selection, args) = when {
-            file.sourceUri.startsWith(MEDIA_URI_PREFIX) ->
-                "${MediaStore.Files.FileColumns._ID} = ?" to arrayOf(Uri.parse(file.sourceUri).lastPathSegment)
-            file.path != null -> "${MediaStore.Files.FileColumns.DATA} = ?" to arrayOf(file.path)
-            else -> return null
-        }
-        val projection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.Files.FileColumns.VOLUME_NAME,
-            MediaStore.Files.FileColumns.MEDIA_TYPE,
-        )
-        return try {
-            resolver.query(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), projection, selection, args, null)?.use { c ->
-                if (!c.moveToFirst()) return null
-                val collection = when (c.getInt(2)) {
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaStore.Images.Media.getContentUri(c.getString(1))
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaStore.Video.Media.getContentUri(c.getString(1))
-                    MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO -> MediaStore.Audio.Media.getContentUri(c.getString(1))
-                    else -> return null
-                }
-                ContentUris.withAppendedId(collection, c.getLong(0))
-            }
-        } catch (e: SecurityException) {
-            Timber.w(e, "Couldn't look up a file in MediaStore")
-            null
-        }
     }
 
     /** Works for media the app owns, and where the platform lets it trash others' media without asking. */
@@ -177,7 +143,6 @@ class AndroidFileRemover @Inject constructor(
 
     private companion object {
         val MEDIA_KINDS = setOf(MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.AUDIO)
-        const val MEDIA_URI_PREFIX = "content://media/"
         const val QUARANTINE_DIR = "quarantine"
         const val BUFFER = 256 * 1024
         const val FREE_SPACE_MARGIN = 64L * 1024 * 1024

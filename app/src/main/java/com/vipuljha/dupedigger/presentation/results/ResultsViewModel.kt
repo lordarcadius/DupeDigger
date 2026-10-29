@@ -28,8 +28,8 @@ import javax.inject.Inject
 
 /**
  * Results: saved groups by kind, most space to free first, with selection of the files that could go.
- * - Selection is cleared when the filter changes or a new scan starts, so it never holds files the user can't see
- *   or that a rescan regrouped.
+ * - Selection is cleared when the filter changes, a new scan starts, or a keep choice or group changes, so it never
+ *   holds files the user can't see, that a rescan regrouped, or that are now a group's keeper.
  * - "Select all but keepers" covers every matching group, not only the loaded pages.
  */
 @HiltViewModel
@@ -59,6 +59,10 @@ class ResultsViewModel @Inject constructor(
             .map { it?.id }
             .distinctUntilChanged()
             .drop(1)
+            .onEach { select(emptyMap()) }
+            .launchIn(viewModelScope)
+        // A new keeper or a "not duplicates" may touch selected files; delete must never take a chosen keeper.
+        groupRepository.observeDecisionChanges()
             .onEach { select(emptyMap()) }
             .launchIn(viewModelScope)
     }

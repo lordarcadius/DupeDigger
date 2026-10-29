@@ -72,6 +72,20 @@ data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files:
 
 data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val mediaKind: String, val keepChoice: String?)
 
+data class GroupDetailRow(
+    val groupId: Long,
+    val fingerprint: String,
+    val tier: String,
+    val keepChoice: String?,
+    val fileId: Long,
+    val sourceUri: String,
+    val path: String?,
+    val name: String,
+    val size: Long,
+    val mtime: Long,
+    val mediaKind: String,
+)
+
 data class GroupMemberRow(
     val groupId: Long,
     val fileId: Long,
@@ -171,6 +185,23 @@ interface DuplicateGroupDao {
         """,
     )
     suspend fun membersOfGroups(groupIds: List<Long>): List<GroupMemberRow>
+
+    @Query(
+        """
+        SELECT g.groupId AS groupId, g.fingerprint AS fingerprint, g.tier AS tier, kc.keeperSourceUri AS keepChoice,
+            f.id AS fileId, f.sourceUri AS sourceUri, f.path AS path, f.name AS name, f.size AS size, f.mtime AS mtime,
+            f.mediaKind AS mediaKind
+        FROM duplicate_group g
+        JOIN group_member m ON m.groupId = g.groupId
+        JOIN file_index f ON f.id = m.fileId
+        LEFT JOIN keep_choice kc ON kc.fingerprint = g.fingerprint
+        WHERE g.fingerprint = :fingerprint
+        """,
+    )
+    fun observeGroupDetail(fingerprint: String): Flow<List<GroupDetailRow>>
+
+    @Query("DELETE FROM duplicate_group WHERE fingerprint = :fingerprint")
+    suspend fun deleteByFingerprint(fingerprint: String)
 
     @Transaction
     suspend fun insertGroupWithMembers(group: DuplicateGroupEntity, members: List<GroupMemberEntity>): Long {

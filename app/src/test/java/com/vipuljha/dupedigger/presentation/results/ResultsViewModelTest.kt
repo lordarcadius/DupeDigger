@@ -113,6 +113,16 @@ class ResultsViewModelTest {
     }
 
     @Test
+    fun `a keeper change or a not-duplicates mark clears the selection`() {
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+
+        repo.decisions.tryEmit(Unit)
+
+        assertTrue(vm.state.value.selection.isEmpty())
+    }
+
+    @Test
     fun `chips list all, then each kind with groups, with counts`() {
         repo.reclaimable.value = listOf(
             KindReclaim(MediaKind.DOCUMENT, groups = 2, files = 2, bytes = 10),

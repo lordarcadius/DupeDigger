@@ -2,4 +2,7 @@
 <resources>
     <!-- Nearest framework tone to the dynamic surfaceContainerHigh on API 31–33. -->
     <color name="window_background">@android:color/system_neutral2_100</color>
+    <!-- Thumbnail placeholder and error art, drawn outside Compose. -->
+    <color name="thumb_art_background">@android:color/system_neutral2_200</color>
+    <color name="thumb_art_glyph">@android:color/system_neutral2_600</color>
 </resources>

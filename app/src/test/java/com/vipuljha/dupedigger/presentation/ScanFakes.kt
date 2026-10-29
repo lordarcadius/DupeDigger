@@ -24,6 +24,7 @@ import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
@@ -87,4 +88,20 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
     override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
     override suspend fun keepChoice(fingerprint: String): String? = null
+
+    val detail = MutableStateFlow<GroupWithMembers?>(null)
+    val decisions = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val keepChoices = mutableMapOf<String, String>()
+    val notDuplicates = mutableListOf<String>()
+
+    override fun observeGroup(fingerprint: String) = detail
+    override fun observeDecisionChanges() = decisions
+    override suspend fun setKeepChoice(fingerprint: String, sourceUri: String) {
+        keepChoices[fingerprint] = sourceUri
+        detail.update { it?.copy(keepChoice = sourceUri) }
+    }
+    override suspend fun markNotDuplicates(fingerprint: String) {
+        notDuplicates += fingerprint
+        detail.value = null
+    }
 }

@@ -10,4 +10,5 @@ sealed interface Destination : NavKey {
     @Serializable data object Quarantine : Destination
     @Serializable data object Settings : Destination
     @Serializable data object Scan : Destination
+    @Serializable data class Group(val fingerprint: String) : Destination
 }

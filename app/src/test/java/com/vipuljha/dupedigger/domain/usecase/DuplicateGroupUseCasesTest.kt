@@ -35,6 +35,10 @@ class DuplicateGroupUseCasesTest {
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
         override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
         override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
+        override fun observeGroup(fingerprint: String) = emptyFlow<GroupWithMembers?>()
+        override fun observeDecisionChanges() = emptyFlow<Unit>()
+        override suspend fun setKeepChoice(fingerprint: String, sourceUri: String) = Unit
+        override suspend fun markNotDuplicates(fingerprint: String) = Unit
     }
 
     @Test

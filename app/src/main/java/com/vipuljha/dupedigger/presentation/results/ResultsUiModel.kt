@@ -17,6 +17,7 @@ fun DuplicateGroupItem.toRow(): GroupRowUi {
     val copies = removable.size + 1
     return GroupRowUi(
         groupId = groupId,
+        fingerprint = fingerprint,
         kind = kind,
         title = keeper.name.ifEmpty { keeper.sourceUri.substringAfterLast('/') },
         detail = UiText.res(

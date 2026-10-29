@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="window_background">@android:color/system_neutral2_800</color>
+    <!-- Thumbnail placeholder and error art, drawn outside Compose. -->
+    <color name="thumb_art_background">@android:color/system_neutral2_700</color>
+    <color name="thumb_art_glyph">@android:color/system_neutral2_300</color>
 </resources>
