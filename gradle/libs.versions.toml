@@ -22,6 +22,7 @@ work = "2.12.0"
 paging = "3.5.3"
 timber = "5.0.1"
 litertlm = "0.18.1"
+coroutines = "1.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "coil" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
