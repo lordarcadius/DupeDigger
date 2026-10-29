@@ -357,3 +357,19 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
   - It applies from the next scan, because grouping runs during the scan.
   - Documents keep their fixed SimHash threshold.
 
+
+## D-013: Release build (accepted, P7-05)
+**R8 over the whole app.** The template's `optimization {}` block stays, but its `packageScope` (only `androidx.**`, `kotlin.**`, `kotlinx.**`) is removed.
+- Android's guidance treats `packageScope` as a first step for apps adopting R8, not as a release setup. Under it, the app and LiteRT-LM were never shrunk or renamed: the mapping had no `com.vipuljha` or `com.google.ai.edge` entries.
+- Keep rules live in `app/src/main/keepRules/*.keep`, the AGP 9.3+ source set. LiteRT-LM ships no consumer rules and its native library reaches Java by name, so `litertlm.keep` keeps `com.google.ai.edge.litertlm.**` whole.
+- Room, Hilt, WorkManager and kotlinx.serialization use their own consumer rules. The release smoke test exercised all of them, and none needed more.
+- **Result:** dex went from 7.7 MB to 4.5 MB (APK 57.7 MB to 54.5 MB; the LiteRT-LM native libraries are most of the rest), and 687 of 693 app classes are renamed.
+
+**No backup or transfer.** `allowBackup="false"`, and `data_extraction_rules.xml` excludes every domain from cloud backup and device transfer.
+- The database holds file names, paths and embeddings, so cloud backup would have broken "nothing leaves the device".
+- The index is also device-specific, and models are hundreds of MB.
+
+**Signing:** the release build signs with `keystore.properties` at the repo root (store file, passwords, alias), which `.gitignore` excludes along with `*.jks`. Without that file the release APK is left unsigned.
+- The keystore in `signing/` was generated locally for P7-05. The owner should back it up, or replace it with their own key before the first Play upload. Play App Signing can manage the app signing key.
+
+**Privacy:** the note is `docs/PRIVACY.md`. The AI screen now says the model is downloaded once from Hugging Face.

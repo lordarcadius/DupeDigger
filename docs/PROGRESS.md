@@ -3,8 +3,8 @@
 Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
-**Current phase:** P7, hardening
-**Next task:** P7-05
+**Current phase:** P7 done; all planned tasks complete
+**Next task:** none (owner review, then the Primebook and Play checks below)
 
 ## Status
 
@@ -48,12 +48,34 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P7-02 | Adaptive layouts | done | 2026-10-29 |
 | P7-03 | Accessibility | done | Labels, 48dp targets, 200% font, AA contrast in a Compose test |
 | P7-04 | Test coverage | done | Domain tests alone: 91.9% of domain lines; lint 0 errors |
-| P7-05 | Release build | todo | |
+| P7-05 | Release build | done | Full R8, signed, smoke-tested (D-013) |
 
 ## Log
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P7-05: release build (D-013).
+  - **R8:** the `packageScope` limit is gone, so R8 shrinks and renames the whole app. `app/src/main/keepRules/litertlm.keep` keeps LiteRT-LM, which ships no rules of its own. Dex went from 7.7 MB to 4.5 MB.
+  - **Icon:** an adaptive icon with background, foreground and monochrome layers: the "Content copy" glyph in the brand's onPrimaryContainer (`#6A3B03`) on primaryContainer (`#FFDCC0`). The template's robot mipmaps are removed; minSdk 31 never used them.
+  - **Privacy:** backup and device transfer are off for everything. `docs/PRIVACY.md` covers what is read, what is kept, and the one network use: the optional Hugging Face model download. The AI screen now names Hugging Face.
+  - **Signing:** the release build signs from the git-ignored `keystore.properties` and `signing/dupedigger-release.jks`; `git check-ignore` confirms both are ignored. `apksigner verify` passes (v2, `CN=Vipul Kumar Jha, O=Dupe Digger`). The key was generated locally, so back it up or replace it.
+  - **Final verification on a temporary API 36 phone emulator** (created and deleted; the Primebook is still off adb):
+    - `./gradlew testDebugUnitTest lint :app:connectedDebugAndroidTest assembleRelease`: BUILD SUCCESSFUL. That is 223 unit tests, 62 instrumented tests (8 gated ones skip themselves), lint at 0 errors and 39 warnings, and a signed release APK.
+    - The domain purity check from the development skill printed nothing.
+    - `:benchmark` has no connected task, so it doesn't run in `connectedDebugAndroidTest`.
+  - **Release smoke test** on the same emulator, signed R8 build, not debuggable, no `ALLOW_BACKUP` flag:
+    - **Scan:** onboarding, then a whole-device scan through `ScanWorker` of pushed files found 3 duplicates in an exact, a similar (99%) and an exact document group.
+    - **Group and Compare:** opening a group survived activity recreation with "always finish activities" on, which restores the serialized back stack. Compare opened.
+    - **Delete:** delete asked "Delete 1 file?", moved the copy to Quarantine, and Undo put it back.
+    - **AI:** the 165 MB model downloaded through `ModelDownloadWorker`. With it chosen and the AI tier on, a scan showed "Comparing with the AI model…". LiteRT loaded its native library and built the encoder. A reworded copy of a document came back as "AI match · 96%" while an unrelated document didn't.
+    - **Icon:** shows in the app drawer.
+    - **Crashes:** the crash buffer stayed empty throughout.
+  - **Not checked:**
+    - the release build on the Primebook or any arm64 device;
+    - the GPU backend in release;
+    - the trash prompt for media in release (the smoke test deleted a document);
+    - an Accessibility Scanner pass (P7-03 used automated checks instead);
+    - scrollbars, trackpad tuning and right-click menus, which are still not built (P7-02).
 - 2026-10-29: P7-04: tests and a green lint.
   - **Coverage:** the debug build type now sets `enableUnitTestCoverage`, so `./gradlew createDebugUnitTestCoverageReport` writes JaCoCo results to `app/build/reports/coverage/test/debug/`. The domain is `domain/usecase`, `domain/model` and `domain/detector`; `domain/repository` holds interfaces only.
     - **Domain tests alone** (`./gradlew testDebugUnitTest --tests 'com.vipuljha.dupedigger.domain.*' createDebugUnitTestCoverageReport`): 760/827 lines (91.9%) and 401/468 branches (85.7%); `domain/usecase` is at 89.4%. Before this step the use cases were at 77.5%, because some were only exercised through ViewModel tests. 12 new tests (`AiUseCasesTest`, `ScanUseCasesTest`) cover them directly: choosing only a downloaded model; the AI tier needing a chosen model; ranges for both thresholds; Wi-Fi only re-queueing just waiting or running downloads; deleting a model removing its vectors and turning the tier off; and an unreadable scope never being queued.

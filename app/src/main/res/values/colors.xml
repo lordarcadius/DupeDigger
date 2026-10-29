@@ -5,4 +5,7 @@
     <!-- Thumbnail placeholder and error art, drawn outside Compose. -->
     <color name="thumb_art_background">@android:color/system_neutral2_200</color>
     <color name="thumb_art_glyph">@android:color/system_neutral2_600</color>
+    <!-- Launcher icon: primaryContainer and onPrimaryContainer of the D-009 brand seed. -->
+    <color name="launcher_background">#FFFFDCC0</color>
+    <color name="launcher_glyph">#FF6A3B03</color>
 </resources>

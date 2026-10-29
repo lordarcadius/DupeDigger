@@ -179,7 +179,7 @@
     <string name="scan_tier_ai_on_body">Files that mean the same thing, found by the on-device model. Slower.</string>
     <string name="settings_ai_body">Download a model that runs on this device to find files that mean the same thing.</string>
     <string name="ai_title">AI matches</string>
-    <string name="ai_intro">The model runs on this device and nothing leaves it. It finds similar shots, the same document saved twice and the same song in another format.</string>
+    <string name="ai_intro">The model is downloaded once from Hugging Face, then runs on this device, and none of your files leave it. It finds similar shots, the same document saved twice and the same song in another format.</string>
     <string name="ai_use">Use AI matches</string>
     <string name="ai_use_body">Scans also compare files with the model. This is slower.</string>
     <string name="ai_use_body_no_model">Download and choose a model below first.</string>
