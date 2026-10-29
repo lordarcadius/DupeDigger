@@ -216,6 +216,19 @@ The 270M and 740M downloads matched their SHA-256 exactly. The 440M file's size 
   - Golden set with the real 440M model on the emulator: three burst shots of one scene scored 0.992–0.995 against each other, and an unrelated photo scored 0.873–0.877 against them. The default 0.90 groups the bursts only, but the margin to unrelated photos is small; P6-05's threshold slider should not go much below 0.90.
 - **Engine failures:** a batch the engine rejects is retried file by file, so one bad file costs only itself.
 
+**AI settings (P6-05):**
+- **Where:** Settings → "AI matches" opens a screen that:
+  - turns the tier on (only once a downloaded model is chosen);
+  - lists the three models with what they compare, download size and measured memory ("not measured" for 440M), and per-model state: download, waiting (for Wi-Fi), progress with Cancel, failure with Retry, Use, Delete;
+  - holds the options: Wi-Fi only, only while charging, processor or graphics chip, and the threshold.
+- **One download at a time:** the other models' Download buttons are disabled while one is queued or running.
+- **Notifications:** permission is asked before a download starts.
+- **Wi-Fi only:** changing it queues a waiting or running download again (`ExistingWorkPolicy.REPLACE`, keeping the partial file) so the new rule applies.
+- **Threshold:** offered from 0.88 to 0.98, because unrelated photos scored up to 0.877 in the golden set. Saved on release; applies from the next scan.
+- **Only while charging:** a scan on battery skips the semantic stage (`BatteryManager.isCharging`).
+- **Deleting a model** cancels its download, removes the file and its stored vectors, and turns the tier off if it was the chosen model, so the flow can be undone from the UI. Semantic groups from earlier scans go with the next scan.
+- **Scan screen:** the "AI matches" row is a working switch once a model is chosen.
+
 ## D-007: Never auto-delete; always keep one (accepted)
 Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
 

@@ -50,6 +50,7 @@ class SettingsRepositoryImpl @Inject constructor(
             modelDownloadWifiOnly = this[KEY_MODEL_WIFI_ONLY] ?: defaults.modelDownloadWifiOnly,
             aiModelId = this[KEY_AI_MODEL],
             aiBackend = EmbeddingBackend.entries.firstOrNull { it.name == this[KEY_AI_BACKEND] } ?: defaults.aiBackend,
+            aiOnlyWhileCharging = this[KEY_AI_CHARGING_ONLY] ?: defaults.aiOnlyWhileCharging,
         )
     }
 
@@ -64,6 +65,7 @@ class SettingsRepositoryImpl @Inject constructor(
         this[KEY_MODEL_WIFI_ONLY] = settings.modelDownloadWifiOnly
         settings.aiModelId?.let { this[KEY_AI_MODEL] = it } ?: remove(KEY_AI_MODEL)
         this[KEY_AI_BACKEND] = settings.aiBackend.name
+        this[KEY_AI_CHARGING_ONLY] = settings.aiOnlyWhileCharging
     }
 
     private companion object {
@@ -77,5 +79,6 @@ class SettingsRepositoryImpl @Inject constructor(
         val KEY_MODEL_WIFI_ONLY = booleanPreferencesKey("model_download_wifi_only")
         val KEY_AI_MODEL = stringPreferencesKey("ai_model_id")
         val KEY_AI_BACKEND = stringPreferencesKey("ai_backend")
+        val KEY_AI_CHARGING_ONLY = booleanPreferencesKey("ai_charging_only")
     }
 }

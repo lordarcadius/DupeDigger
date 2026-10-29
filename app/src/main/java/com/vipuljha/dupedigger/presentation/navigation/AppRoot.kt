@@ -26,6 +26,7 @@ import com.vipuljha.dupedigger.core.designsystem.NavRow
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
 import com.vipuljha.dupedigger.core.designsystem.pushTransition
+import com.vipuljha.dupedigger.presentation.ai.AiRoute
 import com.vipuljha.dupedigger.presentation.compare.CompareRoute
 import com.vipuljha.dupedigger.presentation.compare.compareViewModel
 import com.vipuljha.dupedigger.presentation.group.GroupRoute
@@ -93,7 +94,13 @@ fun AppRoot(modifier: Modifier = Modifier) {
             QuarantineRoute(onMenuClick = LocalMenuClick.current)
         }
         entry<Destination.Settings>(metadata = topLevel) {
-            SettingsRoute(onMenuClick = LocalMenuClick.current)
+            SettingsRoute(
+                onMenuClick = LocalMenuClick.current,
+                onOpenAi = { backStacks.getValue(TopLevelTab.Settings).open(Destination.AiSettings) },
+            )
+        }
+        entry<Destination.AiSettings> {
+            AiRoute(onBack = back)
         }
     }
     val entriesByTab = TopLevelTab.entries.associateWith { tab ->

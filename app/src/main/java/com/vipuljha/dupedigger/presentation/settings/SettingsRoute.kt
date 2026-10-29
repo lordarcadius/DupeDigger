@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsRoute(
     onMenuClick: (() -> Unit)?,
+    onOpenAi: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -45,5 +46,6 @@ fun SettingsRoute(
         onIntent = viewModel::onIntent,
         snackbarHostState = snackbarHostState,
         onMenuClick = onMenuClick,
+        onOpenAi = onOpenAi,
     )
 }

@@ -15,6 +15,7 @@ import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.isReachable
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
+import com.vipuljha.dupedigger.domain.repository.PowerState
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
@@ -28,7 +29,7 @@ import javax.inject.Inject
  * One scan of a scope, recorded as a scan run.
  * - Fails with PermissionDenied before touching the index when the scope can't be read.
  * - Runs the stages in order (index, exact, near when similar files are on, semantic when the AI tier is on and its
- *   model is chosen) and reports progress for each.
+ *   model is chosen, unless it is set to run only while charging and the device isn't) and reports progress for each.
  * - Only a scan that completes replaces the saved groups; a cancelled or failed one leaves the previous results.
  * - Every stage caches per file, so a scan restarted after process death redoes nothing it already finished.
  * - The run always ends with a status; if the process dies first, the next run marks it interrupted.
@@ -43,6 +44,7 @@ class RunScanUseCase @Inject constructor(
     private val findExact: FindExactDuplicatesUseCase,
     private val findNear: FindNearDuplicatesUseCase,
     private val findSemantic: FindSemanticDuplicatesUseCase,
+    private val power: PowerState,
     private val saveGroups: SaveGroupsUseCase,
 ) {
     suspend operator fun invoke(
@@ -74,7 +76,7 @@ class RunScanUseCase @Inject constructor(
                     null
                 }
                 val model = appSettings.aiModelId?.let(ModelCatalog::byId)
-                val semantic = if (appSettings.semanticEnabled && model != null) {
+                val semantic = if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
                     onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
                     findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, exact.groups, near?.groups.orEmpty()) { done, total ->
                         onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))

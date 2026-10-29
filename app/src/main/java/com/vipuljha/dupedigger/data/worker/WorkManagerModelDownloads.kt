@@ -18,9 +18,11 @@ import com.vipuljha.dupedigger.domain.repository.ModelDownloads
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -40,8 +42,15 @@ class WorkManagerModelDownloads @Inject constructor(
 
     private val workManager: WorkManager get() = WorkManager.getInstance(context)
 
+    /** Bumped when a model file is deleted, which changes no work, so [observe] looks at the file again. */
+    private val fileChanges = MutableStateFlow(0)
+
     override fun start(variant: ModelVariant, wifiOnly: Boolean) {
         workManager.enqueueUniqueWork(ModelDownloadWorker.UNIQUE_NAME, ExistingWorkPolicy.KEEP, downloadRequest(variant, wifiOnly))
+    }
+
+    override fun restart(variant: ModelVariant, wifiOnly: Boolean) {
+        workManager.enqueueUniqueWork(ModelDownloadWorker.UNIQUE_NAME, ExistingWorkPolicy.REPLACE, downloadRequest(variant, wifiOnly))
     }
 
     override fun cancel(variant: ModelVariant) {
@@ -51,12 +60,13 @@ class WorkManagerModelDownloads @Inject constructor(
 
     override suspend fun delete(variant: ModelVariant) = withContext(ioDispatcher) {
         storage.fetcher.finalFile(variant).delete()
-        Unit
+        fileChanges.update { it + 1 }
     }
 
     override fun observe(variant: ModelVariant): Flow<ModelDownloadState> =
-        workManager.getWorkInfosByTagFlow(tagOf(variant))
-            .map { infos -> stateOf(infos, storage.fetcher.finalFile(variant).exists()) }
+        combine(workManager.getWorkInfosByTagFlow(tagOf(variant)), fileChanges) { infos, _ ->
+            stateOf(infos, storage.fetcher.finalFile(variant).exists())
+        }
             .distinctUntilChanged()
             .flowOn(ioDispatcher)
 

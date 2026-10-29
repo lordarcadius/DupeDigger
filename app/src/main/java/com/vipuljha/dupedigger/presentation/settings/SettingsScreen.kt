@@ -1,5 +1,6 @@
 package com.vipuljha.dupedigger.presentation.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Folder
@@ -63,6 +65,7 @@ fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
     onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onOpenAi: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -102,7 +105,22 @@ fun SettingsScreen(
                     onIntent = onIntent,
                 )
                 item(key = "similar", contentType = "similar") { SimilarFilesSection(state.nearThreshold, onIntent, Modifier.animateItem()) }
+                item(key = "ai", contentType = "ai") { AiEntry(onOpenAi, Modifier.animateItem()) }
             }
+        }
+    }
+}
+
+@Composable
+private fun AiEntry(onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        SectionHeader(stringResource(R.string.ai_title))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = Dimens.rowComfortableMin).clickable(onClick = onOpen).padding(vertical = Dimens.spaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.settings_ai_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }
     }
 }

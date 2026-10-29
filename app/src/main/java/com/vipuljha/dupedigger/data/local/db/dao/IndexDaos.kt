@@ -178,6 +178,9 @@ interface EmbeddingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(embeddings: List<EmbeddingEntity>)
 
+    @Query("DELETE FROM embedding WHERE modelId LIKE :modelId || '@%'")
+    suspend fun deleteForModel(modelId: String)
+
     @Query(
         "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.mediaKind, f.size, e.vector FROM file_index f " +
             "LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +

@@ -17,6 +17,7 @@ import com.vipuljha.dupedigger.domain.model.StorageAccessState
 import com.vipuljha.dupedigger.domain.usecase.CancelScanUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetAvailableScopesUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
+import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import com.vipuljha.dupedigger.presentation.FakeFolders
 import com.vipuljha.dupedigger.presentation.FakeScanRuns
@@ -57,6 +58,7 @@ class ScanViewModelTest {
         StartScanUseCase(access, folders, scheduler),
         CancelScanUseCase(scheduler),
         SetNearDuplicatesEnabledUseCase(settings),
+        SetSemanticEnabledUseCase(settings),
     )
 
     private fun completed(id: Long, duplicates: Int) = ScanRunInfo(

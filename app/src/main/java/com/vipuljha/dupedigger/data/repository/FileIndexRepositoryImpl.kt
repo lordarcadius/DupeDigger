@@ -164,6 +164,8 @@ class FileIndexRepositoryImpl @Inject constructor(
         embeddingDao.upsertAll(vectors.map { (id, v) -> EmbeddingEntity(id, modelKey, v.size, encodeVector(v)) })
     }
 
+    override suspend fun deleteEmbeddings(modelId: String) = embeddingDao.deleteForModel(modelId)
+
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
             StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)

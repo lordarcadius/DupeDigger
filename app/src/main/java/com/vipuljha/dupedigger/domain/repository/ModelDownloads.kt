@@ -9,6 +9,9 @@ interface ModelDownloads {
     /** Queues the download; with [wifiOnly] it waits for an unmetered network. Already queued or running work is kept. */
     fun start(variant: ModelVariant, wifiOnly: Boolean)
 
+    /** Queues the download again with a new network rule, keeping what was fetched so far. */
+    fun restart(variant: ModelVariant, wifiOnly: Boolean)
+
     /** Stops the download and throws away what was fetched so far. */
     fun cancel(variant: ModelVariant)
 

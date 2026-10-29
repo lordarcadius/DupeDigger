@@ -42,6 +42,7 @@ import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.ImageHasher
+import com.vipuljha.dupedigger.domain.repository.PowerState
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
@@ -129,8 +130,13 @@ class RunScanUseCaseTest {
                 override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? = null
             },
         ),
+        power = object : PowerState {
+            override fun isCharging() = charging
+        },
         saveGroups = SaveGroupsUseCase(groups),
     )
+
+    private var charging = true
 
     /** sourceUri → perceptual hashes for images that decode. */
     private val imageHashes = mutableMapOf<String, ImageHashes>()
@@ -177,6 +183,21 @@ class RunScanUseCaseTest {
         assertEquals(1, summary.duplicateFiles)
         assertEquals(8L, summary.reclaimableBytes)
         assertEquals(ScanStage.SEMANTIC, progress.last().stage)
+    }
+
+    @Test
+    fun `set to run only while charging, a scan on battery skips the AI tier`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false, semanticEnabled = true, aiOnlyWhileCharging = true, aiModelId = "embeddinggemma-440m-text-vision")
+        charging = false
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.SEMANTIC })
     }
 
     @Test
@@ -374,6 +395,7 @@ class RunScanUseCaseTest {
             rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId && MediaKind.IMAGE in kinds }
                 .map { EmbeddedFile(it.id, it.sourceUri, it.sourceUri.substringAfterLast('/'), "image/jpeg", MediaKind.IMAGE, it.size, null) }
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
+        override suspend fun deleteEmbeddings(modelId: String) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
         private var nextId = 1L
 

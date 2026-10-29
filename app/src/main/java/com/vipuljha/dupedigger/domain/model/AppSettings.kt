@@ -13,6 +13,8 @@ data class AppSettings(
     /** The downloaded model the AI tier uses; null until one is chosen. */
     val aiModelId: String? = null,
     val aiBackend: EmbeddingBackend = EmbeddingBackend.CPU,
+    /** Run the AI tier only while the device charges; scans on battery skip it. */
+    val aiOnlyWhileCharging: Boolean = false,
 ) {
     companion object {
         val HammingRange = 0..64
@@ -20,5 +22,8 @@ data class AppSettings(
         /** The near-match threshold the UI offers; only 10 was timed, and wider bands slow grouping toward all-pairs (D-012). */
         val NearThresholdChoices = 4..12
         val SemanticRange = 0f..1f
+
+        /** The AI threshold the UI offers: unrelated photos scored up to 0.88 in the golden set (D-006). */
+        val SemanticChoices = 0.88f..0.98f
     }
 }

@@ -124,7 +124,12 @@ private fun SetupPanel(state: ScanState, onIntent: (ScanIntent) -> Unit) {
                 }
             }
             item(key = "tier-ai", contentType = "tier") {
-                TierRow(stringResource(R.string.scan_tier_ai), stringResource(R.string.scan_tier_ai_body), checked = false, enabled = false) {}
+                TierRow(
+                    stringResource(R.string.scan_tier_ai),
+                    stringResource(if (state.aiAvailable) R.string.scan_tier_ai_on_body else R.string.scan_tier_ai_body),
+                    state.aiEnabled,
+                    enabled = state.aiAvailable,
+                ) { onIntent(ScanIntent.AiToggled(it)) }
             }
             item(key = "start", contentType = "start") {
                 AppButton(

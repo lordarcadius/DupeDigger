@@ -23,6 +23,9 @@ data class ScanState(
     val scopes: ImmutableList<ScopeOptionUi> = persistentListOf(),
     val selectedScope: ScopeKind? = null,
     val nearEnabled: Boolean = true,
+    /** The AI tier can be switched only once a downloaded model is chosen. */
+    val aiAvailable: Boolean = false,
+    val aiEnabled: Boolean = false,
     val starting: Boolean = false,
     val cancelling: Boolean = false,
 ) : UiState
@@ -41,6 +44,7 @@ sealed interface ScanIntent : UiIntent {
     data object Refresh : ScanIntent
     data class ScopeSelected(val kind: ScopeKind) : ScanIntent
     data class NearToggled(val enabled: Boolean) : ScanIntent
+    data class AiToggled(val enabled: Boolean) : ScanIntent
     data object StartClicked : ScanIntent
     data object CancelClicked : ScanIntent
     data object ScanAgainClicked : ScanIntent

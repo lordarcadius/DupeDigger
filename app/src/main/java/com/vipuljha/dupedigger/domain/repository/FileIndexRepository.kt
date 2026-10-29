@@ -53,6 +53,9 @@ interface FileIndexRepository {
     /** Stores normalised vectors under [modelKey]; other models' vectors are left alone. */
     suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>)
 
+    /** Deletes every vector stored for the model [modelId], at any size. */
+    suspend fun deleteEmbeddings(modelId: String)
+
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 
     /** Deletes the files' rows and everything derived from them, including group memberships. */

@@ -15,6 +15,7 @@ import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.usecase.CancelScanUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetAvailableScopesUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
+import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
@@ -44,6 +45,7 @@ class ScanViewModel @Inject constructor(
     private val startScan: StartScanUseCase,
     private val cancelScan: CancelScanUseCase,
     private val setNearEnabled: SetNearDuplicatesEnabledUseCase,
+    private val setAiEnabled: SetSemanticEnabledUseCase,
 ) : MviViewModel<ScanState, ScanIntent, ScanEffect>(ScanState()) {
 
     private var available: List<ScanScope> = emptyList()
@@ -61,6 +63,11 @@ class ScanViewModel @Inject constructor(
             .map { it.nearDuplicatesEnabled }
             .distinctUntilChanged()
             .onEach { setState { copy(nearEnabled = it) } }
+            .launchIn(viewModelScope)
+        settings.settings
+            .map { (it.aiModelId != null) to (it.semanticEnabled && it.aiModelId != null) }
+            .distinctUntilChanged()
+            .onEach { (available, enabled) -> setState { copy(aiAvailable = available, aiEnabled = enabled) } }
             .launchIn(viewModelScope)
         viewModelScope.launch {
             loadScopes()
@@ -86,6 +93,7 @@ class ScanViewModel @Inject constructor(
             ScanIntent.Refresh -> viewModelScope.launch { loadScopes() }
             is ScanIntent.ScopeSelected -> setState { copy(selectedScope = intent.kind) }
             is ScanIntent.NearToggled -> viewModelScope.launch { setNearEnabled(intent.enabled) }
+            is ScanIntent.AiToggled -> viewModelScope.launch { setAiEnabled(intent.enabled) }
             ScanIntent.StartClicked -> start()
             ScanIntent.CancelClicked -> {
                 setState { copy(cancelling = true) }

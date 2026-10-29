@@ -39,6 +39,7 @@ class EmbedderDeviceTest {
     private val variant = ModelCatalog.variants.first { it.id == "embeddinggemma-440m-text-vision" }
     private val downloads = object : ModelDownloads {
         override fun start(variant: ModelVariant, wifiOnly: Boolean) = Unit
+        override fun restart(variant: ModelVariant, wifiOnly: Boolean) = Unit
         override fun cancel(variant: ModelVariant) = Unit
         override suspend fun delete(variant: ModelVariant) = Unit
         override fun observe(variant: ModelVariant) = emptyFlow<ModelDownloadState>()

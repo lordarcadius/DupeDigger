@@ -121,6 +121,7 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
+        override suspend fun deleteEmbeddings(modelId: String) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) =
             ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.IMAGE, 10) }
         override suspend fun remove(ids: Collection<Long>) {
