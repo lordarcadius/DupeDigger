@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.domain.usecase
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
+import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.ScanFilter
@@ -26,6 +27,7 @@ import javax.inject.Inject
  * One scan of a scope, recorded as a scan run.
  * - Fails with PermissionDenied before touching the index when the scope can't be read.
  * - Runs the stages in order (index, then exact) and reports progress for each.
+ * - Only a scan that completes replaces the saved groups; a cancelled or failed one leaves the previous results.
  * - Every stage caches per file, so a scan restarted after process death redoes nothing it already finished.
  * - The run always ends with a status; if the process dies first, the next run marks it interrupted.
  */
@@ -37,6 +39,7 @@ class RunScanUseCase @Inject constructor(
     private val scanRuns: ScanRunRepository,
     private val indexFiles: IndexFilesUseCase,
     private val findExact: FindExactDuplicatesUseCase,
+    private val saveExactGroups: SaveExactGroupsUseCase,
 ) {
     suspend operator fun invoke(
         scope: ScanScope,
@@ -58,7 +61,7 @@ class RunScanUseCase @Inject constructor(
                 val exact = findExact(scanId, appSettings.minFileSizeBytes) { done, total ->
                     onProgress(ScanProgress(ScanStage.EXACT, done, total))
                 }
-                exact.toSummary(index)
+                exact.toSummary(index, kept = saveExactGroups(scanId, exact.groups))
             }
             summary = result.getOrNull()
             status = if (summary != null) ScanStatus.COMPLETED else ScanStatus.FAILED
@@ -71,11 +74,11 @@ class RunScanUseCase @Inject constructor(
         }
     }
 
-    private fun ExactScanResult.toSummary(index: IndexStats) = ScanSummary(
+    private fun ExactScanResult.toSummary(index: IndexStats, kept: List<ExactGroup>) = ScanSummary(
         index = index,
-        exactGroups = groups.size,
-        duplicateFiles = groups.sumOf { it.fileIds.size - 1 },
-        reclaimableBytes = groups.sumOf { it.size * (it.fileIds.size - 1) },
+        exactGroups = kept.size,
+        duplicateFiles = kept.sumOf { it.fileIds.size - 1 },
+        reclaimableBytes = kept.sumOf { it.size * (it.fileIds.size - 1) },
         hashesComputed = partialHashed + fullHashed,
         unreadable = unreadable,
     )

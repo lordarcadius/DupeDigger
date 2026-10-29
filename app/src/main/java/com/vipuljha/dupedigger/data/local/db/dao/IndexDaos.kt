@@ -104,7 +104,13 @@ interface DuplicateGroupDao {
     suspend fun insertGroup(group: DuplicateGroupEntity): Long
 
     @Insert
+    suspend fun insertGroups(groups: List<DuplicateGroupEntity>): List<Long>
+
+    @Insert
     suspend fun insertMembers(members: List<GroupMemberEntity>)
+
+    @Query("DELETE FROM duplicate_group")
+    suspend fun deleteAll()
 
     @Transaction
     suspend fun insertGroupWithMembers(group: DuplicateGroupEntity, members: List<GroupMemberEntity>): Long {

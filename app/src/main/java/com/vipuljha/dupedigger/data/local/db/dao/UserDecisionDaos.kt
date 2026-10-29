@@ -20,6 +20,9 @@ interface IgnoredGroupDao {
 
     @Query("SELECT fingerprint FROM ignored_group")
     fun observeFingerprints(): Flow<List<String>>
+
+    @Query("SELECT fingerprint FROM ignored_group")
+    suspend fun fingerprints(): List<String>
 }
 
 @Dao

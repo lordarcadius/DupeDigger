@@ -2,6 +2,7 @@ package com.vipuljha.dupedigger.di
 
 import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
 import com.vipuljha.dupedigger.data.local.prefs.SettingsRepositoryImpl
+import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ExcludedPathRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
@@ -10,6 +11,7 @@ import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
 import com.vipuljha.dupedigger.data.storage.AndroidStorageAccess
 import com.vipuljha.dupedigger.data.worker.WorkManagerScanScheduler
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
+import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
@@ -53,4 +55,7 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindScanScheduler(impl: WorkManagerScanScheduler): ScanScheduler
+
+    @Binds
+    abstract fun bindDuplicateGroupRepository(impl: DuplicateGroupRepositoryImpl): DuplicateGroupRepository
 }

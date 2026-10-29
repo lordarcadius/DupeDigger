@@ -205,9 +205,24 @@ Keep the template's minSdk 31, compile/target 37, AGP 9.5 built-in Kotlin and th
 
 **Keys:**
 - User-decision rows never reference the rebuildable index tables.
-- `ignored_group` and `keep_choice` match on a group fingerprint, which P3-03 defines. `keep_choice` stores the keeper's `sourceUri`, not a row id.
+- `ignored_group` and `keep_choice` match on a group fingerprint, defined in D-011. `keep_choice` stores the keeper's `sourceUri`, not a row id.
 
 **Settings:** settings are in Preferences DataStore (`settings` file): near and semantic tier toggles, the Hamming and semantic thresholds, the minimum file size and hidden-file skipping.
 - Defaults: near on, semantic off, Hamming 10, semantic 0.90 (D-006), minimum size 1 byte (empty files skipped), hidden files skipped.
 - Excluded paths are in Room `excluded_path`.
 - PLAN.md listed a theme setting. It was dropped, because the house design has the theme follow the system with no in-app toggle (D-009).
+
+## D-011: Group fingerprint and default keeper (accepted, P3-03)
+**Fingerprint:** an exact group is identified by its content: `EXACT:<size>:<SHA-256>` (`exactFingerprint`).
+- It survives moves, renames, index rows being rebuilt, and new copies of the same content appearing, so "not duplicates" and keep choices hold across rescans.
+- Marking a group "not duplicates" therefore also covers future copies of that content.
+- Saved user choices are keyed by this string, so changing its format needs a migration of `ignored_group` and `keep_choice`.
+- Near and semantic groups (P5, P6) will need a member-based fingerprint, defined then.
+
+**Default keeper:** computed when groups are read, not stored, so a keep choice or a later metadata measurement needs no rewrite. The ranking (`rankKeeper`), best first:
+1. higher quality (pixels or bitrate), once measured; it is not measured yet and is equal within an exact group anyway;
+2. location: a file under `DCIM/` beats one in an unremarkable folder, which beats a copy under `WhatsApp/`, `Telegram/`, `Download(s)/`, `Messenger/`, `Android/media/`, `.thumbnails/` or `cache/`, matched on whole folder names;
+3. the oldest modification time, with an unknown time (0) ranked last;
+4. `sourceUri`, so the result is always the same.
+
+A saved keep choice wins while that file is still in the group.

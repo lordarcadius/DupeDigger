@@ -92,6 +92,11 @@ Rules:
   - a restart redoes nothing cached, because the caches are keyed by file, not by scan;
   - it runs as a `dataSync` foreground service when allowed, and as a plain job when restarted from the background;
   - progress (`stage`, `done`, `total`) reaches WorkManager and the notification at most every 500 ms per stage.
+- Groups (`SaveExactGroupsUseCase`) replace the saved results in one transaction, only when a scan completes:
+  - groups whose fingerprint is in `ignored_group` are not saved, nor counted in the summary (fingerprint and keeper rules: D-011);
+  - marking a group "not duplicates" (P4-04) must add the fingerprint and delete the saved group in one transaction; un-ignoring brings it back on the next scan;
+  - the keeper is computed on read by `SuggestKeeperUseCase`;
+  - a later scan's index stage can prune members of the saved groups, so group queries return only groups with at least two members.
 
 ## Data model (Room)
 

@@ -17,6 +17,7 @@ import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
+import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
@@ -47,6 +48,7 @@ class RunScanUseCaseTest {
     private val index = FakeIndex()
     private val hasher = FakeHasher(disk)
     private val runs = FakeScanRuns()
+    private val groups = DuplicateGroupUseCasesTest.FakeGroups()
     private val enumerator = FakeEnumerator(disk)
     private val access = MutableStateFlow(StorageAccessState(MediaAccess.FULL, allFiles = true))
     private var settings = AppSettings(minFileSizeBytes = 1, skipHiddenFiles = true)
@@ -73,6 +75,7 @@ class RunScanUseCaseTest {
         scanRuns = runs,
         indexFiles = IndexFilesUseCase(enumerator, index),
         findExact = FindExactDuplicatesUseCase(index, hasher),
+        saveExactGroups = SaveExactGroupsUseCase(groups),
     )
 
     private fun put(name: String, content: String) {
@@ -98,6 +101,35 @@ class RunScanUseCaseTest {
         assertEquals(ScanStage.EXACT, stages.last())
         assertEquals(stages.sorted(), stages)
         assertEquals(ScanStatus.COMPLETED to summary, runs.runs.single().second to runs.runs.single().third)
+    }
+
+    @Test
+    fun `a completed scan saves its groups and leaves ignored ones out of the summary`() = runTest {
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.mp4", "video-22")
+        put("d.mp4", "video-22")
+        groups.ignored += exactFingerprint(8, "f:video-22")
+
+        val summary = (runScan(ScanScope.WholeDevice) as Outcome.Success).data
+
+        assertEquals(1, summary.exactGroups)
+        assertEquals(7L, summary.reclaimableBytes)
+        val (scanId, saved) = groups.saved!!
+        assertEquals(runs.runs.single().first, scanId)
+        assertEquals(listOf("EXACT:7:f:photo-1"), saved.map { it.fingerprint })
+    }
+
+    @Test
+    fun `a cancelled scan leaves the previous groups alone`() = runTest {
+        repeat(2) { put("v$it.mp4", "video") }
+        hasher.blockFullHashesAfter = 0
+        val stopped = launch { runScan(ScanScope.WholeDevice) }
+        advanceUntilIdle()
+        stopped.cancel()
+        stopped.join()
+
+        assertEquals(null, groups.saved)
     }
 
     @Test
