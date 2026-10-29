@@ -130,5 +130,6 @@ class DeleteDuplicatesUseCaseTest {
                 failedIds = ids.filter { it in fail }.toImmutableList(),
             )
         }
+        override suspend fun untrash(mediaUris: List<String>) = 0
     }
 }

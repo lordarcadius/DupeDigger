@@ -12,14 +12,28 @@ import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanStatus
+import com.vipuljha.dupedigger.core.common.DomainError
+import com.vipuljha.dupedigger.core.ui.toUiText
+import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
+import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
+import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
+import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
 import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
+import com.vipuljha.dupedigger.presentation.FakeFileIndex
+import com.vipuljha.dupedigger.presentation.FakeQuarantine
 import com.vipuljha.dupedigger.presentation.FakeReclaimGroups
+import com.vipuljha.dupedigger.presentation.FakeRemover
 import com.vipuljha.dupedigger.presentation.FakeScanRuns
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -62,7 +76,98 @@ class ResultsViewModelTest {
         Locale.setDefault(saved)
     }
 
-    private fun viewModel() = ResultsViewModel(repo, runs, GetDuplicateGroupsUseCase(repo), SelectAllButKeepersUseCase(repo))
+    private val index = FakeFileIndex((1L..4L).toSet())
+    private val remover = FakeRemover()
+    private val quarantine = FakeQuarantine()
+
+    private fun viewModel() = ResultsViewModel(
+        repo, runs, GetDuplicateGroupsUseCase(repo), SelectAllButKeepersUseCase(repo),
+        DeleteDuplicatesUseCase(repo, index, remover), ConfirmTrashUseCase(index), UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
+    )
+
+    private fun TestScope.effectsOf(vm: ResultsViewModel) = mutableListOf<ResultsEffect>().also { effects ->
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effect.toList(effects) }
+    }
+
+    @Test
+    fun `delete asks first, naming the count and the space`() {
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+
+        vm.onIntent(ResultsIntent.DeleteClicked)
+        assertEquals(
+            DeleteConfirmUi(2, UiText.plural(R.plurals.results_delete_title, 2, "2"), UiText.res(R.string.results_delete_body, formatBytes(200))),
+            vm.state.value.confirmDelete,
+        )
+
+        vm.onIntent(ResultsIntent.DeleteDismissed)
+        assertNull(vm.state.value.confirmDelete)
+        assertEquals((1L..4L).toSet(), index.ids)
+    }
+
+    @Test
+    fun `a confirmed delete removes the files, clears the selection and offers undo`() = runTest {
+        remover.trashable += 2L
+        val vm = viewModel()
+        val effects = effectsOf(vm)
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.DeleteClicked)
+
+        vm.onIntent(ResultsIntent.DeleteConfirmed)
+
+        assertEquals(setOf(1L, 4L), index.ids)
+        assertTrue(vm.state.value.selection.isEmpty())
+        assertFalse(vm.state.value.deleting)
+        val removed = UiText.plural(R.plurals.results_removed, 2, "2", formatBytes(200))
+        val undo = UndoUi(persistentListOf("media:2"), persistentListOf(103L))
+        assertEquals(listOf<ResultsEffect>(ResultsEffect.ShowMessage(removed, undo)), effects)
+
+        vm.onIntent(ResultsIntent.UndoClicked(undo))
+        assertEquals(listOf("media:2"), remover.untrashed)
+        assertEquals(listOf(103L), quarantine.restored)
+        assertEquals(ResultsEffect.ShowMessage(UiText.plural(R.plurals.restored, 2, "2")), effects.last())
+    }
+
+    @Test
+    fun `media waiting for consent leaves the index only once the user agrees`() = runTest {
+        remover.needConsent += 2L
+        val vm = viewModel()
+        val effects = effectsOf(vm)
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+
+        vm.onIntent(ResultsIntent.DeleteConfirmed)
+
+        assertEquals(ResultsEffect.LaunchTrash("prompt"), effects.last())
+        assertTrue(2L in index.ids)
+
+        vm.onIntent(ResultsIntent.TrashAnswered(accepted = true))
+        assertTrue(2L !in index.ids)
+        assertEquals(ResultsEffect.ShowMessage(UiText.plural(R.plurals.results_removed, 1, "1", formatBytes(100))), effects.last())
+    }
+
+    @Test
+    fun `declining the trash prompt keeps the media`() = runTest {
+        remover.needConsent += 2L
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.DeleteConfirmed)
+
+        vm.onIntent(ResultsIntent.TrashAnswered(accepted = false))
+
+        assertTrue(2L in index.ids)
+    }
+
+    @Test
+    fun `a delete that would empty a group is refused with a reason`() = runTest {
+        val vm = viewModel()
+        val effects = effectsOf(vm)
+        vm.onIntent(ResultsIntent.GroupToggled(images.toItem().toRow().copy(removable = persistentMapOf(1L to 100L, 2L to 100L))))
+
+        vm.onIntent(ResultsIntent.DeleteConfirmed)
+
+        assertEquals(listOf<ResultsEffect>(ResultsEffect.ShowMessage(DomainError.WouldRemoveAllCopies.toUiText())), effects)
+        assertEquals((1L..4L).toSet(), index.ids)
+    }
 
     @Test
     fun `select duplicates takes every file but each group's keeper`() {

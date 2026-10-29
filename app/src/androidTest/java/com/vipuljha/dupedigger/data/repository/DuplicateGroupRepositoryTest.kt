@@ -10,6 +10,8 @@ import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
 import com.vipuljha.dupedigger.domain.detector.toItem
 import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.KindReclaim
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.usecase.SaveExactGroupsUseCase
 import com.vipuljha.dupedigger.domain.model.MatchTier
@@ -85,6 +87,24 @@ class DuplicateGroupRepositoryTest {
         val kept = save(3, listOf(ExactGroup(10, "aaa", persistentListOf(a, b)), ExactGroup(10, "bbb", persistentListOf(c, d))))
         assertEquals(listOf("bbb"), kept.map { it.fullHash })
         assertNull(repository.observeGroup(fingerprint).first())
+    }
+
+    @Test
+    fun removingDeletedFilesFromTheIndexShrinksWhatHomeShowsAsReclaimable() = runBlocking {
+        val ids = (1..5).map { file("r$it") }
+        repository.replaceGroups(
+            1,
+            listOf(
+                FoundGroup("EXACT:10:a", MatchTier.EXACT, 1f, persistentListOf(ids[0], ids[1], ids[2])),
+                FoundGroup("EXACT:10:b", MatchTier.EXACT, 1f, persistentListOf(ids[3], ids[4])),
+            ),
+        )
+        assertEquals(listOf(KindReclaim(MediaKind.OTHER, groups = 2, files = 3, bytes = 30)), repository.observeReclaimable().first())
+
+        // What DeleteDuplicatesUseCase does after the files are trashed or quarantined.
+        FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao()).remove(listOf(ids[1], ids[4]))
+
+        assertEquals(listOf(KindReclaim(MediaKind.OTHER, groups = 1, files = 1, bytes = 10)), repository.observeReclaimable().first())
     }
 
     @Test

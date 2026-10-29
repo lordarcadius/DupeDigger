@@ -15,7 +15,19 @@ import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
+import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.QuarantinedFile
+import com.vipuljha.dupedigger.domain.model.RemovalResult
+import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.TrashConsent
+import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
+import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
+import com.vipuljha.dupedigger.domain.repository.FileRemover
+import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
@@ -86,7 +98,8 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     }
     override suspend fun ignoredFingerprints() = emptySet<String>()
     override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
-    override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
+    override suspend fun groupsContaining(fileIds: Set<Long>) =
+        groups.map { g -> g.members.map { it.fileId }.toSet() }.filter { set -> set.any { it in fileIds } }
     override suspend fun keepChoice(fingerprint: String): String? = null
 
     val detail = MutableStateFlow<GroupWithMembers?>(null)
@@ -103,5 +116,66 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     override suspend fun markNotDuplicates(fingerprint: String) {
         notDuplicates += fingerprint
         detail.value = null
+    }
+}
+
+class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
+    val ids = initial.toMutableSet()
+
+    override suspend fun filesByIds(ids: Collection<Long>) =
+        ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.OTHER, 100) }
+    override suspend fun remove(ids: Collection<Long>) {
+        this.ids -= ids.toSet()
+    }
+    override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
+    override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
+    override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
+    override suspend fun saveHashes(files: List<IndexedFile>) = Unit
+}
+
+/**
+ * Removes every file except those in [needConsent], which await the trash prompt.
+ * - Files in [trashable] are trashed as `media:<id>`; the rest are quarantined as id + 100.
+ */
+class FakeRemover : FileRemover {
+    val needConsent = mutableSetOf<Long>()
+    val trashable = mutableSetOf<Long>()
+    val untrashed = mutableListOf<String>()
+
+    override suspend fun remove(files: List<StoredFile>): RemovalResult {
+        val ids = files.map { it.id }
+        val removed = ids.filter { it !in needConsent }
+        val consentIds = ids.filter { it in needConsent }
+        return RemovalResult(
+            removedIds = removed.toImmutableList(),
+            trashedUris = removed.filter { it in trashable }.map { "media:$it" }.toImmutableList(),
+            quarantineIds = removed.filterNot { it in trashable }.map { it + 100 }.toImmutableList(),
+            consent = consentIds.takeIf { it.isNotEmpty() }?.let { TrashConsent(it.toImmutableList(), persistentListOf(), platformRequest = "prompt") },
+            failedIds = persistentListOf(),
+        )
+    }
+
+    override suspend fun untrash(mediaUris: List<String>): Int {
+        untrashed += mediaUris
+        return 0
+    }
+}
+
+class FakeQuarantine : QuarantineRepository {
+    val files = MutableStateFlow<List<QuarantinedFile>>(emptyList())
+    val restored = mutableListOf<Long>()
+    val failing = mutableSetOf<Long>()
+
+    override fun observeAll() = files
+    override suspend fun restore(id: Long): Outcome<Unit> {
+        if (id in failing) return Outcome.Failure(DomainError.Io)
+        restored += id
+        files.update { list -> list.filterNot { it.id == id } }
+        return Outcome.Success(Unit)
+    }
+    override suspend fun deletePermanently(id: Long): Outcome<Unit> {
+        if (id in failing) return Outcome.Failure(DomainError.Io)
+        files.update { list -> list.filterNot { it.id == id } }
+        return Outcome.Success(Unit)
     }
 }

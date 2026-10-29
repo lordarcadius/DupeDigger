@@ -97,7 +97,7 @@ class AndroidFileRemoverTest {
         assertNull(result.consent)
         assertFalse(isVisible(image))
         assertTrue(isTrashed(image.imageUri))
-        assertEquals(1, restore(image.imageUri))
+        assertEquals(0, remover.untrash(result.trashedUris))
         assertTrue(isVisible(image))
     }
 

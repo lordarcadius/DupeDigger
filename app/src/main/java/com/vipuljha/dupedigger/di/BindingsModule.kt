@@ -5,6 +5,7 @@ import com.vipuljha.dupedigger.data.local.prefs.SettingsRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ExcludedPathRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
+import com.vipuljha.dupedigger.data.repository.QuarantineRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
 import com.vipuljha.dupedigger.data.storage.AndroidFileEnumerator
 import com.vipuljha.dupedigger.data.storage.AndroidFileInspector
@@ -19,6 +20,7 @@ import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileInspector
 import com.vipuljha.dupedigger.domain.repository.FileRemover
+import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
@@ -68,4 +70,7 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindFileInspector(impl: AndroidFileInspector): FileInspector
+
+    @Binds
+    abstract fun bindQuarantineRepository(impl: QuarantineRepositoryImpl): QuarantineRepository
 }

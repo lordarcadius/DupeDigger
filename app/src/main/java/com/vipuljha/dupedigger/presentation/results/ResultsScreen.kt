@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -36,6 +37,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,6 +64,7 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.designsystem.AppButton
+import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
 import com.vipuljha.dupedigger.core.designsystem.AppMotion
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
@@ -81,6 +85,7 @@ fun ResultsScreen(
     groups: LazyPagingItems<GroupRowUi>,
     onIntent: (ResultsIntent) -> Unit,
     onOpenGroup: (fingerprint: String) -> Unit,
+    snackbarHostState: SnackbarHostState,
     onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -88,13 +93,27 @@ fun ResultsScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_results)) } },
-        bottomBar = { state.selectionSummary?.let { SelectionBar(it.asString()) { onIntent(ResultsIntent.ClearSelection) } } },
+        bottomBar = { state.selectionSummary?.let { SelectionBar(it.asString(), state.deleting, onIntent) } },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.kindChips.size > 1) KindChips(state, onIntent)
             GroupList(state, groups, onIntent, onOpenGroup, Modifier.weight(1f))
         }
     }
+    state.confirmDelete?.let { DeleteDialog(it, onIntent) }
+}
+
+@Composable
+private fun DeleteDialog(confirm: DeleteConfirmUi, onIntent: (ResultsIntent) -> Unit) {
+    AppDialog(
+        onDismissRequest = { onIntent(ResultsIntent.DeleteDismissed) },
+        onEnter = { onIntent(ResultsIntent.DeleteConfirmed) },
+        title = { Text(confirm.title.asString()) },
+        text = { Text(confirm.body.asString()) },
+        confirmButton = { AppButton(stringResource(R.string.action_delete), { onIntent(ResultsIntent.DeleteConfirmed) }, kind = ButtonKind.Destructive) },
+        dismissButton = { AppButton(stringResource(R.string.action_cancel), { onIntent(ResultsIntent.DeleteDismissed) }, kind = ButtonKind.Text) },
+    )
 }
 
 @Composable
@@ -254,7 +273,7 @@ private fun MediaKind.icon(): ImageVector = when (this) {
 }
 
 @Composable
-private fun SelectionBar(summary: String, onClear: () -> Unit) {
+private fun SelectionBar(summary: String, deleting: Boolean, onIntent: (ResultsIntent) -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = LocalPaneMetrics.current.gutter, vertical = Dimens.spaceSm),
@@ -265,7 +284,8 @@ private fun SelectionBar(summary: String, onClear: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
             )
-            AppButton(stringResource(R.string.results_action_clear), onClear, kind = ButtonKind.Text)
+            AppButton(stringResource(R.string.results_action_clear), { onIntent(ResultsIntent.ClearSelection) }, kind = ButtonKind.Text, enabled = !deleting)
+            AppButton(stringResource(R.string.action_delete), { onIntent(ResultsIntent.DeleteClicked) }, icon = Icons.Filled.Delete, loading = deleting)
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import com.vipuljha.dupedigger.core.common.IoDispatcher
@@ -83,6 +84,18 @@ class AndroidFileRemover @Inject constructor(
             },
             failedIds = failed.toImmutableList(),
         )
+    }
+
+    override suspend fun untrash(mediaUris: List<String>): Int = withContext(ioDispatcher) {
+        val includeTrashed = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
+        mediaUris.count { uri ->
+            try {
+                resolver.update(Uri.parse(uri), ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 0) }, includeTrashed) == 0
+            } catch (e: SecurityException) {
+                Timber.w(e, "Couldn't take a file out of the trash")
+                true
+            }
+        }
     }
 
     /** Works for media the app owns, and where the platform lets it trash others' media without asking. */

@@ -11,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,7 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-enum class ButtonKind { Filled, Tonal, Outlined, Text }
+/** [Destructive] is a text button in `error`, for confirming an action that loses data. */
+enum class ButtonKind { Filled, Tonal, Outlined, Text, Destructive }
 
 @Composable
 fun AppButton(
@@ -55,11 +57,16 @@ fun AppButton(
         )
         ButtonKind.Outlined -> OutlinedButton(onClick, modifier, active, contentPadding = contentPadding, content = content)
         ButtonKind.Text -> TextButton(onClick, modifier, active, contentPadding = contentPadding, content = content)
+        ButtonKind.Destructive -> TextButton(
+            onClick, modifier, active,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            contentPadding = contentPadding, content = content,
+        )
     }
 }
 
 private fun buttonPadding(kind: ButtonKind, leading: Boolean) = when {
-    kind == ButtonKind.Text -> if (leading) ButtonDefaults.TextButtonWithIconContentPadding else ButtonDefaults.TextButtonContentPadding
+    kind == ButtonKind.Text || kind == ButtonKind.Destructive -> if (leading) ButtonDefaults.TextButtonWithIconContentPadding else ButtonDefaults.TextButtonContentPadding
     leading -> ButtonDefaults.ButtonWithIconContentPadding
     else -> ButtonDefaults.ContentPadding
 }

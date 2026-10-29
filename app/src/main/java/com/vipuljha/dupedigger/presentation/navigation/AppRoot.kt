@@ -29,6 +29,7 @@ import com.vipuljha.dupedigger.core.designsystem.pushTransition
 import com.vipuljha.dupedigger.presentation.group.GroupRoute
 import com.vipuljha.dupedigger.presentation.group.groupViewModel
 import com.vipuljha.dupedigger.presentation.home.HomeRoute
+import com.vipuljha.dupedigger.presentation.quarantine.QuarantineRoute
 import com.vipuljha.dupedigger.presentation.results.ResultsRoute
 import com.vipuljha.dupedigger.presentation.scan.ScanRoute
 import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
@@ -80,7 +81,7 @@ fun AppRoot(modifier: Modifier = Modifier) {
             GroupRoute(onBack = back, viewModel = groupViewModel(key.fingerprint))
         }
         entry<Destination.Quarantine>(metadata = topLevel) {
-            PlaceholderScreen(stringResource(TopLevelTab.Quarantine.label), LocalMenuClick.current)
+            QuarantineRoute(onMenuClick = LocalMenuClick.current)
         }
         entry<Destination.Settings>(metadata = topLevel) {
             SettingsRoute(onMenuClick = LocalMenuClick.current)

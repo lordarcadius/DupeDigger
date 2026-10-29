@@ -19,7 +19,13 @@ data class ResultsState(
     val selection: ImmutableMap<Long, Long> = persistentMapOf(),
     val selectionSummary: UiText? = null,
     val selecting: Boolean = false,
+    val confirmDelete: DeleteConfirmUi? = null,
+    val deleting: Boolean = false,
 ) : UiState
+
+/** The delete confirmation: how many files and how much space. */
+@Immutable
+data class DeleteConfirmUi(val count: Int, val title: UiText, val body: UiText)
 
 @Immutable
 data class KindChipUi(val kind: MediaKind?, val label: UiText)
@@ -43,8 +49,25 @@ sealed interface ResultsIntent : UiIntent {
     data object SelectAllButKeepers : ResultsIntent
     data object ClearSelection : ResultsIntent
     data object StartScanClicked : ResultsIntent
+    data object DeleteClicked : ResultsIntent
+    data object DeleteConfirmed : ResultsIntent
+    data object DeleteDismissed : ResultsIntent
+    data class TrashAnswered(val accepted: Boolean) : ResultsIntent
+    data class UndoClicked(val undo: UndoUi) : ResultsIntent
 }
 
 sealed interface ResultsEffect : UiEffect {
     data object OpenScan : ResultsEffect
+
+    /** Show the system trash prompt; [request] is the platform's `IntentSender`. */
+    data class LaunchTrash(val request: Any) : ResultsEffect
+
+    /** A snackbar; with [undo] it offers Undo. */
+    data class ShowMessage(val message: UiText, val undo: UndoUi? = null) : ResultsEffect
+}
+
+/** What Undo puts back: media this app trashed, and quarantined files. */
+@Immutable
+data class UndoUi(val trashedUris: ImmutableList<String>, val quarantineIds: ImmutableList<Long>) {
+    val count: Int get() = trashedUris.size + quarantineIds.size
 }

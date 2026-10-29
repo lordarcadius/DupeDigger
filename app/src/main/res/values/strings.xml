@@ -8,6 +8,9 @@
     <string name="open_navigation">Open navigation</string>
     <string name="action_back">Back</string>
     <string name="action_retry">Retry</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_undo">Undo</string>
 
     <string name="size_b">%1$s B</string>
     <string name="size_kb">%1$s kB</string>
@@ -81,6 +84,38 @@
     <string name="results_empty_kind_body">Pick another category, or show all groups.</string>
     <string name="results_error_title">Couldn’t load the results</string>
     <string name="results_error_more">Couldn’t load more groups.</string>
+    <plurals name="results_delete_title">
+        <item quantity="one">Delete %1$s file?</item>
+        <item quantity="other">Delete %1$s files?</item>
+    </plurals>
+    <string name="results_delete_body">This frees %1$s. Photos, videos and music go to the system trash, where they stay for 30 days. Other files move to Quarantine, where you can restore them.</string>
+    <plurals name="results_removed">
+        <item quantity="one">%1$s file removed · %2$s freed</item>
+        <item quantity="other">%1$s files removed · %2$s freed</item>
+    </plurals>
+    <plurals name="results_remove_failed">
+        <item quantity="one">Couldn’t remove %1$s file. It’s still in its group.</item>
+        <item quantity="other">Couldn’t remove %1$s files. They’re still in their groups.</item>
+    </plurals>
+
+    <string name="quarantine_note">Files here are kept until you restore or delete them. Uninstalling Dupe Digger deletes them.</string>
+    <string name="quarantine_item_details">%1$s · moved %2$s</string>
+    <string name="quarantine_action_restore">Restore</string>
+    <string name="quarantine_action_delete">Delete permanently</string>
+    <string name="quarantine_delete_title">Delete “%1$s” permanently?</string>
+    <string name="quarantine_delete_body">The file is erased from this device. You can’t undo this.</string>
+    <string name="quarantine_deleted">“%1$s” deleted</string>
+    <string name="quarantine_empty_title">Quarantine is empty</string>
+    <string name="quarantine_empty_body">Deleted files that aren’t photos, videos or music wait here until you restore them.</string>
+    <string name="quarantine_error_title">Couldn’t load quarantine</string>
+    <plurals name="restored">
+        <item quantity="one">%1$s file restored. Scan again to see it in results.</item>
+        <item quantity="other">%1$s files restored. Scan again to see them in results.</item>
+    </plurals>
+    <plurals name="restore_failed">
+        <item quantity="one">Couldn’t restore %1$s file. Its original place may be taken or no longer accessible.</item>
+        <item quantity="other">Couldn’t restore %1$s files. Their original places may be taken or no longer accessible.</item>
+    </plurals>
 
     <string name="value_unknown">—</string>
     <string name="group_title">Duplicate group</string>

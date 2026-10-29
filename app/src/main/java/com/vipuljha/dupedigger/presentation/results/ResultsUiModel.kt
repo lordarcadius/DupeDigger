@@ -51,3 +51,16 @@ fun selectionSummary(selection: Map<Long, Long>): UiText? =
     } else {
         UiText.plural(R.plurals.results_selected, selection.size, formatCount(selection.size), formatBytes(selection.values.sum()))
     }
+
+fun deleteConfirm(selection: Map<Long, Long>) = DeleteConfirmUi(
+    count = selection.size,
+    title = UiText.plural(R.plurals.results_delete_title, selection.size, formatCount(selection.size)),
+    body = UiText.res(R.string.results_delete_body, formatBytes(selection.values.sum())),
+)
+
+/** What a delete did, as a snackbar line; null when nothing moved. */
+fun removedMessage(count: Int, bytes: Long): UiText? =
+    if (count == 0) null else UiText.plural(R.plurals.results_removed, count, formatCount(count), formatBytes(bytes))
+
+fun failedMessage(count: Int): UiText? =
+    if (count == 0) null else UiText.plural(R.plurals.results_remove_failed, count, formatCount(count))
