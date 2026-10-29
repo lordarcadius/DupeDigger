@@ -56,7 +56,7 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
                  video:  N keyframes via MediaMetadataRetriever → per-frame pHash
                  audio:  duration + tags first; acoustic fingerprint is an AI-tier concern
                  docs:   extract text (PDF, txt, docx) → 64-bit SimHash
-                 → BK-tree / banding to find pairs within the Hamming threshold
+                 → multi-index hashing (banding, D-012) to find pairs within the Hamming threshold
                  → union-find into groups  ⇒ MatchTier.NEAR
 4. Semantic   ── (opt-in, model downloaded) EmbeddingGemma → L2-normalised vector
                  → brute-force cosine within each MediaKind bucket (ANN only if measured too slow)

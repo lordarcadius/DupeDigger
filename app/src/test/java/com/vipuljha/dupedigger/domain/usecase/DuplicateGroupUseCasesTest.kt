@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.GroupMember
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
+import com.vipuljha.dupedigger.domain.model.NearGroup
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import kotlinx.collections.immutable.persistentListOf
@@ -57,7 +58,7 @@ class DuplicateGroupUseCasesTest {
             ExactGroup(50, "bbb", persistentListOf(4, 5)),
         )
 
-        val kept = SaveExactGroupsUseCase(repo)(scanId = 7, exactGroups = groups)
+        val kept = SaveGroupsUseCase(repo)(scanId = 7, exactGroups = groups).exact
 
         assertEquals(listOf(groups[1]), kept)
         val (scanId, saved) = repo.saved!!
@@ -66,10 +67,31 @@ class DuplicateGroupUseCasesTest {
     }
 
     @Test
+    fun `near groups are saved with the exact ones in one go, unless marked not duplicates`() = runTest {
+        val near = NearGroup("NEAR:abc", persistentListOf(4, 5), score = 0.97f)
+        repo.ignored += "NEAR:ignored"
+
+        val kept = SaveGroupsUseCase(repo)(
+            scanId = 9,
+            exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))),
+            nearGroups = listOf(near, NearGroup("NEAR:ignored", persistentListOf(6, 7), score = 1f)),
+        )
+
+        assertEquals(listOf(near), kept.near)
+        assertEquals(
+            listOf(
+                FoundGroup("EXACT:100:aaa", MatchTier.EXACT, 1f, persistentListOf(1, 2)),
+                FoundGroup("NEAR:abc", MatchTier.NEAR, 0.97f, persistentListOf(4, 5)),
+            ),
+            repo.saved!!.second,
+        )
+    }
+
+    @Test
     fun `nothing left still replaces the previous results`() = runTest {
         repo.ignored += exactFingerprint(100, "aaa")
 
-        SaveExactGroupsUseCase(repo)(scanId = 8, exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))))
+        SaveGroupsUseCase(repo)(scanId = 8, exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))))
 
         assertEquals(8L to emptyList<FoundGroup>(), repo.saved)
     }

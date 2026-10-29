@@ -115,7 +115,17 @@ interface PerceptualHashDao {
 
     @Query("DELETE FROM perceptual_hash WHERE fileId = :fileId")
     suspend fun deleteForFile(fileId: Long)
+
+    @Query(
+        "SELECT f.id, f.sourceUri, f.size, d.value AS dHash, p.value AS pHash FROM file_index f " +
+            "LEFT JOIN perceptual_hash d ON d.fileId = f.id AND d.algo = 'DHASH' AND d.frameIndex = 0 " +
+            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'PHASH' AND p.frameIndex = 0 " +
+            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'IMAGE'",
+    )
+    suspend fun imagesForScan(scanId: Long): List<ImageHashRow>
 }
+
+data class ImageHashRow(val id: Long, val sourceUri: String, val size: Long, val dHash: Long?, val pHash: Long?)
 
 @Dao
 interface EmbeddingDao {

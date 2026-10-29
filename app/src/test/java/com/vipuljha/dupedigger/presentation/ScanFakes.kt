@@ -16,6 +16,8 @@ import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -119,9 +121,11 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     }
 }
 
-class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
+open class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
     val ids = initial.toMutableSet()
 
+    override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+    override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
     override suspend fun filesByIds(ids: Collection<Long>) =
         ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.OTHER, 100) }
     override suspend fun remove(ids: Collection<Long>) {

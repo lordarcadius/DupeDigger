@@ -1,6 +1,8 @@
 package com.vipuljha.dupedigger.domain.repository
 
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -17,6 +19,11 @@ interface FileIndexRepository {
 
     /** Stores each file's partial and full hash together, replacing what was cached. */
     suspend fun saveHashes(files: List<IndexedFile>)
+
+    /** Images seen in [scanId], each with its cached perceptual hashes. */
+    suspend fun imagesSeenIn(scanId: Long): List<ImageFile>
+
+    suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>)
 
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 

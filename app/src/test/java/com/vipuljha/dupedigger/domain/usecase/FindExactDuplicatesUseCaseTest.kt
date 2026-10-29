@@ -3,6 +3,8 @@ package com.vipuljha.dupedigger.domain.usecase
 import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -39,6 +41,8 @@ class FindExactDuplicatesUseCaseTest {
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
         override suspend fun filesSeenIn(scanId: Long) = synchronized(this) { files.values.toList() }
         override suspend fun saveHashes(files: List<IndexedFile>) = synchronized(this) { files.forEach { this.files[it.id] = it } }
+        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
         override suspend fun remove(ids: Collection<Long>) = Unit
     }

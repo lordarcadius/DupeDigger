@@ -5,7 +5,10 @@ import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.domain.model.ContentHashes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaAccess
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -24,6 +27,7 @@ import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
+import com.vipuljha.dupedigger.domain.repository.ImageHasher
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
@@ -78,11 +82,55 @@ class RunScanUseCaseTest {
         scanRuns = runs,
         indexFiles = IndexFilesUseCase(enumerator, index),
         findExact = FindExactDuplicatesUseCase(index, hasher),
-        saveExactGroups = SaveExactGroupsUseCase(groups),
+        findNearImages = FindNearImagesUseCase(
+            index,
+            object : ImageHasher {
+                override suspend fun hash(sourceUri: String) = imageHashes[sourceUri]
+            },
+        ),
+        saveGroups = SaveGroupsUseCase(groups),
     )
+
+    /** sourceUri → perceptual hashes for images that decode. */
+    private val imageHashes = mutableMapOf<String, ImageHashes>()
 
     private fun put(name: String, content: String) {
         disk["file:/storage/emulated/0/$name"] = content
+    }
+
+    @Test
+    fun `similar photos are saved as a near group with the exact ones, each copy counted once`() = runTest {
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.jpg", "photo-1x")
+        put("d.jpg", "landscape")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/b.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/c.jpg"] = ImageHashes(0b11L, 0b101L)
+        imageHashes["file:/storage/emulated/0/d.jpg"] = ImageHashes(-1L, -1L)
+
+        val summary = (runScan(ScanScope.WholeDevice) as Outcome.Success).data
+
+        val saved = groups.saved!!.second
+        assertEquals(listOf(MatchTier.EXACT, MatchTier.NEAR), saved.map { it.tier })
+        assertEquals(listOf(1L, 3L), saved.last().fileIds)
+        assertEquals(2, summary.duplicateFiles)
+        assertEquals(7L + 7L, summary.reclaimableBytes)
+    }
+
+    @Test
+    fun `with similar files off there is no near stage`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false)
+        put("a.jpg", "photo-1")
+        put("c.jpg", "photo-1x")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/c.jpg"] = ImageHashes(0L, 0L)
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.NEAR })
+        assertEquals(emptyList<Any>(), groups.saved!!.second)
     }
 
     @Test
@@ -101,7 +149,7 @@ class RunScanUseCaseTest {
         assertEquals(IndexStats(added = 4), summary.index)
         val stages = progress.map { it.stage }
         assertEquals(ScanStage.INDEXING, stages.first())
-        assertEquals(ScanStage.EXACT, stages.last())
+        assertEquals(ScanStage.NEAR, stages.last())
         assertEquals(stages.sorted(), stages)
         assertEquals(ScanStatus.COMPLETED to summary, runs.runs.single().second to runs.runs.single().third)
     }
@@ -232,6 +280,14 @@ class RunScanUseCaseTest {
 
     private class FakeIndex : FileIndexRepository {
         val rows = linkedMapOf<String, IndexedFile>()
+        val imageHashes = mutableMapOf<Long, ImageHashes>()
+
+        override suspend fun imagesSeenIn(scanId: Long) =
+            rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId }
+                .map { ImageFile(it.id, it.sourceUri, it.size, imageHashes[it.id]) }
+        override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
+            imageHashes += hashes
+        }
         private val lastSeen = mutableMapOf<String, Long>()
         private var nextId = 1L
 

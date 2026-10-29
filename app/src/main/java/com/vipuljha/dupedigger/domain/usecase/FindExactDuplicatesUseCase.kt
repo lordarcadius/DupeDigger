@@ -7,10 +7,6 @@ import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
@@ -74,22 +70,7 @@ class FindExactDuplicatesUseCase @Inject constructor(
     private fun <K> List<IndexedFile>.inSharedBuckets(key: (IndexedFile) -> K): List<IndexedFile> =
         groupBy(key).values.filter { it.size > 1 }.flatten()
 
-    /** Runs [transform] on at most [PARALLELISM] items at once and keeps the non-null results, in no particular order. */
-    private suspend fun <T, R : Any> List<T>.mapConcurrently(transform: suspend (T) -> R?): List<R> = coroutineScope {
-        val queue = Channel<T>(Channel.UNLIMITED)
-        forEach { queue.trySend(it) }
-        queue.close()
-        List(minOf(PARALLELISM, size)) {
-            async {
-                val results = ArrayList<R>()
-                for (item in queue) transform(item)?.let(results::add)
-                results
-            }
-        }.awaitAll().flatten()
-    }
-
     internal companion object {
-        const val PARALLELISM = 4
         const val PARTIAL_BATCH = 500
     }
 }

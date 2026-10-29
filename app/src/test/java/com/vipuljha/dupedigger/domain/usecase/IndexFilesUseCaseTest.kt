@@ -1,6 +1,8 @@
 package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -47,6 +49,8 @@ class IndexFilesUseCaseTest {
 
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
 
+        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
 
         override suspend fun remove(ids: Collection<Long>) = Unit

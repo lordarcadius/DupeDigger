@@ -12,6 +12,9 @@ import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.StoredFile
@@ -75,6 +78,19 @@ class FileIndexRepositoryImpl @Inject constructor(
         fileHashDao.upsertAll(files.map { FileHashEntity(it.id, it.partialHash, it.fullHash, computedAtMtime = it.mtime) })
     }
 
+    override suspend fun imagesSeenIn(scanId: Long): List<ImageFile> = perceptualHashDao.imagesForScan(scanId).map {
+        ImageFile(it.id, it.sourceUri, it.size, if (it.dHash != null && it.pHash != null) ImageHashes(it.dHash, it.pHash) else null)
+    }
+
+    override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
+        if (hashes.isEmpty()) return
+        perceptualHashDao.upsertAll(
+            hashes.flatMap { (id, h) ->
+                listOf(PerceptualHashEntity(id, ALGO_DHASH, 0, h.dHash), PerceptualHashEntity(id, ALGO_PHASH, 0, h.pHash))
+            },
+        )
+    }
+
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
             StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)
@@ -99,5 +115,7 @@ class FileIndexRepositoryImpl @Inject constructor(
 
     private companion object {
         const val MAX_QUERY_ARGS = 500
+        const val ALGO_DHASH = "DHASH"
+        const val ALGO_PHASH = "PHASH"
     }
 }

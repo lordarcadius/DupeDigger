@@ -7,6 +7,8 @@ import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.KindReclaim
@@ -101,6 +103,8 @@ class DeleteDuplicatesUseCaseTest {
     private class FakeIndex(initial: Set<Long>) : FileIndexRepository {
         val ids = initial.toMutableSet()
 
+        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) =
             ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.IMAGE, 10) }
         override suspend fun remove(ids: Collection<Long>) {

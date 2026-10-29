@@ -17,7 +17,15 @@ class GetDuplicateGroupsUseCase @Inject constructor(private val groups: Duplicat
         groups.pagedGroups(filter).map { page -> page.map { it.toItem() } }
 }
 
-/** Every file that could go in the matching groups: all members except each group's keeper. */
+/**
+ * Every file that could go in the matching groups: all members except each group's keeper.
+ * A file that keeps another group (an exact copy that also stands in a near group) is never picked, so the
+ * selection can't empty a group.
+ */
 class SelectAllButKeepersUseCase @Inject constructor(private val groups: DuplicateGroupRepository) {
-    suspend operator fun invoke(filter: GroupFilter): List<GroupMember> = groups.allGroups(filter).flatMap { it.toItem().removable }
+    suspend operator fun invoke(filter: GroupFilter): List<GroupMember> {
+        val items = groups.allGroups(filter).map { it.toItem() }
+        val keepers = items.map { it.keeper.fileId }.toSet()
+        return items.flatMap { it.removable }.filter { it.fileId !in keepers }.distinctBy { it.fileId }
+    }
 }

@@ -29,14 +29,20 @@ fun filesPerSecond(doneSinceStageStart: Int, elapsedNanos: Long): Int? =
 private const val NANOS_PER_SECOND = 1_000_000_000L
 
 fun ScanProgress.toUi(rate: Int?) = ScanProgressUi(
-    stage = UiText.res(if (stage == ScanStage.INDEXING) R.string.scan_stage_indexing else R.string.scan_stage_exact),
+    stage = UiText.res(
+        when (stage) {
+            ScanStage.INDEXING -> R.string.scan_stage_indexing
+            ScanStage.EXACT -> R.string.scan_stage_exact
+            ScanStage.NEAR -> R.string.scan_stage_near
+        },
+    ),
     count = when {
         stage == ScanStage.INDEXING -> UiText.plural(R.plurals.scan_files_found, done, formatCount(done))
         total != null && total > 0 -> UiText.res(R.string.scan_compared, formatCount(done), formatCount(total))
         else -> null
     },
     rate = rate?.let { UiText.plural(R.plurals.scan_rate, it, formatCount(it)) },
-    fraction = total?.takeIf { stage == ScanStage.EXACT && it > 0 }?.let { done.coerceAtMost(it).toFloat() / it },
+    fraction = total?.takeIf { stage != ScanStage.INDEXING && it > 0 }?.let { done.coerceAtMost(it).toFloat() / it },
 )
 
 fun ScanRunInfo.toResult(): ScanResultUi = when (status) {

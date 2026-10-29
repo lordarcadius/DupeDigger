@@ -13,7 +13,7 @@ import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
-import com.vipuljha.dupedigger.domain.usecase.SaveExactGroupsUseCase
+import com.vipuljha.dupedigger.domain.usecase.SaveGroupsUseCase
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.first
@@ -69,7 +69,7 @@ class DuplicateGroupRepositoryTest {
     @Test
     fun keepAndNotDuplicatesChoicesHoldAcrossRescans() = runBlocking {
         val (a, b, c, d) = (1..4).map { file("g$it") }
-        val save = SaveExactGroupsUseCase(repository)
+        val save = SaveGroupsUseCase(repository)
         val fingerprint = exactFingerprint(10, "aaa")
         save(1, listOf(ExactGroup(10, "aaa", persistentListOf(a, b))))
         repository.setKeepChoice(fingerprint, "file:/g2")
@@ -85,7 +85,7 @@ class DuplicateGroupRepositoryTest {
         assertEquals(setOf(fingerprint), repository.ignoredFingerprints())
 
         val kept = save(3, listOf(ExactGroup(10, "aaa", persistentListOf(a, b)), ExactGroup(10, "bbb", persistentListOf(c, d))))
-        assertEquals(listOf("bbb"), kept.map { it.fullHash })
+        assertEquals(listOf("bbb"), kept.exact.map { it.fullHash })
         assertNull(repository.observeGroup(fingerprint).first())
     }
 

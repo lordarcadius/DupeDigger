@@ -209,6 +209,7 @@
     <string name="scan_notification_starting">Starting scan…</string>
     <string name="scan_stage_indexing">Finding files…</string>
     <string name="scan_stage_exact">Comparing files…</string>
+    <string name="scan_stage_near">Looking for similar photos…</string>
     <plurals name="scan_files_found">
         <item quantity="one">%1$s file found</item>
         <item quantity="other">%1$s files found</item>

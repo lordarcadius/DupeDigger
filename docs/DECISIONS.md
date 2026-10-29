@@ -230,3 +230,22 @@ Version 1 has not shipped, so it was changed in place: `quarantine_item.sourceUr
 4. `sourceUri`, so the result is always the same.
 
 A saved keep choice wins while that file is still in the group.
+
+## D-012: Near-duplicate images (accepted, P5-01/P5-02)
+**Hashes:** each image is decoded with `ImageDecoder` at a power-of-two subsample that keeps the short side at least 64 px (EXIF orientation applied by the decoder; transparent pixels count as white), converted to luminance and area-averaged down to:
+- 9 × 8 for a 64-bit dHash (left brighter than right);
+- 32 × 32 for a 64-bit pHash (2-D DCT, the 8 × 8 lowest frequencies against their median, DC left out of the median).
+
+Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped with the file's other derived rows when it changes.
+
+**Matching:** two images match when both pHash and dHash are within the Hamming threshold setting (default 10). Groups are the transitive closure of matches (union-find), so a chain of close images forms one group.
+
+**Candidate search:** multi-index hashing, a banding scheme. For threshold `t` a probe radius `r` is picked (0 up to t = 4, 1 up to 8, else 2) and the 64 bits are split into `⌊t/(r+1)⌋ + 1` bands; any pair within `t` bits then differs by at most `r` bits in some band, so probing each band's keys within `r` finds every pair. Only the default threshold (10) was timed; above about 12 the bands get narrow and crowded and the search slows toward all-pairs, and matches chain most images into one group. The P5-06 threshold control should cap its range or retime it. Measured on the Primebook (debuggable build), 50,000 hashes at threshold 10:
+- BK-tree: 41.5 s uniform random, 33.1 s clustered. Plain all-pairs: 16.9 s. Both were rejected.
+- Multi-index with boxed map buckets: 14.8 s. With primitive, direct-addressed buckets and no per-candidate lambdas: 3.5 s uniform random, 1.7 s clustered.
+
+**Exact and near together:** each exact group takes part in near grouping through one member (its lowest file id), so byte-identical copies stay in the exact group and no file's space is counted twice. "Select duplicates" never picks a file that is the keeper of another group it covers, so a bulk delete can't be refused for emptying a group.
+
+**Fingerprint:** a near group is `NEAR:` plus the SHA-256 of its members' sorted `sourceUri`s. Unlike an exact fingerprint it changes whenever the membership does, so "not duplicates" and a keep choice stop applying once a copy is added, removed or moved; the group then shows again for the user to decide.
+
+**Known gap:** the keeper ranking doesn't use resolution yet, so a near group can suggest keeping the smaller copy. Rank by pixels when P5-06 adds near-group detail (Group detail already reads dimensions on demand).
