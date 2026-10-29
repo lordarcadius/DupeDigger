@@ -4,13 +4,13 @@ Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 **Current phase:** P0, project setup and spikes
-**Next task:** P0-01
+**Next task:** P0-02
 
 ## Status
 
 | ID | Task | Status | Notes |
 |---|---|---|---|
-| P0-01 | Build setup (toolchain 21, full stack deps) | todo | |
+| P0-01 | Build setup (toolchain 21, full stack deps) | done | material3 1.5.0-beta02, LiteRT-LM 0.18.1 |
 | P0-02 | App skeleton (Hilt app, Timber, WorkManager config) | todo | |
 | P0-03 | Spike: hashing algorithm | todo | |
 | P0-04 | Spike: LiteRT-LM embeddings | todo | |
@@ -54,4 +54,5 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-29: P0-01: Java 21 toolchain replaces `compileOptions`; catalog and app gain KSP 2.3.12, Hilt 2.60.1, androidx.hilt 1.4.0, Room 2.8.5 (+ Gradle plugin, schemas in `app/schemas`), DataStore 1.3.0, Navigation 3 1.2.0, lifecycle-viewmodel-navigation3, kotlinx.serialization 1.12.0, collections-immutable 0.5.2, Coil 3.6.3 (+ video, no network module), WorkManager 2.12.0, Paging 3.5.3, Timber 5.0.1, material-icons-extended (BOM), material3 pinned at 1.5.0-beta02 (BOM maps 1.4.0), LiteRT-LM 0.18.1. AGP, Kotlin and BOM unchanged; no kotlin-android, no kapt. `assembleDebug assembleRelease` and `testDebugUnitTest` pass. Next: P0-02.
 - 2026-10-29: planning: created AGENTS.md, PLAN.md, ARCHITECTURE.md, PROGRESS.md and DECISIONS.md. No code changes yet. Next: P0-01.
