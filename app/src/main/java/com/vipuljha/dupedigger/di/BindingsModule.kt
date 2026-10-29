@@ -1,5 +1,7 @@
 package com.vipuljha.dupedigger.di
 
+import com.vipuljha.dupedigger.data.hashing.AndroidAudioTagReader
+import com.vipuljha.dupedigger.data.hashing.AndroidDocumentTextReader
 import com.vipuljha.dupedigger.data.hashing.AndroidImageHasher
 import com.vipuljha.dupedigger.data.hashing.AndroidVideoHasher
 import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
@@ -15,7 +17,9 @@ import com.vipuljha.dupedigger.data.storage.AndroidFileRemover
 import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
 import com.vipuljha.dupedigger.data.storage.AndroidStorageAccess
 import com.vipuljha.dupedigger.data.worker.WorkManagerScanScheduler
+import com.vipuljha.dupedigger.domain.repository.AudioTagReader
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
+import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
@@ -80,6 +84,12 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindVideoHasher(impl: AndroidVideoHasher): VideoHasher
+
+    @Binds
+    abstract fun bindDocumentTextReader(impl: AndroidDocumentTextReader): DocumentTextReader
+
+    @Binds
+    abstract fun bindAudioTagReader(impl: AndroidAudioTagReader): AudioTagReader
 
     @Binds
     abstract fun bindQuarantineRepository(impl: QuarantineRepositoryImpl): QuarantineRepository

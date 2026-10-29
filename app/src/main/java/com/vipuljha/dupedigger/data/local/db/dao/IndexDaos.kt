@@ -131,7 +131,26 @@ interface PerceptualHashDao {
             "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
     )
     suspend fun videosForScan(scanId: Long): List<VideoHashRow>
+
+    @Query(
+        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.size, p.value AS simHash FROM file_index f " +
+            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'SIMHASH' AND p.frameIndex = 0 " +
+            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'DOCUMENT'",
+    )
+    suspend fun documentsForScan(scanId: Long): List<DocumentHashRow>
+
+    /** One row per stored signature part, or one row with no part for an unread file. */
+    @Query(
+        "SELECT f.id, f.sourceUri, f.name, f.size, p.algo, p.value FROM file_index f " +
+            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('AUDIO_DURATION', 'AUDIO_TITLE', 'AUDIO_ARTIST') " +
+            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'AUDIO' ORDER BY f.id",
+    )
+    suspend fun audioForScan(scanId: Long): List<AudioHashRow>
 }
+
+data class DocumentHashRow(val id: Long, val sourceUri: String, val name: String, val mimeType: String?, val size: Long, val simHash: Long?)
+
+data class AudioHashRow(val id: Long, val sourceUri: String, val name: String, val size: Long, val algo: String?, val value: Long?)
 
 data class VideoHashRow(val id: Long, val sourceUri: String, val size: Long, val algo: String?, val frameIndex: Int?, val value: Long?)
 

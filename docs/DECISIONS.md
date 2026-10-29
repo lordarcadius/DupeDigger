@@ -257,3 +257,26 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - Whether the retriever applies the rotation metadata to the frames was not checked. A re-encode that keeps the metadata hashes the same either way; one that bakes the rotation into the pixels may not match.
 - On an API 35 emulator with software codecs, a 3 s 640 × 360 clip re-encoded at 320 × 180, 300 kbps and other keyframe spacing matched at per-frame distances 0–2. A clip with a different layout and motion was at 24–40, and the same scene at twice the length was rejected on duration. Each signature took 0.2–0.3 s.
 - Limit seen while building the test: a clip with the same moving shapes over a changed background scored 4–12 per frame and would have matched. Synthetic clips with little detail are weak evidence for real footage.
+
+**Documents (P5-04):**
+- **Text:** read from text files (`text/*` and txt/md/csv/log/rst, the first 1M characters), .docx (the runs of `word/document.xml`, at most 20 MB of XML), and PDFs through `PdfRenderer.Page.getTextContents()` (API 35+, the first 200 pages).
+  - Other formats (.doc, .odt, spreadsheets), and PDFs on API 30–34, are skipped rather than counted as unreadable.
+- **SimHash:** text is normalised to lower-case words of letters and digits in any script, then a 64-bit SimHash is taken over 3-word shingles (FNV-1a with a MurmurHash3 finaliser). It is stored as `SIMHASH`.
+  - Under 20 words is stored as 0 and never matches, so short or empty files can't all group together.
+- **Fixed threshold of 3 bits**, not the image setting, because 10 bits is far too loose for 64-bit SimHash.
+  - In practice this matches the same text in another layout, format or set of metadata. On an API 36 emulator, two PDFs of one report on A4 and Letter (different bytes) scored 0, and an unrelated text 41.
+  - Edits move more than that. One changed sentence in an 83-word text scored 9; two template letters differing only in name and amount scored 7. Neither matches, which is the conservative side.
+- **Album tags are not used:** the same song often sits on a single and an album.
+
+**Audio (P5-05):**
+- **Signature:** duration plus keys of the title and artist tags (artist, else album artist), read with `MediaMetadataRetriever`. Stored as `AUDIO_DURATION`, `AUDIO_TITLE` and `AUDIO_ARTIST` rows; an untagged file stores only its duration.
+- **Title:** a file with no title tag uses its file name.
+  - Tag titles and file names are normalised alike: lower-case words, with leading track numbers dropped.
+  - A title made only of generic words ("track", "recording", "audio", "untitled", …) or words containing digits ("AUD-20240101-WA0003") has no key and never matches.
+- **Matching:** two files match when the title keys are equal, the artists are equal or unknown on either side, and the durations are within 2 s or 1 %. Clips under 30 s (ringtones, notifications, voice notes) are left out.
+- **Device check:** on the emulator, a tagged MP3 (`rip-0042.mp3`, "Night Drive" by "The Band", 39.9 s) and an untagged AAC `02 - Night Drive.m4a` (40.1 s) matched. A different title at the same length and the same title at 59.8 s didn't.
+- **Limits:**
+  - Two different songs with the same title, no artist on one side and the same length would match.
+  - Acoustic similarity is left to the AI tier (P6).
+  - The keeper ranking doesn't use bitrate yet, so a group can suggest the lower-quality copy (P5-06).
+

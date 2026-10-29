@@ -11,22 +11,35 @@ fun hammingDistance(a: Long, b: Long): Int = (a xor b).countOneBits()
  * Returns groups of two or more ids, each sorted, largest group first.
  */
 fun groupNearImages(items: List<Pair<Long, ImageHashes>>, threshold: Int): List<List<Long>> {
-    val pHashes = LongArray(items.size) { items[it].second.pHash }
-    val index = HammingIndex(pHashes, threshold)
     val dHashes = LongArray(items.size) { items[it].second.dHash }
-    val sets = UnionFind(items.size)
-    val candidates = IntArray(items.size)
-    for (i in items.indices) {
+    return groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second.pHash }, threshold) { i, j ->
+        hammingDistance(dHashes[i], dHashes[j]) <= threshold
+    }
+}
+
+/** Groups items whose single 64-bit hashes are within [threshold] bits, like [groupNearImages]. */
+fun groupNearHashes(items: List<Pair<Long, Long>>, threshold: Int): List<List<Long>> =
+    groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second }, threshold) { _, _ -> true }
+
+/** Union-find over every pair of [hashes] within [threshold] bits that [confirm] also accepts. */
+private inline fun groupWithinHamming(
+    ids: List<Long>,
+    hashes: LongArray,
+    threshold: Int,
+    confirm: (Int, Int) -> Boolean,
+): List<List<Long>> {
+    val index = HammingIndex(hashes, threshold)
+    val sets = UnionFind(ids.size)
+    val candidates = IntArray(ids.size)
+    for (i in ids.indices) {
         for (c in 0 until index.candidates(i, candidates)) {
             val j = candidates[c]
-            if (hammingDistance(pHashes[i], pHashes[j]) <= threshold && hammingDistance(dHashes[i], dHashes[j]) <= threshold) {
-                sets.union(i, j)
-            }
+            if (hammingDistance(hashes[i], hashes[j]) <= threshold && confirm(i, j)) sets.union(i, j)
         }
     }
-    return items.indices.groupBy(sets::find).values
+    return ids.indices.groupBy(sets::find).values
         .filter { it.size > 1 }
-        .map { members -> members.map { items[it].first }.sorted() }
+        .map { members -> members.map { ids[it] }.sorted() }
         .sortedWith(compareByDescending<List<Long>> { it.size }.thenBy { it.first() })
 }
 

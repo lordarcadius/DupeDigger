@@ -9,7 +9,10 @@ import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
 import com.vipuljha.dupedigger.data.local.db.entity.FileHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
@@ -113,6 +116,35 @@ class FileIndexRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun documentsSeenIn(scanId: Long): List<DocumentFile> = perceptualHashDao.documentsForScan(scanId).map {
+        DocumentFile(it.id, it.sourceUri, it.name, it.mimeType, it.size, it.simHash)
+    }
+
+    override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) {
+        if (hashes.isEmpty()) return
+        perceptualHashDao.upsertAll(hashes.map { (id, hash) -> PerceptualHashEntity(id, ALGO_SIMHASH, 0, hash) })
+    }
+
+    override suspend fun audioSeenIn(scanId: Long): List<AudioFile> =
+        perceptualHashDao.audioForScan(scanId).groupBy { it.id }.map { (id, rows) ->
+            val part = { algo: String -> rows.firstOrNull { it.algo == algo }?.value }
+            val signature = part(ALGO_AUDIO_DURATION)?.let { AudioSignature(it, part(ALGO_AUDIO_TITLE), part(ALGO_AUDIO_ARTIST)) }
+            AudioFile(id, rows.first().sourceUri, rows.first().name, rows.first().size, signature)
+        }
+
+    override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) {
+        if (signatures.isEmpty()) return
+        perceptualHashDao.upsertAll(
+            signatures.flatMap { (id, s) ->
+                listOfNotNull(
+                    PerceptualHashEntity(id, ALGO_AUDIO_DURATION, 0, s.durationMs),
+                    s.titleKey?.let { PerceptualHashEntity(id, ALGO_AUDIO_TITLE, 0, it) },
+                    s.artistKey?.let { PerceptualHashEntity(id, ALGO_AUDIO_ARTIST, 0, it) },
+                )
+            },
+        )
+    }
+
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
             StoredFile(it.id, it.sourceUri, it.path, it.name, MediaKind.valueOf(it.mediaKind), it.size)
@@ -141,5 +173,9 @@ class FileIndexRepositoryImpl @Inject constructor(
         const val ALGO_PHASH = "PHASH"
         const val ALGO_VIDEO_PHASH = "VIDEO_PHASH"
         const val ALGO_VIDEO_DURATION = "VIDEO_DURATION"
+        const val ALGO_SIMHASH = "SIMHASH"
+        const val ALGO_AUDIO_DURATION = "AUDIO_DURATION"
+        const val ALGO_AUDIO_TITLE = "AUDIO_TITLE"
+        const val ALGO_AUDIO_ARTIST = "AUDIO_ARTIST"
     }
 }

@@ -5,7 +5,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
+import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -20,7 +22,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** P5-01, P5-03: image hashes and video signatures are cached per file, read back for the scan that saw it, and dropped when the file changes. */
+/** P5-01 to P5-05: image hashes, video signatures, document SimHashes and audio signatures are cached per file, read back for the scan that saw it, and dropped when the file changes. */
 @RunWith(AndroidJUnit4::class)
 class ImageHashCacheTest {
     private lateinit var db: DupeDiggerDatabase
@@ -68,5 +70,25 @@ class ImageHashCacheTest {
         )
         repository.record(listOf(file("a.mp4", MediaKind.VIDEO, mtime = 2)), scanId = 2)
         assertEquals(listOf(VideoFile(a.id, "file:/p/a.mp4", 10, null)), repository.videosSeenIn(2))
+    }
+
+    @Test
+    fun documentAndAudioSignaturesReadBack() = runBlocking<Unit> {
+        repository.record(
+            listOf(file("a.pdf", MediaKind.DOCUMENT), file("b.mp3", MediaKind.AUDIO), file("c.m4a", MediaKind.AUDIO)),
+            scanId = 1,
+        )
+        val doc = repository.documentsSeenIn(1).single()
+        val (b, c) = repository.audioSeenIn(1).sortedBy { it.name }
+        assertEquals(listOf(null, null, null), listOf(doc.simHash, b.signature, c.signature))
+
+        repository.saveDocumentHashes(mapOf(doc.id to 42L))
+        repository.saveAudioSignatures(mapOf(b.id to AudioSignature(200_000, 7, 9), c.id to AudioSignature(200_500, null, null)))
+
+        assertEquals(DocumentFile(doc.id, "file:/p/a.pdf", "a.pdf", null, 10, 42L), repository.documentsSeenIn(1).single())
+        assertEquals(
+            listOf(AudioSignature(200_000, 7, 9), AudioSignature(200_500, null, null)),
+            repository.audioSeenIn(1).sortedBy { it.name }.map { it.signature },
+        )
     }
 }

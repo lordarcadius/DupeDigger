@@ -54,7 +54,7 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
                  → groups of identical full hash  ⇒ MatchTier.EXACT
 3. Near       ── images: decode a downscaled bitmap → dHash + pHash (64-bit)
                  video:  8 evenly spaced frames via MediaMetadataRetriever → per-frame pHash + duration
-                 audio:  duration + tags first; acoustic fingerprint is an AI-tier concern
+                 audio:  duration + title/artist tags (file name when untagged); acoustic matching is an AI-tier concern
                  docs:   extract text (PDF, txt, docx) → 64-bit SimHash
                  → multi-index hashing (banding, D-012) to find pairs within the Hamming threshold
                  → union-find into groups  ⇒ MatchTier.NEAR
@@ -111,7 +111,7 @@ Rules:
 |---|---|
 | `file_index` | id, sourceUri, path, name, mimeType, mediaKind, size, mtime, volume, lastSeenScanId |
 | `file_hash` | fileId, partialHash, fullHash, computedAtMtime |
-| `perceptual_hash` | fileId, algo (DHASH/PHASH/SIMHASH/VIDEO_PHASH/VIDEO_DURATION), frameIndex, value (Long) |
+| `perceptual_hash` | fileId, algo (DHASH/PHASH/VIDEO_PHASH/VIDEO_DURATION/SIMHASH/AUDIO_DURATION/AUDIO_TITLE/AUDIO_ARTIST), frameIndex, value (Long) |
 | `embedding` | fileId, modelId, dim, vector (BLOB, float32 LE, normalised) |
 | `duplicate_group` / `group_member` | groupId, tier, score, scanId, fingerprint / groupId, fileId, similarity |
 | `scan_run` | id, scope, tiers, startedAt, finishedAt, status, stats |

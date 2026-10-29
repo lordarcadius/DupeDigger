@@ -65,6 +65,8 @@ class NearGroupingTest {
             }.shuffled(random)
 
             assertEquals("threshold $threshold", bruteForce(items, threshold), groupNearImages(items, threshold))
+            val singles = items.map { (id, h) -> id to h.pHash }
+            assertEquals("single, threshold $threshold", bruteForce(items, threshold), groupNearHashes(singles, threshold))
         }
     }
 

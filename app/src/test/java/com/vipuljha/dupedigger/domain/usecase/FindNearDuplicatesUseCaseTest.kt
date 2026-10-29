@@ -1,12 +1,21 @@
 package com.vipuljha.dupedigger.domain.usecase
 
+import com.vipuljha.dupedigger.domain.detector.audioArtistKey
+import com.vipuljha.dupedigger.domain.detector.audioTitleKey
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
+import com.vipuljha.dupedigger.domain.model.AudioTags
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
+import com.vipuljha.dupedigger.domain.model.NO_TEXT_SIMHASH
 import com.vipuljha.dupedigger.domain.model.nearFingerprint
 import com.vipuljha.dupedigger.domain.model.VIDEO_FRAMES
 import com.vipuljha.dupedigger.domain.model.VideoFile
 import com.vipuljha.dupedigger.domain.model.VideoSignature
+import com.vipuljha.dupedigger.domain.repository.AudioTagReader
+import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
 import com.vipuljha.dupedigger.domain.repository.ImageHasher
 import com.vipuljha.dupedigger.domain.repository.VideoHasher
 import com.vipuljha.dupedigger.presentation.FakeFileIndex
@@ -34,6 +43,14 @@ class FindNearDuplicatesUseCaseTest {
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) {
             savedVideos += signatures
         }
+        val docs = mutableListOf<DocumentFile>()
+        val savedDocs = mutableMapOf<Long, Long>()
+        override suspend fun documentsSeenIn(scanId: Long) = docs.map { it.copy(simHash = it.simHash ?: savedDocs[it.id]) }
+        override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) {
+            savedDocs += hashes
+        }
+        val audio = mutableListOf<AudioFile>()
+        override suspend fun audioSeenIn(scanId: Long) = audio
     }
 
     /** Decodes only the URIs it knows. */
@@ -54,7 +71,54 @@ class FindNearDuplicatesUseCaseTest {
                 return signed[sourceUri]
             }
         },
+        object : DocumentTextReader {
+            override fun supports(name: String, mimeType: String?) = !name.endsWith(".doc")
+            override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? {
+                requested += sourceUri
+                return texts[sourceUri]
+            }
+        },
+        object : AudioTagReader {
+            override suspend fun read(sourceUri: String): AudioTags? = null
+        },
     )
+
+    private val texts = mutableMapOf<String, String>()
+    private val report = (1..30).joinToString(" ") { "word$it" }
+
+    private fun doc(id: Long, name: String = "$id.txt") = DocumentFile(id, "file:/d/$name", name, "text/plain", size = id, simHash = null)
+
+    @Test
+    fun `documents with the same text group, while short and unsupported ones are left out`() = runTest {
+        index.docs += listOf(doc(1), doc(2), doc(3), doc(4), doc(5, "old.doc"))
+        texts["file:/d/1.txt"] = report
+        texts["file:/d/2.txt"] = "$report."
+        texts["file:/d/3.txt"] = "Short note."
+        texts["file:/d/4.txt"] = "Short note."
+
+        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+        assertEquals(NO_TEXT_SIMHASH, index.savedDocs[3L])
+        assertTrue("file:/d/old.doc" !in requested)
+        assertEquals(0, result.unreadable)
+    }
+
+    @Test
+    fun `audio matches by tag title or file name, duration and artist`() = runTest {
+        val tagged = AudioSignature(200_000, audioTitleKey("Night Drive"), audioArtistKey("The Band"))
+        val untagged = AudioSignature(200_500, titleKey = null, artistKey = null)
+        index.audio += listOf(
+            AudioFile(1, "file:/a/rip.mp3", "rip.mp3", 10, tagged),
+            AudioFile(2, "file:/a/2.m4a", "02 - Night Drive.m4a", 20, untagged),
+            AudioFile(3, "file:/a/3.mp3", "Track 05.mp3", 30, untagged),
+            AudioFile(4, "file:/a/4.mp3", "Track 05.mp3", 30, untagged),
+        )
+
+        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+    }
 
     private fun video(id: Long, signature: VideoSignature? = null) = VideoFile(id, "file:/v/$id.mp4", size = id * 100, signature = signature)
 

@@ -3,8 +3,12 @@ package com.vipuljha.dupedigger.domain.usecase
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
+import com.vipuljha.dupedigger.domain.model.AudioTags
 import com.vipuljha.dupedigger.domain.model.ContentHashes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -25,7 +29,9 @@ import com.vipuljha.dupedigger.domain.model.StoredFile
 import com.vipuljha.dupedigger.domain.model.VideoFile
 import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
+import com.vipuljha.dupedigger.domain.repository.AudioTagReader
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
+import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
@@ -92,6 +98,13 @@ class RunScanUseCaseTest {
             },
             object : VideoHasher {
                 override suspend fun signature(sourceUri: String): VideoSignature? = null
+            },
+            object : DocumentTextReader {
+                override fun supports(name: String, mimeType: String?) = false
+                override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? = null
+            },
+            object : AudioTagReader {
+                override suspend fun read(sourceUri: String): AudioTags? = null
             },
         ),
         saveGroups = SaveGroupsUseCase(groups),
@@ -296,6 +309,10 @@ class RunScanUseCaseTest {
         }
         override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
+        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
+        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
         private var nextId = 1L
 

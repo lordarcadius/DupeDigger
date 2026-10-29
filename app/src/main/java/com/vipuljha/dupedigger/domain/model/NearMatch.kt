@@ -18,6 +18,21 @@ data class VideoSignature(val durationMs: Long, val frames: ImmutableList<Long>)
 /** A video seen in a scan, with its cached signature if it was computed before. */
 data class VideoFile(val id: Long, val sourceUri: String, val size: Long, val signature: VideoSignature?)
 
+/** A stored SimHash for a document that holds too little text to compare; it never matches anything. */
+const val NO_TEXT_SIMHASH = 0L
+
+/** A document seen in a scan; [simHash] is null until computed. */
+data class DocumentFile(val id: Long, val sourceUri: String, val name: String, val mimeType: String?, val size: Long, val simHash: Long?)
+
+/** An audio file's duration and the keys of its tagged title and artist, when it has those tags. */
+data class AudioSignature(val durationMs: Long, val titleKey: Long?, val artistKey: Long?)
+
+/** An audio file seen in a scan, with its cached signature if it was read before. */
+data class AudioFile(val id: Long, val sourceUri: String, val name: String, val size: Long, val signature: AudioSignature?)
+
+/** What an audio file's metadata says; blank tags are null. */
+data class AudioTags(val durationMs: Long, val title: String?, val artist: String?)
+
 /** [score] is the group's similarity, 1 for identical hashes. */
 data class NearGroup(val fingerprint: String, val fileIds: ImmutableList<Long>, val score: Float)
 

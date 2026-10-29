@@ -1,6 +1,9 @@
 package com.vipuljha.dupedigger.domain.repository
 
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -31,6 +34,16 @@ interface FileIndexRepository {
     suspend fun videosSeenIn(scanId: Long): List<VideoFile>
 
     suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>)
+
+    /** Documents seen in [scanId], each with its cached SimHash. */
+    suspend fun documentsSeenIn(scanId: Long): List<DocumentFile>
+
+    suspend fun saveDocumentHashes(hashes: Map<Long, Long>)
+
+    /** Audio files seen in [scanId], each with its cached signature. */
+    suspend fun audioSeenIn(scanId: Long): List<AudioFile>
+
+    suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>)
 
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 

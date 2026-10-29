@@ -1,6 +1,9 @@
 package com.vipuljha.dupedigger.domain.usecase
 
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -55,6 +58,10 @@ class IndexFilesUseCaseTest {
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
         override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
+        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
+        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
 
         override suspend fun remove(ids: Collection<Long>) = Unit

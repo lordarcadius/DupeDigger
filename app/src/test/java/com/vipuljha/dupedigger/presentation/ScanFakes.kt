@@ -5,6 +5,8 @@ import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaAccess
@@ -16,6 +18,7 @@ import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
 import com.vipuljha.dupedigger.domain.model.ImageFile
 import com.vipuljha.dupedigger.domain.model.ImageHashes
 import com.vipuljha.dupedigger.domain.model.IndexStats
@@ -130,6 +133,10 @@ open class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
     override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
     override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
     override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
+    override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+    override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
+    override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+    override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
     override suspend fun filesByIds(ids: Collection<Long>) =
         ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.OTHER, 100) }
     override suspend fun remove(ids: Collection<Long>) {
