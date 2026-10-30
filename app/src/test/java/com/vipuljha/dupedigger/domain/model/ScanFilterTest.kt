@@ -18,6 +18,19 @@ class ScanFilterTest {
     }
 
     @Test
+    fun `whatsapp media under Android media is kept with the default filter`() {
+        val filter = ScanFilter(emptyList(), skipHidden = true)
+        val media = "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media"
+        assertFalse(filter.skips("/storage/emulated/0/Android/media", "media"))
+        assertFalse(filter.skips("/storage/emulated/0/Android/media/com.whatsapp", "com.whatsapp"))
+        assertFalse(filter.skips("$media/WhatsApp Images/IMG-20260101-WA0001.jpg", "IMG-20260101-WA0001.jpg"))
+        assertFalse(filter.skips("$media/WhatsApp Video/Sent/VID-20260101-WA0002.mp4", "VID-20260101-WA0002.mp4"))
+        assertFalse(filter.skips("/storage/1A2B-3C4D/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/a.pdf", "a.pdf"))
+        assertTrue(filter.skips("/storage/emulated/0/Android/data/com.whatsapp/files/a.jpg", "a.jpg"))
+        assertTrue(filter.skips("$media/.Statuses/a.jpg", "a.jpg"))
+    }
+
+    @Test
     fun `an exclusion covers the folder and its contents but not a sibling with the same prefix`() {
         val filter = ScanFilter(listOf("/storage/emulated/0/Private/"), skipHidden = false)
         assertTrue(filter.skips("/storage/emulated/0/Private", "Private"))

@@ -47,6 +47,28 @@ class FileTreeWalkerTest {
     }
 
     @Test
+    fun `a walk from a volume root reaches whatsapp media under Android media`() = runBlocking {
+        val volume = tmp.newFolder("volume")
+        val media = "Android/media/com.whatsapp/WhatsApp/Media"
+        volume.touch("$media/WhatsApp Images/IMG-20260101-WA0001.jpg")
+        volume.touch("$media/WhatsApp Images/Sent/IMG-20260101-WA0002.jpg")
+        volume.touch("$media/WhatsApp Documents/notes.txt")
+        volume.touch("DCIM/Camera/IMG_0001.jpg")
+
+        val paths = walker.walk(listOf(volume), ScanFilter(emptyList(), skipHidden = true)).toList().map { it.path }
+
+        assertEquals(
+            setOf(
+                "$media/WhatsApp Images/IMG-20260101-WA0001.jpg",
+                "$media/WhatsApp Images/Sent/IMG-20260101-WA0002.jpg",
+                "$media/WhatsApp Documents/notes.txt",
+                "DCIM/Camera/IMG_0001.jpg",
+            ).map { File(volume, it).path }.toSet(),
+            paths.toSet(),
+        )
+    }
+
+    @Test
     fun `symlinks are never followed out of the root`() = runBlocking {
         val outside = tmp.newFolder("outside").apply { touch("secret.jpg") }
         val root = tmp.newFolder("root2").apply { touch("own.jpg") }
