@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets "Open" hand other apps a content URI for any file the app itself can read; nothing is shared without a grant. -->
+<paths>
+    <root-path name="root" path="." />
+</paths>

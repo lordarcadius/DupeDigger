@@ -1,3 +1,302 @@
 <resources>
     <string name="app_name">Dupe Digger</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_results">Results</string>
+    <string name="tab_quarantine">Quarantine</string>
+    <string name="tab_settings">Settings</string>
+    <string name="open_navigation">Open navigation</string>
+    <string name="action_back">Back</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_undo">Undo</string>
+
+    <string name="size_b">%1$s B</string>
+    <string name="size_kb">%1$s kB</string>
+    <string name="size_mb">%1$s MB</string>
+    <string name="size_gb">%1$s GB</string>
+    <string name="size_tb">%1$s TB</string>
+    <string name="size_pb">%1$s PB</string>
+    <string name="time_just_now">Just now</string>
+
+    <string name="kind_images">Images</string>
+    <string name="kind_videos">Videos</string>
+    <string name="kind_audio">Audio</string>
+    <string name="kind_documents">Documents</string>
+    <string name="kind_other">Other files</string>
+    <string name="scope_whole_device">Whole device</string>
+    <string name="scope_media">Photos, videos and audio</string>
+    <string name="scope_folders">Picked folders</string>
+
+    <string name="home_reclaim_title">Space you can free</string>
+    <string name="home_reclaim_detail">%1$s · %2$s</string>
+    <string name="home_reclaim_none">No duplicates found yet.</string>
+    <plurals name="home_duplicate_files">
+        <item quantity="one">%1$s duplicate file</item>
+        <item quantity="other">%1$s duplicate files</item>
+    </plurals>
+    <plurals name="home_groups">
+        <item quantity="one">%1$s group</item>
+        <item quantity="other">%1$s groups</item>
+    </plurals>
+    <string name="home_last_scan_title">Last scan</string>
+    <string name="home_last_scan_detail">%1$s · %2$s</string>
+    <string name="home_scan_status_running">Scanning now…</string>
+    <string name="home_scan_status_completed">Finished</string>
+    <string name="home_scan_status_cancelled">Cancelled</string>
+    <string name="home_scan_status_failed">Couldn’t finish</string>
+    <string name="home_scan_status_interrupted">Stopped before it finished</string>
+    <string name="home_action_view_progress">View progress</string>
+    <string name="home_actions_title">Scan</string>
+    <string name="home_action_scan_everything">Scan everything</string>
+    <string name="home_action_scan_media">Scan media</string>
+    <string name="home_action_scan_folder">Scan a folder</string>
+    <string name="home_action_custom_scan">Choose what to scan</string>
+    <string name="home_action_start_scan">Start scan</string>
+    <string name="home_hint_all_files">Needs All files access. Turn on Deep scan to use it.</string>
+    <string name="home_hint_media">Needs access to your photos, videos and audio.</string>
+    <string name="home_empty_title">No scans yet</string>
+    <string name="home_empty_body">Scan your storage to see how much space duplicate files take.</string>
+    <string name="home_error_title">Couldn’t load your summary</string>
+
+    <string name="results_chip_all">All</string>
+    <string name="results_chip_count">%1$s · %2$s</string>
+    <plurals name="results_copies">
+        <item quantity="one">%1$s copy, %2$s</item>
+        <item quantity="other">%1$s copies, %2$s each</item>
+    </plurals>
+    <string name="results_row_detail">%1$s · %2$s</string>
+    <string name="results_tier_exact">Exact</string>
+    <string name="results_tier_near">Similar</string>
+    <string name="results_tier_semantic">AI match</string>
+    <string name="results_tier_tag">%1$s · %2$s</string>
+    <plurals name="results_similar_files">
+        <item quantity="one">%1$s similar file</item>
+        <item quantity="other">%1$s similar files</item>
+    </plurals>
+    <string name="results_frees">Frees %1$s</string>
+    <plurals name="results_selected">
+        <item quantity="one">%1$s file selected · %2$s</item>
+        <item quantity="other">%1$s files selected · %2$s</item>
+    </plurals>
+    <string name="results_action_select_duplicates">Select duplicates</string>
+    <string name="results_open_group">Open group</string>
+    <string name="results_select_group">Select %1$s</string>
+    <string name="results_action_clear">Clear</string>
+    <string name="results_action_show_all">Show all</string>
+    <string name="results_empty_title">No duplicates found</string>
+    <string name="results_empty_body">Run a scan to look for duplicate files.</string>
+    <string name="results_empty_kind_title">Nothing in this category</string>
+    <string name="results_empty_kind_body">Pick another category, or show all groups.</string>
+    <string name="results_error_title">Couldn’t load the results</string>
+    <string name="results_error_more">Couldn’t load more groups.</string>
+    <plurals name="results_delete_title">
+        <item quantity="one">Delete %1$s file?</item>
+        <item quantity="other">Delete %1$s files?</item>
+    </plurals>
+    <string name="results_delete_body">This frees %1$s. Photos, videos and music go to the system trash, where they stay for 30 days. Other files move to Quarantine, where you can restore them.</string>
+    <plurals name="results_removed">
+        <item quantity="one">%1$s file removed · %2$s freed</item>
+        <item quantity="other">%1$s files removed · %2$s freed</item>
+    </plurals>
+    <plurals name="results_remove_failed">
+        <item quantity="one">Couldn’t remove %1$s file. It’s still in its group.</item>
+        <item quantity="other">Couldn’t remove %1$s files. They’re still in their groups.</item>
+    </plurals>
+
+    <string name="quarantine_note">Files here are kept until you restore or delete them. Uninstalling Dupe Digger deletes them.</string>
+    <string name="quarantine_item_details">%1$s · moved %2$s</string>
+    <string name="quarantine_action_restore">Restore</string>
+    <string name="quarantine_action_delete">Delete permanently</string>
+    <string name="quarantine_delete_title">Delete “%1$s” permanently?</string>
+    <string name="quarantine_delete_body">The file is erased from this device. You can’t undo this.</string>
+    <string name="quarantine_deleted">“%1$s” deleted</string>
+    <string name="quarantine_empty_title">Quarantine is empty</string>
+    <string name="quarantine_empty_body">Deleted files that aren’t photos, videos or music wait here until you restore them.</string>
+    <string name="quarantine_error_title">Couldn’t load quarantine</string>
+    <plurals name="restored">
+        <item quantity="one">%1$s file restored. Scan again to see it in results.</item>
+        <item quantity="other">%1$s files restored. Scan again to see them in results.</item>
+    </plurals>
+    <plurals name="restore_failed">
+        <item quantity="one">Couldn’t restore %1$s file. Its original place may be taken or no longer accessible.</item>
+        <item quantity="other">Couldn’t restore %1$s files. Their original places may be taken or no longer accessible.</item>
+    </plurals>
+
+    <string name="value_unknown">—</string>
+    <string name="group_title">Duplicate group</string>
+    <plurals name="group_summary">
+        <item quantity="one">%1$s copy · frees %2$s</item>
+        <item quantity="other">%1$s copies · frees %2$s</item>
+    </plurals>
+    <plurals name="group_summary_similar">
+        <item quantity="one">%1$s similar file · %2$s · frees %3$s</item>
+        <item quantity="other">%1$s similar files · %2$s · frees %3$s</item>
+    </plurals>
+    <string name="group_similar_note">These files look alike but aren’t identical. Compare them before deleting.</string>
+    <string name="group_action_compare">Compare</string>
+    <string name="compare_title">Compare</string>
+    <string name="compare_pane_details">%1$s · %2$s</string>
+    <string name="compare_mode_side">Side by side</string>
+    <string name="compare_mode_slider">Slider</string>
+    <string name="compare_zoom_in">Zoom in</string>
+    <string name="compare_zoom_out">Zoom out</string>
+    <string name="compare_zoom_reset">Reset zoom</string>
+    <string name="compare_divider">Divider position</string>
+    <string name="group_member_details">%1$s · Modified %2$s</string>
+    <string name="group_member_details_with_resolution">%1$s · %2$s</string>
+    <string name="group_resolution">%1$d × %2$d</string>
+    <string name="group_keeping">Keeping this one</string>
+    <string name="group_action_keep">Keep this</string>
+    <string name="group_action_open">Open</string>
+    <string name="group_action_not_duplicates">Not duplicates</string>
+    <string name="group_gone_title">This group is no longer here</string>
+    <string name="group_gone_body">A newer scan or a delete changed it.</string>
+    <string name="group_none_open_title">No group open</string>
+    <string name="group_none_open_body">Choose a group from the list to see its files.</string>
+    <string name="group_error_title">Couldn’t load this group</string>
+    <string name="group_open_failed">Couldn’t open this file.</string>
+    <string name="group_open_no_app">No app on this device can open this file.</string>
+
+    <string name="scan_title">Scan</string>
+    <string name="scan_scope_title">What to scan</string>
+    <string name="scan_scope_whole_device_body">Every file on this device.</string>
+    <string name="scan_scope_media_body">Everything in your media library.</string>
+    <plurals name="scan_scope_folders_body">
+        <item quantity="one">%1$s folder you picked</item>
+        <item quantity="other">%1$s folders you picked</item>
+    </plurals>
+    <string name="scan_no_scope_title">Nothing to scan yet</string>
+    <string name="scan_no_scope_body">Allow storage access, or add a folder in Settings.</string>
+    <string name="scan_tier_title">What to find</string>
+    <string name="scan_tier_exact">Exact copies</string>
+    <string name="scan_tier_exact_body">Files with identical contents. Always on.</string>
+    <string name="scan_tier_near">Similar files</string>
+    <string name="scan_tier_near_body">Look-alike photos and videos, and near-identical documents and audio.</string>
+    <string name="scan_tier_ai">AI matches</string>
+    <string name="scan_tier_ai_body">Download the AI model in Settings to turn this on.</string>
+    <string name="scan_tier_ai_on_body">Files that mean the same thing, found by the on-device model. Slower.</string>
+    <string name="settings_ai_body">Download a model that runs on this device to find files that mean the same thing.</string>
+    <string name="ai_title">AI matches</string>
+    <string name="ai_intro">The model is downloaded once from Hugging Face, then runs on this device, and none of your files leave it. It finds similar shots, the same document saved twice and the same song in another format.</string>
+    <string name="ai_use">Use AI matches</string>
+    <string name="ai_use_body">Scans also compare files with the model. This is slower.</string>
+    <string name="ai_use_body_no_model">Download and choose a model below first.</string>
+    <string name="ai_models_title">Model</string>
+    <string name="ai_models_body">Larger models understand more kinds of files but need more memory.</string>
+    <string name="ai_model_text">Small: documents</string>
+    <string name="ai_model_text_body">Compares text in documents.</string>
+    <string name="ai_model_vision">Medium: photos and documents</string>
+    <string name="ai_model_vision_body">Compares photos and the text in documents.</string>
+    <string name="ai_model_all">Large: photos, music and documents</string>
+    <string name="ai_model_all_body">Compares photos, audio and the text in documents.</string>
+    <string name="ai_model_details">%1$s download · %2$s</string>
+    <string name="ai_model_memory">uses about %1$s of memory</string>
+    <string name="ai_model_memory_unknown">memory use not measured</string>
+    <string name="ai_waiting_wifi">Waiting for Wi-Fi…</string>
+    <string name="ai_waiting">Waiting to start…</string>
+    <string name="ai_downloading">%1$s of %2$s</string>
+    <string name="ai_failed_checksum">The download was damaged and has been removed. Try again.</string>
+    <string name="ai_failed_space">Not enough free space. Free some space and try again.</string>
+    <string name="ai_failed_network">Couldn’t download the model. Check your connection and try again.</string>
+    <string name="ai_in_use">In use</string>
+    <string name="ai_download">Download</string>
+    <string name="ai_use_model">Use</string>
+    <string name="ai_not_downloaded">Download this model first.</string>
+    <string name="ai_deleted">“%1$s” deleted</string>
+    <string name="ai_delete_title">Delete “%1$s”?</string>
+    <string name="ai_delete_body">Its results are removed too. You can download it again later.</string>
+    <string name="ai_options_title">Options</string>
+    <string name="ai_wifi_only">Download on Wi-Fi only</string>
+    <string name="ai_wifi_only_body">Waits for a network that isn’t metered.</string>
+    <string name="ai_charging_only">Only while charging</string>
+    <string name="ai_charging_only_body">Comparing with the model uses a lot of battery. Scans on battery skip it.</string>
+    <string name="ai_backend">Run the model on</string>
+    <string name="ai_backend_cpu">Processor</string>
+    <string name="ai_backend_gpu">Graphics chip</string>
+    <string name="ai_backend_body">The processor works on every device. The graphics chip can be faster for photos but takes longer to start and uses much more memory; if it can’t start, the processor is used.</string>
+    <string name="ai_threshold">How alike files must be</string>
+    <string name="ai_threshold_value">At least %1$s alike</string>
+    <string name="ai_threshold_body">Lower finds more, but unrelated photos start to match. Applies from the next scan.</string>
+    <string name="ai_error_title">Couldn’t load AI settings</string>
+    <string name="scan_action_start">Start scan</string>
+    <string name="scan_action_cancel_scan">Cancel scan</string>
+    <string name="scan_action_scan_again">Scan again</string>
+    <string name="scan_action_view_results">View results</string>
+    <string name="scan_running_note">You can leave this screen. The scan keeps running.</string>
+    <plurals name="scan_rate">
+        <item quantity="one">%1$s file per second</item>
+        <item quantity="other">%1$s files per second</item>
+    </plurals>
+    <string name="scan_done_title">Scan complete</string>
+    <string name="scan_done_none">No duplicates found.</string>
+    <plurals name="scan_done_found">
+        <item quantity="one">Found %1$s duplicate file. You can free %2$s.</item>
+        <item quantity="other">Found %1$s duplicate files. You can free %2$s.</item>
+    </plurals>
+    <string name="scan_cancelled_title">Scan cancelled</string>
+    <string name="scan_cancelled_body">What it found so far is saved, so the next scan is faster.</string>
+    <string name="scan_failed_title">Couldn’t finish the scan</string>
+    <string name="scan_failed_body">Check that Dupe Digger can still read your storage, then try again.</string>
+
+    <string name="onboarding_title">Find duplicate files safely</string>
+    <string name="onboarding_body">Dupe Digger looks through your files to find copies and near copies. It needs access to your storage to do that, and it never deletes anything without asking you first.</string>
+    <string name="onboarding_media_title">Photos, videos and audio</string>
+    <string name="onboarding_media_body">Lets Dupe Digger find duplicate media anywhere on this device.</string>
+    <string name="onboarding_all_files_title">Deep scan (optional)</string>
+    <string name="onboarding_all_files_body">Also finds documents, archives and other files outside the folders you pick. This uses All files access, which you turn on in Settings.</string>
+    <string name="onboarding_privacy">Everything stays on this device. You can still scan folders you pick without either permission.</string>
+    <string name="onboarding_status_allowed">Allowed</string>
+    <string name="onboarding_status_partial">Only the items you selected</string>
+    <string name="onboarding_status_not_allowed">Not allowed</string>
+    <string name="onboarding_status_blocked">Blocked. Allow it in Settings.</string>
+    <string name="onboarding_status_on">On</string>
+    <string name="onboarding_status_off">Off</string>
+    <string name="onboarding_action_allow">Allow access</string>
+    <string name="onboarding_action_allow_all">Allow all</string>
+    <string name="onboarding_action_open_settings">Open settings</string>
+    <string name="onboarding_action_turn_on">Turn on</string>
+    <string name="onboarding_action_continue">Continue</string>
+
+    <string name="settings_folders_title">Folders to scan</string>
+    <string name="settings_folders_body">Dupe Digger can scan every file type in these folders, even without other permissions.</string>
+    <string name="settings_folders_empty">No folders yet.</string>
+    <string name="settings_folders_add">Add folder</string>
+    <string name="settings_folder_add_failed">Couldn’t add the folder. Pick it again.</string>
+    <string name="settings_excluded_title">Excluded folders</string>
+    <string name="settings_excluded_body">Scans skip these folders and everything inside them.</string>
+    <string name="settings_excluded_empty">Nothing excluded.</string>
+    <string name="settings_similar_title">Similar files</string>
+    <string name="settings_similar_body">How different two photos or videos may be and still count as similar. Applies from the next scan.</string>
+    <string name="settings_similar_value">Up to %1$d bits apart</string>
+    <string name="settings_similar_strict">Strict</string>
+    <string name="settings_similar_loose">Loose</string>
+    <string name="settings_excluded_add">Exclude folder</string>
+    <string name="settings_exclude_failed">Couldn’t exclude that folder. Pick a folder on this device’s storage.</string>
+    <string name="settings_remove">Remove</string>
+
+    <string name="scan_channel_name">Scans</string>
+    <string name="model_channel_name">AI model downloads</string>
+    <string name="model_notification_title">Downloading the AI model…</string>
+    <string name="model_notification_progress">%1$s of %2$s</string>
+    <string name="scan_channel_description">Shows progress while Dupe Digger scans your storage.</string>
+    <string name="scan_notification_starting">Starting scan…</string>
+    <string name="scan_stage_indexing">Finding files…</string>
+    <string name="scan_stage_exact">Comparing files…</string>
+    <string name="scan_stage_near">Looking for similar files…</string>
+    <string name="scan_stage_semantic">Comparing with the AI model…</string>
+    <plurals name="scan_files_found">
+        <item quantity="one">%1$s file found</item>
+        <item quantity="other">%1$s files found</item>
+    </plurals>
+    <string name="scan_compared">%1$s of %2$s</string>
+    <string name="scan_action_cancel">Cancel</string>
+
+    <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
+    <string name="error_not_found">The file is no longer there.</string>
+    <string name="error_io">Couldn’t read the file. Check the storage and try again.</string>
+    <string name="error_model_unavailable">The AI model isn’t downloaded. Download it in Settings.</string>
+    <string name="error_unknown">Something went wrong. Try again.</string>
+    <string name="error_would_remove_all_copies">Keep at least one file in each group. Unselect one and try again.</string>
 </resources>

@@ -1,0 +1,453 @@
+package com.vipuljha.dupedigger.domain.usecase
+
+import com.vipuljha.dupedigger.core.common.DomainError
+import com.vipuljha.dupedigger.core.common.Outcome
+import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.AudioFile
+import com.vipuljha.dupedigger.domain.model.AudioSignature
+import com.vipuljha.dupedigger.domain.model.AudioTags
+import com.vipuljha.dupedigger.domain.model.ContentHashes
+import com.vipuljha.dupedigger.domain.model.DiscoveredFile
+import com.vipuljha.dupedigger.domain.model.DocumentFile
+import com.vipuljha.dupedigger.domain.model.EmbeddedFile
+import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
+import com.vipuljha.dupedigger.domain.model.EmbeddingInput
+import com.vipuljha.dupedigger.domain.model.ImageFile
+import com.vipuljha.dupedigger.domain.model.ImageHashes
+import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.MatchTier
+import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaAccess
+import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.ModelVariant
+import com.vipuljha.dupedigger.domain.model.ScanFilter
+import com.vipuljha.dupedigger.domain.model.ScanFolder
+import com.vipuljha.dupedigger.domain.model.ScanProgress
+import com.vipuljha.dupedigger.domain.model.ScanRunInfo
+import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.ScanStage
+import com.vipuljha.dupedigger.domain.model.ScanStatus
+import com.vipuljha.dupedigger.domain.model.ScanSummary
+import com.vipuljha.dupedigger.domain.model.StorageAccessState
+import com.vipuljha.dupedigger.domain.model.StoredFile
+import com.vipuljha.dupedigger.domain.model.VideoFile
+import com.vipuljha.dupedigger.domain.model.VideoSignature
+import com.vipuljha.dupedigger.domain.model.exactFingerprint
+import com.vipuljha.dupedigger.domain.repository.AudioTagReader
+import com.vipuljha.dupedigger.domain.repository.ContentHasher
+import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
+import com.vipuljha.dupedigger.domain.repository.Embedder
+import com.vipuljha.dupedigger.domain.repository.EmbeddingInputReader
+import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
+import com.vipuljha.dupedigger.domain.repository.FileEnumerator
+import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
+import com.vipuljha.dupedigger.domain.repository.ImageHasher
+import com.vipuljha.dupedigger.domain.repository.PowerState
+import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
+import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
+import com.vipuljha.dupedigger.domain.repository.SettingsRepository
+import com.vipuljha.dupedigger.domain.repository.StorageAccess
+import com.vipuljha.dupedigger.domain.repository.VideoHasher
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.IOException
+
+class RunScanUseCaseTest {
+
+    /** sourceUri → content; files sharing content are duplicates. */
+    private val disk = linkedMapOf<String, String>()
+    private val index = FakeIndex()
+    private val hasher = FakeHasher(disk)
+    private val runs = FakeScanRuns()
+    private val groups = DuplicateGroupUseCasesTest.FakeGroups()
+    private val enumerator = FakeEnumerator(disk)
+    private val access = MutableStateFlow(StorageAccessState(MediaAccess.FULL, allFiles = true))
+    private var settings = AppSettings(minFileSizeBytes = 1, skipHiddenFiles = true)
+
+    private val runScan = RunScanUseCase(
+        settings = object : SettingsRepository {
+            override val settings: Flow<AppSettings> get() = MutableStateFlow(this@RunScanUseCaseTest.settings)
+            override suspend fun update(transform: (AppSettings) -> AppSettings) = Unit
+        },
+        excludedPaths = object : ExcludedPathRepository {
+            override val paths: Flow<ImmutableList<String>> = MutableStateFlow(persistentListOf("/storage/emulated/0/Private"))
+            override suspend fun excludeTree(treeUri: String) = Outcome.Success(Unit)
+            override suspend fun remove(path: String) = Unit
+        },
+        storageAccess = object : StorageAccess {
+            override fun current() = access.value
+            override val mediaPermissions = emptyList<String>()
+        },
+        scanFolders = object : ScanFolderRepository {
+            override val folders: Flow<ImmutableList<ScanFolder>> = MutableStateFlow(persistentListOf())
+            override suspend fun add(treeUri: String) = Outcome.Success(Unit)
+            override suspend fun remove(treeUri: String) = Unit
+        },
+        scanRuns = runs,
+        indexFiles = IndexFilesUseCase(enumerator, index),
+        findExact = FindExactDuplicatesUseCase(index, hasher),
+        findNear = FindNearDuplicatesUseCase(
+            index,
+            object : ImageHasher {
+                override suspend fun hash(sourceUri: String) = imageHashes[sourceUri]
+            },
+            object : VideoHasher {
+                override suspend fun signature(sourceUri: String): VideoSignature? = null
+            },
+            object : DocumentTextReader {
+                override fun supports(name: String, mimeType: String?) = false
+                override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? = null
+            },
+            object : AudioTagReader {
+                override suspend fun read(sourceUri: String): AudioTags? = null
+            },
+        ),
+        findSemantic = FindSemanticDuplicatesUseCase(
+            index,
+            object : Embedder {
+                override suspend fun embed(variant: ModelVariant, inputs: List<EmbeddingInput>, dim: Int, backend: EmbeddingBackend) =
+                    Outcome.Success(inputs.map { input -> FloatArray(4) { if (it == (input as EmbeddingInput.Image).encoded[0].toInt()) 1f else 0f } })
+                override suspend fun close() = Unit
+            },
+            object : EmbeddingInputReader {
+                override suspend fun image(sourceUri: String): ByteArray? = scenes[sourceUri]?.let { byteArrayOf(it.toByte()) }
+                override suspend fun audio(sourceUri: String): ByteArray? = null
+            },
+            object : DocumentTextReader {
+                override fun supports(name: String, mimeType: String?) = false
+                override suspend fun text(sourceUri: String, name: String, mimeType: String?): String? = null
+            },
+        ),
+        power = object : PowerState {
+            override fun isCharging() = charging
+        },
+        saveGroups = SaveGroupsUseCase(groups),
+    )
+
+    private var charging = true
+
+    /** sourceUri → perceptual hashes for images that decode. */
+    private val imageHashes = mutableMapOf<String, ImageHashes>()
+
+    /** sourceUri → the scene an image shows; images of one scene embed identically. */
+    private val scenes = mutableMapOf<String, Int>()
+
+    private fun put(name: String, content: String) {
+        disk["file:/storage/emulated/0/$name"] = content
+    }
+
+    @Test
+    fun `similar photos are saved as a near group with the exact ones, each copy counted once`() = runTest {
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.jpg", "photo-1x")
+        put("d.jpg", "landscape")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/b.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/c.jpg"] = ImageHashes(0b11L, 0b101L)
+        imageHashes["file:/storage/emulated/0/d.jpg"] = ImageHashes(-1L, -1L)
+
+        val summary = (runScan(ScanScope.WholeDevice) as Outcome.Success).data
+
+        val saved = groups.saved!!.second
+        assertEquals(listOf(MatchTier.EXACT, MatchTier.NEAR), saved.map { it.tier })
+        assertEquals(listOf(1L, 3L), saved.last().fileIds)
+        assertEquals(2, summary.duplicateFiles)
+        assertEquals(7L + 7L, summary.reclaimableBytes)
+    }
+
+    @Test
+    fun `with the AI tier on and a model chosen, similar images are saved as a semantic group and counted`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false, semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        val summary = (runScan(ScanScope.WholeDevice) { progress += it } as Outcome.Success).data
+
+        assertEquals(listOf(MatchTier.SEMANTIC), groups.saved!!.second.map { it.tier })
+        assertEquals(1, summary.duplicateFiles)
+        assertEquals(8L, summary.reclaimableBytes)
+        assertEquals(ScanStage.SEMANTIC, progress.last().stage)
+    }
+
+    @Test
+    fun `set to run only while charging, a scan on battery skips the AI tier`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false, semanticEnabled = true, aiOnlyWhileCharging = true, aiModelId = "embeddinggemma-440m-text-vision")
+        charging = false
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.SEMANTIC })
+    }
+
+    @Test
+    fun `with the AI tier off there is no semantic stage`() = runTest {
+        settings = settings.copy(aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.SEMANTIC })
+        assertTrue(groups.saved!!.second.none { it.tier == MatchTier.SEMANTIC })
+    }
+
+    @Test
+    fun `with similar files off there is no near stage`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false)
+        put("a.jpg", "photo-1")
+        put("c.jpg", "photo-1x")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/c.jpg"] = ImageHashes(0L, 0L)
+        val progress = mutableListOf<ScanProgress>()
+
+        runScan(ScanScope.WholeDevice) { progress += it }
+
+        assertTrue(progress.none { it.stage == ScanStage.NEAR })
+        assertEquals(emptyList<Any>(), groups.saved!!.second)
+    }
+
+    @Test
+    fun `stages report in order and the run completes with its summary`() = runTest {
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.jpg", "photo-2")
+        put("d.bin", "unique size")
+        val progress = mutableListOf<ScanProgress>()
+
+        val outcome = runScan(ScanScope.WholeDevice) { progress += it }
+
+        val summary = (outcome as Outcome.Success).data
+        assertEquals(1, summary.exactGroups)
+        assertEquals(7L, summary.reclaimableBytes)
+        assertEquals(IndexStats(added = 4), summary.index)
+        val stages = progress.map { it.stage }
+        assertEquals(ScanStage.INDEXING, stages.first())
+        assertEquals(ScanStage.NEAR, stages.last())
+        assertEquals(stages.sorted(), stages)
+        assertEquals(ScanStatus.COMPLETED to summary, runs.runs.single().second to runs.runs.single().third)
+    }
+
+    @Test
+    fun `a completed scan saves its groups and leaves ignored ones out of the summary`() = runTest {
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.mp4", "video-22")
+        put("d.mp4", "video-22")
+        groups.ignored += exactFingerprint(8, "f:video-22")
+
+        val summary = (runScan(ScanScope.WholeDevice) as Outcome.Success).data
+
+        assertEquals(1, summary.exactGroups)
+        assertEquals(7L, summary.reclaimableBytes)
+        val (scanId, saved) = groups.saved!!
+        assertEquals(runs.runs.single().first, scanId)
+        assertEquals(listOf("EXACT:7:f:photo-1"), saved.map { it.fingerprint })
+    }
+
+    @Test
+    fun `a cancelled scan leaves the previous groups alone`() = runTest {
+        repeat(2) { put("v$it.mp4", "video") }
+        hasher.blockFullHashesAfter = 0
+        val stopped = launch { runScan(ScanScope.WholeDevice) }
+        advanceUntilIdle()
+        stopped.cancel()
+        stopped.join()
+
+        assertEquals(null, groups.saved)
+    }
+
+    @Test
+    fun `the filter comes from the exclusions and the hidden-files setting`() = runTest {
+        settings = settings.copy(skipHiddenFiles = false)
+        put("a.jpg", "x")
+
+        runScan(ScanScope.MediaOnly)
+
+        val filter = enumerator.filters.single()
+        assertTrue(filter.skips("/storage/emulated/0/Private/a.jpg", "a.jpg"))
+        assertFalse(filter.skips("/storage/emulated/0/.thumbs/a.jpg", "a.jpg"))
+    }
+
+    @Test
+    fun `an unreadable scope fails before touching the index`() = runTest {
+        put("a.jpg", "x")
+        index.record(listOf(file("file:/old.jpg", "old")), scanId = 0)
+        access.value = StorageAccessState(MediaAccess.NONE, allFiles = false)
+
+        val outcome = runScan(ScanScope.MediaOnly)
+
+        assertEquals(DomainError.PermissionDenied, (outcome as Outcome.Failure).error)
+        assertTrue(runs.runs.isEmpty())
+        assertTrue(enumerator.filters.isEmpty())
+        assertEquals(1, index.rows.size)
+    }
+
+    @Test
+    fun `a stopped scan keeps its hashes and the restart hashes only the rest`() = runTest {
+        // Same size and same partial hash, so all six need a full hash.
+        repeat(6) { put("v$it.mp4", "video-${it % 3}") }
+        hasher.blockFullHashesAfter = 2
+        val stopped = launch { runScan(ScanScope.WholeDevice) }
+        advanceUntilIdle()
+        stopped.cancel()
+        stopped.join()
+        assertEquals(ScanStatus.CANCELLED, runs.runs.single().second)
+        assertEquals(6, hasher.partialCalls)
+        assertEquals(2, hasher.fullCalls)
+
+        // A process death leaves its run marked running.
+        runs.runs[0] = Triple(runs.runs[0].first, ScanStatus.RUNNING, null)
+        hasher.blockFullHashesAfter = Int.MAX_VALUE
+        val outcome = runScan(ScanScope.WholeDevice)
+
+        assertEquals(3, (outcome as Outcome.Success).data.exactGroups)
+        assertEquals(6, hasher.partialCalls)
+        assertEquals(6, hasher.fullCalls)
+        assertEquals(listOf(ScanStatus.INTERRUPTED, ScanStatus.COMPLETED), runs.runs.map { it.second })
+    }
+
+    @Test
+    fun `an enumeration failure fails the run and prunes nothing`() = runTest {
+        index.record(listOf(file("file:/old.jpg", "old")), scanId = 0)
+        enumerator.failWith = IOException("volume removed")
+
+        val outcome = runScan(ScanScope.WholeDevice)
+
+        assertEquals(DomainError.Io, (outcome as Outcome.Failure).error)
+        assertEquals(ScanStatus.FAILED, runs.runs.single().second)
+        assertEquals(1, index.rows.size)
+    }
+
+    private fun file(uri: String, content: String) =
+        DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, MediaKind.OTHER, content.length.toLong(), 1, null)
+
+    private class FakeEnumerator(private val disk: Map<String, String>) : FileEnumerator {
+        val filters = mutableListOf<ScanFilter>()
+        var failWith: Exception? = null
+
+        override fun enumerate(scope: ScanScope, filter: ScanFilter) = flow {
+            filters += filter
+            failWith?.let { throw it }
+            disk.forEach { (uri, content) ->
+                emit(DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, MediaKind.OTHER, content.length.toLong(), 1, null))
+            }
+        }
+    }
+
+    private class FakeHasher(private val disk: Map<String, String>) : ContentHasher {
+        var partialCalls = 0
+        var fullCalls = 0
+        var blockFullHashesAfter = Int.MAX_VALUE
+
+        override suspend fun partialHash(sourceUri: String, size: Long): Outcome<ContentHashes> {
+            partialCalls++
+            return Outcome.Success(ContentHashes(partial = "p$size", full = null))
+        }
+
+        override suspend fun fullHash(sourceUri: String, size: Long): Outcome<String> {
+            if (fullCalls >= blockFullHashesAfter) awaitCancellation()
+            fullCalls++
+            return Outcome.Success("f:" + disk.getValue(sourceUri))
+        }
+    }
+
+    private class FakeIndex : FileIndexRepository {
+        val rows = linkedMapOf<String, IndexedFile>()
+        val imageHashes = mutableMapOf<Long, ImageHashes>()
+
+        override suspend fun imagesSeenIn(scanId: Long) =
+            rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId }
+                .map { ImageFile(it.id, it.sourceUri, it.size, imageHashes[it.id]) }
+        override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
+            imageHashes += hashes
+        }
+        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
+        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
+        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
+        override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) =
+            rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId && MediaKind.IMAGE in kinds }
+                .map { EmbeddedFile(it.id, it.sourceUri, it.sourceUri.substringAfterLast('/'), "image/jpeg", MediaKind.IMAGE, it.size, null) }
+        override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
+        override suspend fun deleteEmbeddings(modelId: String) = Unit
+        private val lastSeen = mutableMapOf<String, Long>()
+        private var nextId = 1L
+
+        override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats {
+            var added = 0
+            var changed = 0
+            for (f in files) {
+                val row = rows[f.sourceUri]
+                when {
+                    row == null -> {
+                        rows[f.sourceUri] = IndexedFile(nextId++, f.sourceUri, f.size, f.mtime, null, null)
+                        added++
+                    }
+                    row.size != f.size || row.mtime != f.mtime -> {
+                        rows[f.sourceUri] = row.copy(size = f.size, mtime = f.mtime, partialHash = null, fullHash = null)
+                        changed++
+                    }
+                }
+                lastSeen[f.sourceUri] = scanId
+            }
+            return IndexStats(added = added, changed = changed, unchanged = files.size - added - changed)
+        }
+
+        override suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int {
+            val stale = lastSeen.filterValues { it < scanId }.keys.toList()
+            stale.forEach { rows.remove(it); lastSeen.remove(it) }
+            return stale.size
+        }
+
+        override suspend fun filesSeenIn(scanId: Long) = rows.values.filter { lastSeen[it.sourceUri] == scanId }
+
+        override suspend fun saveHashes(files: List<IndexedFile>) = files.forEach { rows[it.sourceUri] = it }
+
+        override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
+
+        override suspend fun remove(ids: Collection<Long>) = Unit
+    }
+
+    private class FakeScanRuns : ScanRunRepository {
+        /** id, status, summary */
+        val runs = mutableListOf<Triple<Long, ScanStatus, ScanSummary?>>()
+
+        override suspend fun start(scope: ScanScope): Long {
+            runs.replaceAll { if (it.second == ScanStatus.RUNNING) it.copy(second = ScanStatus.INTERRUPTED) else it }
+            runs += Triple(runs.size + 1L, ScanStatus.RUNNING, null)
+            return runs.size.toLong()
+        }
+
+        override suspend fun finish(scanId: Long, status: ScanStatus, summary: ScanSummary?) {
+            runs[(scanId - 1).toInt()] = Triple(scanId, status, summary)
+        }
+
+        override fun observeLatest() = emptyFlow<ScanRunInfo?>()
+    }
+}

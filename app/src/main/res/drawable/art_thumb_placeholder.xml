@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Square thumbnail placeholder: Material "Image" glyph centred with built-in padding. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <path android:fillColor="@color/thumb_art_background" android:pathData="M0,0h72v72h-72z" />
+    <group android:translateX="24" android:translateY="24">
+        <path
+            android:fillColor="@color/thumb_art_glyph"
+            android:pathData="M19,5v14L5,19L5,5h14m0,-2L5,3c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2L21,5c0,-1.1 -0.9,-2 -2,-2zM14.14,11.86l-3,3.87L9,13.14 6,17h12l-3.86,-5.14z" />
+    </group>
+</vector>
