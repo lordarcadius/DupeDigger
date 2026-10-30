@@ -54,6 +54,23 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-10-30: PRM2-10075 baselines, measured before any code change, so the follow-up's speed and tap-count changes have a "before" to compare against.
+  - **Scan throughput:** `ScanThroughputTest` (debug build, 5,000 files of 32 KiB, 1,000 copies, 50 folders) on a temporary API 36 x86_64 Pixel Tablet emulator with an 8 GB data partition (created for this and deleted after). Seven back-to-back runs; the first (cold emulator) is dropped, and the figure is the median of the other six.
+
+    | Pass | Median | Six runs (ms) |
+    |---|---|---|
+    | First scan, index | 1,920 ms (2,605 files/s) | 3393, 2036, 2546, 1803, 1749, 1587 |
+    | First scan, exact | 1,427 ms (3,505 files/s) | 2404, 1769, 1423, 1430, 1312, 1145 |
+    | Rescan, index | 531 ms (9,425 files/s) | 591, 590, 492, 569, 479, 395 |
+    | Rescan, exact | 75 ms | 86, 79, 61, 86, 70, 45 |
+
+    Runs kept getting faster as the emulator warmed up. Compare an "after" figure only with one taken the same way: a fresh emulator, seven runs, first dropped, median of six. Command: `adb shell am instrument -w -e scanBenchmark true -e class com.vipuljha.dupedigger.benchmark.ScanThroughputTest com.vipuljha.dupedigger.test/androidx.test.runner.AndroidJUnitRunner`, then `adb logcat -d -s ScanThroughput:I`.
+  - **Compare and delete taps:** to look at a group, compare a copy with the keeper, then delete the copies.
+    - **One pane (phone):** 7 taps. Group row (opens Group), Compare on a member, Back, Back to Results, the row's checkbox, Delete, then Delete in the confirmation.
+    - **Two panes:** 6 taps, because Group opens beside the list and the second Back isn't needed.
+    - Group and Compare have no delete action. The Results checkbox always takes every copy but the keeper, so a single copy of a three-file group can't be deleted on its own.
+  - Next: PRM2-10075 step 2, a WhatsApp coverage test for full scans.
+
 - 2026-10-29: P7-05: release build (D-013).
   - **R8:** the `packageScope` limit is gone, so R8 shrinks and renames the whole app. `app/src/main/keepRules/litertlm.keep` keeps LiteRT-LM, which ships no rules of its own. Dex went from 7.7 MB to 4.5 MB.
   - **Icon:** an adaptive icon with background, foreground and monochrome layers: the "Content copy" glyph in the brand's onPrimaryContainer (`#6A3B03`) on primaryContainer (`#FFDCC0`). The template's robot mipmaps are removed; minSdk 31 never used them.
