@@ -101,7 +101,7 @@ fun ScanScreen(
             when (phase) {
                 ScanPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { AppLoadingIndicator() }
                 ScanPhase.Setup -> SetupPanel(state, onIntent)
-                ScanPhase.Running -> RunningPanel(progress, state.cancelling) { onIntent(ScanIntent.CancelClicked) }
+                ScanPhase.Running -> RunningPanel(progress, state.cancelling, state.aiSkipped, onIntent)
                 is ScanPhase.Done -> DonePanel(phase.result, onIntent)
             }
         }
@@ -345,7 +345,8 @@ object ScanTestTags {
 }
 
 @Composable
-private fun RunningPanel(progress: () -> ScanProgressUi?, cancelling: Boolean, onCancel: () -> Unit) {
+private fun RunningPanel(progress: () -> ScanProgressUi?, cancelling: Boolean, aiSkipped: Boolean, onIntent: (ScanIntent) -> Unit) {
+    val aiStage by remember(progress) { derivedStateOf { progress()?.aiStage == true } }
     val gutter = LocalPaneMetrics.current.gutter
     Box(Modifier.fillMaxSize().padding(horizontal = gutter), contentAlignment = Alignment.Center) {
         Column(
@@ -363,7 +364,23 @@ private fun RunningPanel(progress: () -> ScanProgressUi?, cancelling: Boolean, o
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(Dimens.spaceLg))
-            AppButton(stringResource(R.string.scan_action_cancel_scan), onCancel, kind = ButtonKind.Outlined, loading = cancelling)
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+                if (aiStage) {
+                    AppButton(
+                        stringResource(R.string.scan_action_skip_ai),
+                        { onIntent(ScanIntent.SkipAiClicked) },
+                        kind = ButtonKind.Text,
+                        loading = aiSkipped,
+                        enabled = !aiSkipped,
+                    )
+                }
+                AppButton(
+                    stringResource(R.string.scan_action_cancel_scan),
+                    { onIntent(ScanIntent.CancelClicked) },
+                    kind = ButtonKind.Outlined,
+                    loading = cancelling,
+                )
+            }
         }
     }
 }

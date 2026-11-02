@@ -4,6 +4,7 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.toUiText
+import com.vipuljha.dupedigger.data.worker.InMemorySemanticStageSkip
 import com.vipuljha.dupedigger.domain.model.BuiltInPreset
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.MediaAccess
@@ -25,6 +26,7 @@ import com.vipuljha.dupedigger.domain.usecase.ObserveScanPresetsUseCase
 import com.vipuljha.dupedigger.domain.usecase.SaveScanPresetUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
+import com.vipuljha.dupedigger.domain.usecase.SkipSemanticStageUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import com.vipuljha.dupedigger.presentation.FakeFolders
 import com.vipuljha.dupedigger.presentation.FakePresets
@@ -56,6 +58,7 @@ class ScanViewModelTest {
     private val access = FakeStorageAccess()
     private val folders = FakeFolders()
     private val presets = FakePresets()
+    private val skip = InMemorySemanticStageSkip()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -74,6 +77,8 @@ class ScanViewModelTest {
         SaveScanPresetUseCase(presets),
         DeleteScanPresetUseCase(presets),
         AddScanFolderUseCase(folders),
+        SkipSemanticStageUseCase(skip),
+        skip,
     )
 
     /** No preset, every file type, then the where step. */
@@ -293,6 +298,23 @@ class ScanViewModelTest {
         val done = vm.state.value.phase as ScanPhase.Done
         assertEquals(UiText.res(R.string.scan_cancelled_title), done.result.title)
         assertFalse(vm.state.value.cancelling)
+    }
+
+    @Test
+    fun `skip AI is offered during the AI stage and asks the running scan to skip it`() = runTest {
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.progress.collect {} }
+        runs.latest.value = ScanRunInfo(3, ScopeKind.WHOLE_DEVICE, ScanStatus.RUNNING, 0, null, null)
+        scheduler.progress.value = ScanProgress(ScanStage.NEAR, 1, 10)
+        assertFalse(vm.progress.value!!.aiStage)
+
+        scheduler.progress.value = ScanProgress(ScanStage.SEMANTIC, 1, 10)
+        assertTrue(vm.progress.value!!.aiStage)
+        vm.onIntent(ScanIntent.SkipAiClicked)
+
+        assertTrue(skip.requested.value)
+        assertTrue(vm.state.value.aiSkipped)
+        assertFalse(scheduler.cancelled)
     }
 
     @Test

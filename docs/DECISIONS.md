@@ -410,3 +410,10 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
   - Edit and delete appear only on the user's own presets.
 - **Creating and editing:** both reuse the File types and Where steps, with a name field and "Save preset" in place of "Start scan".
 - **Retry** repeats the last scan that was started, whatever the setup now shows.
+
+**Skip AI.** `RunScanUseCase` runs the semantic stage against `SemanticStageSkip.requested` and cancels only that stage when a skip comes in. The scan then saves its exact and near groups and ends as completed.
+- **Cache:** vectors saved before the skip stay cached for the next scan.
+- **Reset:** each scan resets the signal when it starts, so an earlier skip never carries over.
+- **Where the signal lives:** in memory (`InMemorySemanticStageSkip`). The worker, the Scan screen and the notification's `SkipAiReceiver` all run in the app's one process.
+  - If the process dies after a skip, the restarted scan runs the AI stage again. Earlier stages' work is cached, so only the AI work repeats.
+- **Where Skip AI appears:** on the Scan screen and in the notification, only while the AI stage runs.

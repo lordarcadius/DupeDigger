@@ -320,6 +320,7 @@
     </plurals>
     <string name="scan_compared">%1$s of %2$s</string>
     <string name="scan_action_cancel">Cancel</string>
+    <string name="scan_action_skip_ai">Skip AI</string>
 
     <string name="error_permission_denied">Dupe Digger doesn’t have access to these files. Allow storage access and try again.</string>
     <string name="error_not_found">The file is no longer there.</string>

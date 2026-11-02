@@ -42,6 +42,8 @@ data class ScanState(
     val starting: Boolean = false,
     val saving: Boolean = false,
     val cancelling: Boolean = false,
+    /** A skip of the running scan's AI stage was asked for. */
+    val aiSkipped: Boolean = false,
 ) : UiState {
     val canStartPreset: Boolean get() = presets.firstOrNull { it.id == selectedPresetId }?.enabled == true
     val canLeaveTypes: Boolean get() = kinds.any { it.selected }
@@ -72,9 +74,9 @@ data class PresetDraftUi(val id: Long, val name: String)
 @Immutable
 data class ScanResultUi(val title: UiText, val body: UiText, val isError: Boolean, val hasResults: Boolean)
 
-/** The live numbers; [fraction] is null while the amount of work is unknown. */
+/** The live numbers; [fraction] is null while the amount of work is unknown; [aiStage] offers Skip AI. */
 @Immutable
-data class ScanProgressUi(val stage: UiText, val count: UiText?, val rate: UiText?, val fraction: Float?)
+data class ScanProgressUi(val stage: UiText, val count: UiText?, val rate: UiText?, val fraction: Float?, val aiStage: Boolean = false)
 
 sealed interface ScanIntent : UiIntent {
     data object Refresh : ScanIntent
@@ -97,6 +99,7 @@ sealed interface ScanIntent : UiIntent {
     data class AiToggled(val enabled: Boolean) : ScanIntent
     data object StartClicked : ScanIntent
     data object CancelClicked : ScanIntent
+    data object SkipAiClicked : ScanIntent
     data object ScanAgainClicked : ScanIntent
     data object ViewResultsClicked : ScanIntent
 }

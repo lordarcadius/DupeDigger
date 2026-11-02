@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
+import com.vipuljha.dupedigger.data.worker.InMemorySemanticStageSkip
 import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.domain.model.MediaAccess
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -43,6 +44,7 @@ import com.vipuljha.dupedigger.domain.usecase.ObserveScanPresetsUseCase
 import com.vipuljha.dupedigger.domain.usecase.SaveScanPresetUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
+import com.vipuljha.dupedigger.domain.usecase.SkipSemanticStageUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -102,11 +104,13 @@ class ScanStartFlowTest {
             }
             override suspend fun delete(id: Long) = Unit
         }
+        val skip = InMemorySemanticStageSkip()
         val viewModel = ScanViewModel(
             settings, runs, scheduler, ObserveScanPresetsUseCase(presetRepository),
             GetAvailableScopesUseCase(access, folders), StartScanUseCase(access, folders, scheduler), CancelScanUseCase(scheduler),
             SetNearDuplicatesEnabledUseCase(settings), SetSemanticEnabledUseCase(settings),
             SaveScanPresetUseCase(presetRepository), DeleteScanPresetUseCase(presetRepository), AddScanFolderUseCase(folders),
+            SkipSemanticStageUseCase(skip), skip,
         )
         rule.setContent {
             DupeDiggerTheme {

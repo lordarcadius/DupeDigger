@@ -112,6 +112,7 @@ fun ScanProgress.toUi(rate: Int?) = ScanProgressUi(
     },
     rate = rate?.let { UiText.plural(R.plurals.scan_rate, it, formatCount(it)) },
     fraction = total?.takeIf { stage != ScanStage.INDEXING && it > 0 }?.let { done.coerceAtMost(it).toFloat() / it },
+    aiStage = stage == ScanStage.SEMANTIC,
 )
 
 fun ScanRunInfo.toResult(): ScanResultUi = when (status) {

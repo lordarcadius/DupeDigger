@@ -54,6 +54,19 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 7, skipping the AI stage (D-014).
+  - **Domain:** `SemanticStageSkip` and `SkipSemanticStageUseCase`. `RunScanUseCase` resets the signal when a scan starts and races only the semantic stage against it, so a skipped scan completes with its exact and near groups.
+  - **Data:**
+    - `InMemorySemanticStageSkip`.
+    - A "Skip AI" notification action while the stage is `SEMANTIC`, sent to a non-exported `SkipAiReceiver`, which reaches the singleton through a Hilt entry point.
+  - **UI:** a "Skip AI" text button next to "Cancel scan" while the AI stage runs, spinning once asked.
+  - **Tests:**
+    - JVM, `RunScanUseCaseTest`: a skip mid-stage completes the scan with exact and near groups only, and an old skip doesn't skip the next scan.
+    - JVM, `ScanViewModelTest`: Skip AI is offered only in the AI stage and sends the skip without cancelling. All 254 unit tests pass.
+    - On a temporary API 35 emulator, deleted after: the new `SkipAiActionTest` (2: the action appears only in the AI stage, and sending its PendingIntent sets the app's skip signal), `ScanStartFlowTest` (3) and `ScanWorkerDeviceTest` (1) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 8, background scanning.
+
 - 2026-11-02: PRM2-10075 step 6, the scan-start flow (D-014).
   - **Scan screen:** setup is three steps (`SetupStep`).
     - **Presets:** the user's presets, then the eight built-ins, plus "No preset". "New preset" is on this step, and edit and delete appear on user presets, with a delete confirmation.

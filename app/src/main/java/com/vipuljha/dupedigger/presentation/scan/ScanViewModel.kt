@@ -16,6 +16,7 @@ import com.vipuljha.dupedigger.domain.model.ScopeKind
 import com.vipuljha.dupedigger.domain.model.kind
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
+import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.usecase.AddScanFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.CancelScanUseCase
@@ -25,6 +26,7 @@ import com.vipuljha.dupedigger.domain.usecase.ObserveScanPresetsUseCase
 import com.vipuljha.dupedigger.domain.usecase.SaveScanPresetUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
+import com.vipuljha.dupedigger.domain.usecase.SkipSemanticStageUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
@@ -62,6 +64,8 @@ class ScanViewModel @Inject constructor(
     private val savePreset: SaveScanPresetUseCase,
     private val deletePreset: DeleteScanPresetUseCase,
     private val addScanFolder: AddScanFolderUseCase,
+    private val skipSemanticStage: SkipSemanticStageUseCase,
+    semanticStageSkip: SemanticStageSkip,
 ) : MviViewModel<ScanState, ScanIntent, ScanEffect>(ScanState(kinds = kindOptions(AllMediaKinds))) {
 
     private var available: List<ScanScope> = emptyList()
@@ -91,6 +95,7 @@ class ScanViewModel @Inject constructor(
             .distinctUntilChanged()
             .onEach { (available, enabled) -> setState { copy(aiAvailable = available, aiEnabled = enabled) } }
             .launchIn(viewModelScope)
+        semanticStageSkip.requested.onEach { setState { copy(aiSkipped = it) } }.launchIn(viewModelScope)
         viewModelScope.launch {
             loadScopes()
             observePresets().onEach {
@@ -145,6 +150,7 @@ class ScanViewModel @Inject constructor(
             is ScanIntent.NearToggled -> viewModelScope.launch { setNearEnabled(intent.enabled) }
             is ScanIntent.AiToggled -> viewModelScope.launch { setAiEnabled(intent.enabled) }
             ScanIntent.StartClicked -> start()
+            ScanIntent.SkipAiClicked -> skipSemanticStage()
             ScanIntent.CancelClicked -> {
                 setState { copy(cancelling = true) }
                 cancelScan()

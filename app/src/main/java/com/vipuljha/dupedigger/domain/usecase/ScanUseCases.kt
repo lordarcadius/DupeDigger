@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.domain.model.availableScopes
 import com.vipuljha.dupedigger.domain.model.isReachable
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
+import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import kotlinx.collections.immutable.ImmutableList
@@ -50,4 +51,9 @@ class SetNearDuplicatesEnabledUseCase @Inject constructor(private val settings: 
 class SetNearThresholdUseCase @Inject constructor(private val settings: SettingsRepository) {
     suspend operator fun invoke(bits: Int) =
         settings.update { it.copy(nearHammingThreshold = bits.coerceIn(AppSettings.NearThresholdChoices)) }
+}
+
+/** Ends the running scan's AI stage early; the scan still finishes with its exact and similar matches. */
+class SkipSemanticStageUseCase @Inject constructor(private val skip: SemanticStageSkip) {
+    operator fun invoke() = skip.request()
 }

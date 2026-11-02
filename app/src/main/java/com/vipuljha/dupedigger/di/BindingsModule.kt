@@ -22,6 +22,7 @@ import com.vipuljha.dupedigger.data.storage.AndroidFileRemover
 import com.vipuljha.dupedigger.data.storage.AndroidPowerState
 import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
 import com.vipuljha.dupedigger.data.storage.AndroidStorageAccess
+import com.vipuljha.dupedigger.data.worker.InMemorySemanticStageSkip
 import com.vipuljha.dupedigger.data.worker.WorkManagerModelDownloads
 import com.vipuljha.dupedigger.data.worker.WorkManagerScanScheduler
 import com.vipuljha.dupedigger.domain.repository.AudioTagReader
@@ -43,6 +44,7 @@ import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanPresetRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
+import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import com.vipuljha.dupedigger.domain.repository.VideoHasher
@@ -84,6 +86,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindScanScheduler(impl: WorkManagerScanScheduler): ScanScheduler
+
+    @Binds
+    abstract fun bindSemanticStageSkip(impl: InMemorySemanticStageSkip): SemanticStageSkip
 
     @Binds
     abstract fun bindDuplicateGroupRepository(impl: DuplicateGroupRepositoryImpl): DuplicateGroupRepository
