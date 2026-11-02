@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.mvi.ObserveAsEvents
 import com.vipuljha.dupedigger.core.ui.asString
+import com.vipuljha.dupedigger.presentation.common.rememberRemovalEventHandler
 import kotlinx.coroutines.launch
 
 @Composable
@@ -32,6 +33,11 @@ fun GroupRoute(
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val onRemoval = rememberRemovalEventHandler(
+        snackbarHostState,
+        onTrashAnswered = { viewModel.onIntent(GroupIntent.TrashAnswered(it)) },
+        onUndo = { viewModel.onIntent(GroupIntent.UndoClicked(it)) },
+    )
 
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
@@ -48,6 +54,7 @@ fun GroupRoute(
             is GroupEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
             GroupEffect.Close -> onBack()
             is GroupEffect.OpenCompare -> onCompare(effect.keeperId, effect.otherId)
+            is GroupEffect.Removal -> onRemoval(effect.event)
         }
     }
 

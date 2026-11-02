@@ -230,7 +230,11 @@ The 270M and 740M downloads matched their SHA-256 exactly. The 440M file's size 
 - **Scan screen:** the "AI matches" row is a working switch once a model is chosen.
 
 ## D-007: Never auto-delete; always keep one (accepted)
-Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
+Deletion is always user-initiated and recoverable. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
+- **Bulk deletes from Results** are confirmed in a dialog.
+- **A single copy deleted in place from Group or Compare** (PRM2-10075) isn't confirmed. Its snackbar offers Undo instead, as the ticket asked.
+  - Only a copy that isn't the keeper can be deleted there.
+  - Media still goes through the system trash prompt.
 
 **Known limit (P3-04):** the quarantine lives in the app's external files folder, so uninstalling the app or clearing its storage deletes quarantined files for good. The Quarantine screen (P4-05) should say so. `android:hasFragileUserData="true"` would make the uninstall dialog offer to keep app data; I have not verified that it covers this folder, and it isn't set yet.
 

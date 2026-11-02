@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,6 +64,7 @@ import com.vipuljha.dupedigger.core.designsystem.TierTag
 import com.vipuljha.dupedigger.core.designsystem.TooltipIconButton
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.designsystem.WindowBreakpoints
+import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.StateSwitch
 import com.vipuljha.dupedigger.core.ui.asString
 import kotlinx.collections.immutable.persistentListOf
@@ -68,11 +72,28 @@ import kotlinx.collections.immutable.persistentListOf
 private enum class CompareMode { SideBySide, Slider }
 
 @Composable
-fun CompareScreen(state: CompareState, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun CompareScreen(
+    state: CompareState,
+    onIntent: (CompareIntent) -> Unit,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val showing = (state.content as? ContentState.Success)?.data != null
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AppTopBar(onBack = onBack) { TopBarTitle(stringResource(R.string.compare_title)) } },
+        topBar = {
+            AppTopBar(
+                onBack = onBack,
+                actions = {
+                    if (showing) {
+                        TooltipIconButton(Icons.Filled.Delete, stringResource(R.string.compare_action_delete), { onIntent(CompareIntent.DeleteClicked) })
+                    }
+                },
+            ) { TopBarTitle(stringResource(R.string.compare_title)) }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
             state = state.content,

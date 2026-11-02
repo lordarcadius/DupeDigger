@@ -54,6 +54,29 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 10, quicker compare and delete (D-007 amended).
+  - **Delete in place:**
+    - Group shows a Delete button on every copy that isn't the keeper.
+    - Compare has a "Delete this copy" top-bar action, which deletes the right-hand file and never the keeper.
+    - Neither has a confirmation dialog. Each shows a snackbar with Undo, and media still goes through the system trash prompt.
+    - `FileRemoval`, one instance per ViewModel, runs the delete and reports messages, Undo and the trash prompt. `rememberRemovalEventHandler` shows them.
+    - Finishing the trash prompt and Undo still work after the delete dissolved the group.
+  - **Swipe-to-select:** a sideways swipe on a Results row toggles its selection and springs back. It never deletes, and the checkbox stays.
+  - **Stale selection:** Results clears its selection when the reclaimable totals change, so a file deleted from Group or Compare can't make the next bulk delete fail with "not found".
+  - **Taps, re-counted from the new UI** (not timed on a device), for the baseline's task: look at a group, compare a copy with the keeper, delete it.
+    - **One pane:** 3 taps (Group row, Compare, "Delete this copy"). Was 7.
+    - **Two panes:** 3 taps. Was 6.
+    - **Without comparing:** 2 taps (Group row, Delete on the copy).
+    - **Media:** the system trash prompt adds one tap, for media only, as it did before. The baseline didn't count it either.
+    - **New:** one copy of a three-file group can now be deleted on its own, which the baseline couldn't do.
+  - **Tests:**
+    - `GroupViewModelTest` (2 new): delete in place with Undo, and the keeper is refused; the trash prompt is finished after the group dissolved.
+    - `CompareViewModelTest` (new, 1): deletes the right-hand copy only, with Undo.
+    - `ResultsViewModelTest` (1 new): a delete made elsewhere clears the selection.
+    - All 268 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+    - I didn't run the new buttons or the swipe on a device in this step.
+  - Next: PRM2-10075 step 11, stats.
+
 - 2026-11-02: PRM2-10075 step 9, smart selection on Results (D-014).
   - **Domain:**
     - `KeepRule` and `DuplicateFolder`.

@@ -306,4 +306,17 @@ class ResultsViewModelTest {
         assertEquals(setOf(1L, 3L), vm.state.value.selection.keys)
         assertEquals(KeepRule.InFolder("/storage/emulated/0/Download"), vm.state.value.keepRule)
     }
+
+    @Test
+    fun `a delete made from Group or Compare clears the selection, so the next delete can't trip on a file that's gone`() {
+        val vm = viewModel()
+        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 2, files = 2, bytes = 200))
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        assertEquals(2, vm.state.value.selection.size)
+
+        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 1, files = 1, bytes = 100))
+
+        assertTrue(vm.state.value.selection.isEmpty())
+        assertNull(vm.state.value.selectionSummary)
+    }
 }

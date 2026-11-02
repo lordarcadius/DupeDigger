@@ -7,6 +7,8 @@ import com.vipuljha.dupedigger.core.mvi.UiState
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.presentation.common.FileRemoval
+import com.vipuljha.dupedigger.presentation.results.UndoUi
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -39,6 +41,9 @@ sealed interface GroupIntent : UiIntent {
     data class OpenClicked(val fileId: Long) : GroupIntent
     data object NotDuplicatesClicked : GroupIntent
     data class CompareClicked(val fileId: Long) : GroupIntent
+    data class DeleteClicked(val fileId: Long) : GroupIntent
+    data class TrashAnswered(val accepted: Boolean) : GroupIntent
+    data class UndoClicked(val undo: UndoUi) : GroupIntent
 }
 
 sealed interface GroupEffect : UiEffect {
@@ -46,4 +51,5 @@ sealed interface GroupEffect : UiEffect {
     data class ShowMessage(val message: UiText) : GroupEffect
     data object Close : GroupEffect
     data class OpenCompare(val keeperId: Long, val otherId: Long) : GroupEffect
+    data class Removal(val event: FileRemoval.Event) : GroupEffect
 }

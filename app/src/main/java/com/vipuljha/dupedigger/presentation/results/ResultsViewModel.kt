@@ -82,6 +82,12 @@ class ResultsViewModel @Inject constructor(
             .drop(1)
             .onEach { select(emptyMap()) }
             .launchIn(viewModelScope)
+        // A file deleted from Group or Compare leaves its groups; a selection still holding it would fail to delete.
+        groupRepository.observeReclaimable()
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { select(emptyMap()) }
+            .launchIn(viewModelScope)
         // A new keeper or a "not duplicates" may touch selected files; delete must never take a chosen keeper.
         groupRepository.observeDecisionChanges()
             .onEach { select(emptyMap()) }

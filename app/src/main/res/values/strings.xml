@@ -87,6 +87,7 @@
     <string name="results_empty_kind_title">Nothing in this category</string>
     <string name="results_empty_kind_body">Pick another category, or show all groups.</string>
     <string name="results_error_title">Couldn’t load the results</string>
+    <string name="compare_action_delete">Delete this copy</string>
     <string name="results_keep_newest">Keep newest</string>
     <string name="results_keep_oldest">Keep oldest</string>
     <string name="results_keep_largest">Keep largest</string>

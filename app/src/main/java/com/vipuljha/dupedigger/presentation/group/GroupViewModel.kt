@@ -14,6 +14,7 @@ import com.vipuljha.dupedigger.domain.usecase.GetViewTargetUseCase
 import com.vipuljha.dupedigger.domain.usecase.MarkNotDuplicatesUseCase
 import com.vipuljha.dupedigger.domain.usecase.ObserveGroupUseCase
 import com.vipuljha.dupedigger.domain.usecase.ReadMediaInfoUseCase
+import com.vipuljha.dupedigger.presentation.common.FileRemoval
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
  * One group by its content fingerprint, so it survives rescans that renumber groups.
  * - Keep choices and "not duplicates" are saved by fingerprint; the list here follows the database.
  * - Image and video dimensions are read once per file, in the background.
+ * - A copy that isn't the keeper can be deleted right here, with Undo.
  */
 @HiltViewModel(assistedFactory = GroupViewModel.Factory::class)
 class GroupViewModel @AssistedInject constructor(
@@ -37,6 +39,7 @@ class GroupViewModel @AssistedInject constructor(
     private val markNotDuplicates: MarkNotDuplicatesUseCase,
     private val readMediaInfo: ReadMediaInfoUseCase,
     private val getViewTarget: GetViewTargetUseCase,
+    private val removal: FileRemoval,
 ) : MviViewModel<GroupState, GroupIntent, GroupEffect>(GroupState()) {
 
     private var group: DuplicateGroupItem? = null
@@ -54,6 +57,12 @@ class GroupViewModel @AssistedInject constructor(
     }
 
     override fun handleIntent(intent: GroupIntent) {
+        // These finish a delete, which may have dissolved the group.
+        when (intent) {
+            is GroupIntent.TrashAnswered -> return report { removal.trashAnswered(intent.accepted) }
+            is GroupIntent.UndoClicked -> return report { removal.undo(intent.undo) }
+            else -> Unit
+        }
         val current = group ?: return
         val members = listOf(current.keeper) + current.removable
         when (intent) {
@@ -70,11 +79,19 @@ class GroupViewModel @AssistedInject constructor(
                 }
             }
             is GroupIntent.CompareClicked -> sendEffect(GroupEffect.OpenCompare(current.keeper.fileId, intent.fileId))
+            is GroupIntent.DeleteClicked -> current.removable.firstOrNull { it.fileId == intent.fileId }?.let { member ->
+                report { removal.delete(mapOf(member.fileId to member.size)) }
+            }
+            is GroupIntent.TrashAnswered, is GroupIntent.UndoClicked -> Unit
             GroupIntent.NotDuplicatesClicked -> viewModelScope.launch {
                 markNotDuplicates(fingerprint)
                 sendEffect(GroupEffect.Close)
             }
         }
+    }
+
+    private fun report(events: suspend () -> List<FileRemoval.Event>) {
+        viewModelScope.launch { events().forEach { sendEffect(GroupEffect.Removal(it)) } }
     }
 
     private fun readDimensions(item: DuplicateGroupItem) {

@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
@@ -42,12 +44,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,6 +93,7 @@ import com.vipuljha.dupedigger.core.ui.asString
 import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.launch
 
 @Composable
 fun ResultsScreen(
@@ -281,6 +288,35 @@ private fun GroupList(
 
 private enum class Phase { Loading, Error, Empty, Content }
 
+/** A sideways swipe toggles the row's selection and the row springs back; it never deletes. The checkbox stays the pointer and keyboard path. */
+@Composable
+private fun SwipeToSelect(selected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    SwipeToDismissBox(
+        state = state,
+        modifier = modifier,
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer).padding(horizontal = Dimens.spaceXl),
+                contentAlignment = if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                Icon(
+                    if (selected) Icons.Filled.CheckBoxOutlineBlank else Icons.Filled.CheckBox,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        },
+        onDismiss = {
+            onToggle()
+            scope.launch { state.reset() }
+        },
+    ) {
+        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { content() }
+    }
+}
+
 @Composable
 private fun GroupRows(
     state: ResultsState,
@@ -309,13 +345,14 @@ private fun GroupRows(
         }
         items(count = groups.itemCount, key = groups.itemKey { it.groupId }, contentType = groups.itemContentType { "group" }) { index ->
             groups[index]?.let { row ->
-                GroupRow(
-                    row,
-                    open = row.fingerprint == openGroup,
-                    onOpen = { onOpenGroup(row.fingerprint) },
-                    onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
-                    modifier = Modifier.animateItem(),
-                )
+                SwipeToSelect(row.selected, onToggle = { onIntent(ResultsIntent.GroupToggled(row)) }, modifier = Modifier.animateItem()) {
+                    GroupRow(
+                        row,
+                        open = row.fingerprint == openGroup,
+                        onOpen = { onOpenGroup(row.fingerprint) },
+                        onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
+                    )
+                }
             }
         }
         when (groups.loadState.append) {
