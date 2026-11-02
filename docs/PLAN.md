@@ -95,6 +95,22 @@ Every task has an ID (`P<phase>-<nn>`), a scope and acceptance criteria ("Done w
 
 ---
 
+## Follow-up: PRM2-10075
+
+Scan presets, background scans and smart selection, done in 12 steps. Design is in D-014, and status and timings are in [PROGRESS.md](PROGRESS.md).
+
+| Area | Done when |
+|---|---|
+| Scan start | Scan opens on presets. With no preset, it asks for file types, then whole storage or chosen folders. |
+| Presets | User presets can be created, edited and deleted. The built-in WhatsApp, Camera, Telegram, Screenshots, Facebook, Instagram, Snapchat and Reddit presets can't be deleted. |
+| Coverage | A full scan includes `Android/media/com.whatsapp`, and a test covers it. |
+| Scanning | The AI stage can be skipped mid-scan and keeps earlier results. A scan finishes after the app is closed, and reopening shows its progress. |
+| Results | Select all, or keep the newest, oldest or largest copy. Compare and delete takes fewer taps. |
+| Stats and speed | Home shows reclaimable space, duplicates by type and scan time. Scans are faster, with timings recorded. |
+| Quality | Contrast checks, unit tests, UI tests and migration tests pass. |
+
+---
+
 ## Later (not scheduled)
 
 - Scheduled background rescans and a "new duplicates" notification.

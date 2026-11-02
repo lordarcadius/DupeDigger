@@ -49,10 +49,33 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P7-03 | Accessibility | done | Labels, 48dp targets, 200% font, AA contrast in a Compose test |
 | P7-04 | Test coverage | done | Domain tests alone: 91.9% of domain lines; lint 0 errors |
 | P7-05 | Release build | done | Full R8, signed, smoke-tested (D-013) |
+| PRM2-10075 | Scan presets, background scans, smart selection | done | 12 steps, 2026-11-02 (D-014) |
 
 ## Log
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
+
+- 2026-11-02: PRM2-10075 step 12, the final checks.
+  - **Accessibility:** `AccessibilityChecksTest` now also checks the scan presets list, with a user preset and an unavailable built-in one, at 100% and 200% font. It checks 48dp targets, labels on every control, and that the preset text shows.
+  - **Full pass:**
+    - 271 unit tests pass.
+    - 70 instrumented tests ran on a temporary API 35 Pixel Tablet emulator, created for this and deleted after. 62 passed, none failed, and 8 were skipped: the ones that need a downloaded model, a seed or a manual kill.
+    - `assembleDebug` builds.
+    - `lintDebug` has 0 errors and 41 warnings (39 before the ticket). Every warning type it reports was already in the app before the ticket.
+    - The domain purity check is clean.
+  - **Acceptance criteria:**
+    - Presets first, then file types, then whole storage or chosen folders: step 6, `ScanStartFlowTest`.
+    - User presets can be created, edited and deleted, and the 8 built-in ones can't be deleted: steps 4–6.
+    - `Android/media/com.whatsapp` is covered by a full-scan test: step 2.
+    - Skip AI keeps earlier results: step 7, `SkipAiActionTest`.
+    - Scans survive a swipe-away, and reopening shows live progress: step 8, checked on a device.
+    - Select all, and keep the newest, oldest or largest copy: step 9.
+    - Fewer taps to compare and delete: 7 → 3 on one pane and 6 → 3 on two (step 10).
+    - Stats for reclaimable space, duplicates by type and scan time: step 11.
+    - Faster scans, with timings: first-scan index 1,920 → 1,527 ms (step 3).
+    - Refreshed UI that passes the contrast checks: the contrast test still passes.
+    - Tests pass, including migration 1 → 2: `DatabaseMigrationTest`.
+  - Next: owner review of the local branch.
 
 - 2026-11-02: PRM2-10075 step 11, stats on Home.
   - **Last-scan card:** now has a stats line, "Took 2 min 5 s · 1,234 files scanned". It sits next to the existing space-you-can-free total and the per-type rows, so Home shows reclaimable space, duplicates by type, scan time, files scanned and the last scan.
