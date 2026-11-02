@@ -61,3 +61,13 @@ fun ScanScope.isReachable(access: StorageAccessState, folders: List<ScanFolder>)
     is ScanScope.Folders -> this.folders.isNotEmpty() && this.folders.all { picked -> folders.any { it.uri == picked.uri } }
     is ScanScope.Paths -> access.allFiles && roots().isNotEmpty()
 }
+
+/** Whether this scope can be read now, judged from what [availableScopes] returned for the same access and folders. */
+fun ScanScope.isReachableWith(available: List<ScanScope>): Boolean = when (this) {
+    ScanScope.WholeDevice, ScanScope.MediaOnly -> this in available
+    is ScanScope.Folders -> {
+        val picked = available.filterIsInstance<ScanScope.Folders>().flatMap { scope -> scope.folders.map { it.uri } }
+        folders.isNotEmpty() && folders.all { it.uri in picked }
+    }
+    is ScanScope.Paths -> ScanScope.WholeDevice in available && roots().isNotEmpty()
+}

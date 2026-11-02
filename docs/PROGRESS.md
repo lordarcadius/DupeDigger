@@ -54,6 +54,24 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 6, the scan-start flow (D-014).
+  - **Scan screen:** setup is three steps (`SetupStep`).
+    - **Presets:** the user's presets, then the eight built-ins, plus "No preset". "New preset" is on this step, and edit and delete appear on user presets, with a delete confirmation.
+    - **File types:** all five are ticked by default, and Next is disabled with none ticked.
+    - **Where:** whole device or media library when they can be read, or picked folders with checkboxes and "Add folder".
+    - The tier switches appear wherever "Start scan" does. System and top-bar Back move back one step.
+  - **Scan start:** a scan starts with the preset's or the chosen scope and file types.
+  - **Home:** one "Start scan" button replaces the three one-tap scans. Results' "Start scan" already opened the Scan screen.
+  - **Domain:** `ScanScope.isReachableWith(available)` decides whether a preset can run.
+  - **Strings:** new ones for the flow and the built-in names. Removed `home_action_scan_everything`, `home_action_scan_media`, `home_action_scan_folder`, `home_action_custom_scan`, `scan_scope_title` and `scan_no_scope_*`, which nothing used any more.
+  - **Tests:**
+    - **Reworked:** the existing `ScanViewModelTest` start cases now go through the steps, and the three quick-action tests in `HomeViewModelTest` became one that checks Start scan opens the Scan screen.
+    - **New `ScanViewModelTest` cases:** step order, Next with no file types, back, a preset's scope and types reaching the scheduler, built-ins disabled without All files access and not editable, saving a new preset, editing and deleting a user preset, and a picked folder coming back selected (15 tests).
+    - **JVM total:** all 251 unit tests pass.
+    - **Emulator:** on a temporary API 35 Pixel Tablet emulator, deleted after, `ScanStartFlowTest` (3, new: no preset leads to file types and then where, a chosen preset starts, a new preset is saved) and `AccessibilityChecksTest` (5) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 7, skipping the AI stage.
+
 - 2026-11-02: PRM2-10075 step 5, saving user presets (D-014).
   - **Room v2:** a `scan_preset` table (`ScanPresetEntity`, `ScanPresetDao`), added by `MIGRATION_1_2` in `ALL_MIGRATIONS`. The SQL is the same as the exported `schemas/.../2.json`, and `1.json` is unchanged.
   - **Domain:**

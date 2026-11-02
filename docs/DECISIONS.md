@@ -400,3 +400,13 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - **File types** are stored as a comma-separated list of `MediaKind` names. Unknown names are dropped; a row left with none searches every type.
 - **Editing.** An edit keeps `createdAt`, so the preset keeps its place in the list.
 - **Errors.** Saving or deleting a built-in preset fails with `DomainError.BuiltInPreset`. A preset with a blank name or nothing to scan fails with `DomainError.InvalidPreset`.
+
+**One way into a scan.** Every scan starts on the Scan screen, so a scan is always set up the same way: presets first, then file types, then where to look.
+- **Home:** the one-tap "Scan everything", "Scan media" and "Scan a folder" buttons are gone. One "Start scan" button opens the Scan screen, which Results' "Start scan" already did.
+- **Folders:** picking a folder moved to the Where step's "Add folder". A newly picked folder comes back selected.
+- **Presets step:**
+  - "No preset" leads on to file types.
+  - A preset that can't run right now is shown disabled with what it needs: All files access for built-ins and whole-device presets, or folders shared again for a user preset whose grants are gone.
+  - Edit and delete appear only on the user's own presets.
+- **Creating and editing:** both reuse the File types and Where steps, with a name field and "Save preset" in place of "Start scan".
+- **Retry** repeats the last scan that was started, whatever the setup now shows.

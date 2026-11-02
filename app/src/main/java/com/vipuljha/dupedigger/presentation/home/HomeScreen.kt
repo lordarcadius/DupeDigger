@@ -15,10 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FindInPage
 import androidx.compose.material3.MaterialTheme
@@ -93,12 +90,12 @@ fun HomeScreen(
                     action = { AppButton(stringResource(R.string.action_retry), { onIntent(HomeIntent.Retry) }, loading = error.retrying) },
                 )
             },
-        ) { model -> HomeContent(model, state, onIntent) }
+        ) { model -> HomeContent(model, onIntent) }
     }
 }
 
 @Composable
-private fun HomeContent(model: HomeUiModel, state: HomeState, onIntent: (HomeIntent) -> Unit) {
+private fun HomeContent(model: HomeUiModel, onIntent: (HomeIntent) -> Unit) {
     val gutter = LocalPaneMetrics.current.gutter
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -113,21 +110,12 @@ private fun HomeContent(model: HomeUiModel, state: HomeState, onIntent: (HomeInt
             item(key = "actions-header", contentType = "header") {
                 SectionHeader(stringResource(R.string.home_actions_title), modifier = Modifier.animateItem())
             }
-            items(state.quickActions, key = { it.action }, contentType = { "action" }) { action ->
-                QuickActionRow(
-                    action = action,
-                    loading = state.startingAction == action.action,
-                    busy = state.startingAction != null || model.scanning,
-                    onClick = { onIntent(HomeIntent.QuickActionClicked(action.action)) },
-                    modifier = Modifier.animateItem(),
-                )
-            }
-            item(key = "custom", contentType = "custom") {
+            item(key = "start-scan", contentType = "start-scan") {
                 AppButton(
-                    label = stringResource(R.string.home_action_custom_scan),
+                    label = stringResource(R.string.home_action_start_scan),
                     onClick = { onIntent(HomeIntent.OpenScanClicked) },
-                    icon = Icons.Filled.Tune,
-                    modifier = Modifier.padding(top = Dimens.spaceSm).animateItem(),
+                    icon = Icons.Filled.Search,
+                    modifier = Modifier.fillMaxWidth().animateItem(),
                 )
             }
         }
@@ -189,34 +177,6 @@ private fun LastScanCard(model: HomeUiModel, onViewProgress: () -> Unit, modifie
     }
 }
 
-@Composable
-private fun QuickActionRow(action: QuickActionUi, loading: Boolean, busy: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val (label, icon) = when (action.action) {
-        QuickAction.Everything -> R.string.home_action_scan_everything to Icons.Filled.PhoneAndroid
-        QuickAction.Media -> R.string.home_action_scan_media to Icons.Filled.PhotoLibrary
-        QuickAction.Folder -> R.string.home_action_scan_folder to Icons.Filled.Folder
-    }
-    Column(modifier.fillMaxWidth()) {
-        AppButton(
-            label = stringResource(label),
-            onClick = onClick,
-            kind = ButtonKind.Tonal,
-            icon = icon,
-            loading = loading,
-            enabled = action.enabled && !busy,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        action.hint?.let {
-            Text(
-                it.asString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Dimens.spaceLg, vertical = Dimens.spaceXs),
-            )
-        }
-    }
-}
-
 /** The summary and last-scan cards' geometry, shimmering, while the first values load. */
 @Composable
 private fun HomeSkeleton(modifier: Modifier = Modifier) {
@@ -265,7 +225,6 @@ private fun HomeScreenPreview() {
                         scanning = false,
                     ),
                 ),
-                quickActions = quickActions(emptyList()),
             ),
             onIntent = {},
             snackbarHostState = remember { SnackbarHostState() },

@@ -4,8 +4,11 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.toUiText
+import com.vipuljha.dupedigger.domain.model.BuiltInPreset
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.MediaAccess
+import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.ScanPreset
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -14,16 +17,23 @@ import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.ScopeKind
 import com.vipuljha.dupedigger.domain.model.StorageAccessState
+import com.vipuljha.dupedigger.domain.usecase.AddScanFolderUseCase
 import com.vipuljha.dupedigger.domain.usecase.CancelScanUseCase
+import com.vipuljha.dupedigger.domain.usecase.DeleteScanPresetUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetAvailableScopesUseCase
+import com.vipuljha.dupedigger.domain.usecase.ObserveScanPresetsUseCase
+import com.vipuljha.dupedigger.domain.usecase.SaveScanPresetUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetNearDuplicatesEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.StartScanUseCase
 import com.vipuljha.dupedigger.presentation.FakeFolders
+import com.vipuljha.dupedigger.presentation.FakePresets
 import com.vipuljha.dupedigger.presentation.FakeScanRuns
 import com.vipuljha.dupedigger.presentation.FakeScheduler
 import com.vipuljha.dupedigger.presentation.FakeSettings
 import com.vipuljha.dupedigger.presentation.FakeStorageAccess
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -45,6 +55,7 @@ class ScanViewModelTest {
     private val scheduler = FakeScheduler()
     private val access = FakeStorageAccess()
     private val folders = FakeFolders()
+    private val presets = FakePresets()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -54,12 +65,22 @@ class ScanViewModelTest {
 
     private fun viewModel() = ScanViewModel(
         settings, runs, scheduler,
+        ObserveScanPresetsUseCase(presets),
         GetAvailableScopesUseCase(access, folders),
         StartScanUseCase(access, folders, scheduler),
         CancelScanUseCase(scheduler),
         SetNearDuplicatesEnabledUseCase(settings),
         SetSemanticEnabledUseCase(settings),
+        SaveScanPresetUseCase(presets),
+        DeleteScanPresetUseCase(presets),
+        AddScanFolderUseCase(folders),
     )
+
+    /** No preset, every file type, then the where step. */
+    private fun ScanViewModel.toWhere() {
+        onIntent(ScanIntent.NextClicked)
+        onIntent(ScanIntent.NextClicked)
+    }
 
     private fun completed(id: Long, duplicates: Int) = ScanRunInfo(
         id, ScopeKind.WHOLE_DEVICE, ScanStatus.COMPLETED, 0, 1,
@@ -67,12 +88,134 @@ class ScanViewModelTest {
     )
 
     @Test
-    fun `setup offers the readable scopes and picks the widest`() {
+    fun `setup offers the readable scopes and picked folders, and picks the widest`() {
         val state = viewModel().state.value
 
         assertEquals(ScanPhase.Setup, state.phase)
-        assertEquals(listOf(ScopeKind.WHOLE_DEVICE, ScopeKind.MEDIA_ONLY), state.scopes.map { it.kind })
+        assertEquals(listOf(ScopeKind.WHOLE_DEVICE, ScopeKind.MEDIA_ONLY, ScopeKind.FOLDERS), state.scopes.map { it.kind })
         assertEquals(ScopeKind.WHOLE_DEVICE, state.selectedScope)
+    }
+
+    @Test
+    fun `tapping scan shows presets first, then file types, then where to look`() = runTest {
+        presets.save(ScanPreset(0, "Images Only", ScanScope.WholeDevice, persistentSetOf(MediaKind.IMAGE)))
+        val vm = viewModel()
+
+        assertEquals(SetupStep.Presets, vm.state.value.step)
+        assertEquals(listOf(1L) + BuiltInPreset.presets.map { it.id }, vm.state.value.presets.map { it.id })
+        assertNull(vm.state.value.selectedPresetId)
+
+        vm.onIntent(ScanIntent.NextClicked)
+        assertEquals(SetupStep.Types, vm.state.value.step)
+        assertTrue(vm.state.value.kinds.all { it.selected })
+        MediaKind.entries.forEach { vm.onIntent(ScanIntent.KindToggled(it)) }
+        vm.onIntent(ScanIntent.NextClicked)
+        assertEquals(SetupStep.Types, vm.state.value.step)
+
+        vm.onIntent(ScanIntent.KindToggled(MediaKind.VIDEO))
+        vm.onIntent(ScanIntent.NextClicked)
+        assertEquals(SetupStep.Where, vm.state.value.step)
+        vm.onIntent(ScanIntent.ScopeSelected(ScopeKind.MEDIA_ONLY))
+        vm.onIntent(ScanIntent.StartClicked)
+
+        assertEquals(listOf<ScanScope>(ScanScope.MediaOnly), scheduler.started)
+        assertEquals(listOf(setOf(MediaKind.VIDEO)), scheduler.startedKinds)
+    }
+
+    @Test
+    fun `back goes one step back`() {
+        val vm = viewModel()
+        vm.toWhere()
+
+        vm.onIntent(ScanIntent.BackClicked)
+        assertEquals(SetupStep.Types, vm.state.value.step)
+        vm.onIntent(ScanIntent.BackClicked)
+        assertEquals(SetupStep.Presets, vm.state.value.step)
+    }
+
+    @Test
+    fun `a preset starts with its own scope and file types`() {
+        val vm = viewModel()
+
+        vm.onIntent(ScanIntent.PresetSelected(BuiltInPreset.CAMERA.toPreset().id))
+        vm.onIntent(ScanIntent.StartClicked)
+
+        assertEquals(listOf<ScanScope>(ScanScope.Paths(persistentListOf("DCIM/Camera"))), scheduler.started)
+        assertEquals(listOf(setOf(MediaKind.IMAGE, MediaKind.VIDEO)), scheduler.startedKinds)
+    }
+
+    @Test
+    fun `built-in presets need all files access and can't be edited or deleted`() {
+        access.state = StorageAccessState(MediaAccess.FULL, allFiles = false)
+        val vm = viewModel()
+        val camera = vm.state.value.presets.single { it.id == BuiltInPreset.CAMERA.toPreset().id }
+
+        assertFalse(camera.enabled)
+        assertFalse(camera.editable)
+        assertEquals(UiText.res(R.string.home_hint_all_files), camera.hint)
+        vm.onIntent(ScanIntent.EditPresetClicked(camera.id))
+        vm.onIntent(ScanIntent.DeletePresetClicked(camera.id))
+        assertNull(vm.state.value.draft)
+        assertNull(vm.state.value.confirmDelete)
+    }
+
+    @Test
+    fun `a new preset is built with the same steps and saved`() {
+        val vm = viewModel()
+
+        vm.onIntent(ScanIntent.NewPresetClicked)
+        assertEquals(SetupStep.Types, vm.state.value.step)
+        MediaKind.entries.filter { it != MediaKind.IMAGE }.forEach { vm.onIntent(ScanIntent.KindToggled(it)) }
+        vm.onIntent(ScanIntent.NextClicked)
+        assertFalse(vm.state.value.canFinish)
+        vm.onIntent(ScanIntent.DraftNameChanged("Images Only"))
+        vm.onIntent(ScanIntent.SavePresetClicked)
+
+        val saved = presets.rows.value.single()
+        assertEquals("Images Only", saved.name)
+        assertEquals(ScanScope.WholeDevice, saved.scope)
+        assertEquals(setOf(MediaKind.IMAGE), saved.kinds)
+        assertEquals(SetupStep.Presets, vm.state.value.step)
+        assertEquals(saved.id, vm.state.value.selectedPresetId)
+        assertNull(vm.state.value.draft)
+        assertTrue(scheduler.started.isEmpty())
+    }
+
+    @Test
+    fun `a user's preset can be edited and deleted`() = runTest {
+        val folder = "content://tree/camera"
+        folders.add(folder)
+        val id = presets.save(ScanPreset(0, "Camera roll", ScanScope.Folders(folders.folders.value), persistentSetOf(MediaKind.IMAGE)))
+        val vm = viewModel()
+        assertTrue(vm.state.value.presets.first().editable)
+
+        vm.onIntent(ScanIntent.EditPresetClicked(id))
+        assertEquals(PresetDraftUi(id, "Camera roll"), vm.state.value.draft)
+        assertEquals(setOf(MediaKind.IMAGE), vm.state.value.kinds.filter { it.selected }.map { it.kind }.toSet())
+        vm.onIntent(ScanIntent.NextClicked)
+        assertEquals(ScopeKind.FOLDERS, vm.state.value.selectedScope)
+        vm.onIntent(ScanIntent.DraftNameChanged("Camera"))
+        vm.onIntent(ScanIntent.SavePresetClicked)
+        assertEquals("Camera", presets.rows.value.single().name)
+
+        vm.onIntent(ScanIntent.DeletePresetClicked(id))
+        assertEquals(id, vm.state.value.confirmDelete?.id)
+        vm.onIntent(ScanIntent.DeleteConfirmed)
+        assertTrue(presets.rows.value.isEmpty())
+    }
+
+    @Test
+    fun `a folder picked on the where step is added and selected`() {
+        val vm = viewModel()
+        vm.toWhere()
+
+        vm.onIntent(ScanIntent.AddFolderClicked)
+        vm.onIntent(ScanIntent.FolderPicked("content://tree/1"))
+
+        assertEquals(ScopeKind.FOLDERS, vm.state.value.selectedScope)
+        assertEquals(listOf(FolderOptionUi("content://tree/1", "Folder", selected = true)), vm.state.value.folders)
+        vm.onIntent(ScanIntent.StartClicked)
+        assertEquals(listOf("content://tree/1"), (scheduler.started.single() as ScanScope.Folders).folders.map { it.uri })
     }
 
     @Test
@@ -80,6 +223,7 @@ class ScanViewModelTest {
         runs.latest.value = completed(id = 4, duplicates = 0)
         val vm = viewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.progress.collect {} }
+        vm.toWhere()
         vm.onIntent(ScanIntent.ScopeSelected(ScopeKind.MEDIA_ONLY))
 
         vm.onIntent(ScanIntent.StartClicked)
@@ -102,6 +246,7 @@ class ScanViewModelTest {
     @Test
     fun `a scan too short to be seen running still shows its result`() {
         val vm = viewModel()
+        vm.toWhere()
         vm.onIntent(ScanIntent.StartClicked)
 
         runs.latest.value = completed(id = 1, duplicates = 0)
@@ -123,6 +268,7 @@ class ScanViewModelTest {
         val vm = viewModel()
         val effects = mutableListOf<ScanEffect>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effect.toList(effects) }
+        vm.toWhere()
         access.state = StorageAccessState(MediaAccess.NONE, allFiles = false)
 
         vm.onIntent(ScanIntent.StartClicked)

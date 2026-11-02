@@ -7,10 +7,8 @@ import com.vipuljha.dupedigger.core.ui.formatCount
 import com.vipuljha.dupedigger.core.ui.formatRelativeTime
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
-import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.presentation.common.label
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
 /** Kinds with the most to free come first. */
@@ -50,18 +48,3 @@ private fun ScanRunInfo.toUi(nowMillis: Long) = LastScanUi(
         },
     ),
 )
-
-/** Everything and Media need their access; picking a folder always works. */
-fun quickActions(available: List<ScanScope>): ImmutableList<QuickActionUi> = listOf(
-    QuickActionUi(
-        QuickAction.Everything,
-        enabled = ScanScope.WholeDevice in available,
-        hint = if (ScanScope.WholeDevice in available) null else UiText.res(R.string.home_hint_all_files),
-    ),
-    QuickActionUi(
-        QuickAction.Media,
-        enabled = ScanScope.MediaOnly in available,
-        hint = if (ScanScope.MediaOnly in available) null else UiText.res(R.string.home_hint_media),
-    ),
-    QuickActionUi(QuickAction.Folder, enabled = true, hint = null),
-).toImmutableList()

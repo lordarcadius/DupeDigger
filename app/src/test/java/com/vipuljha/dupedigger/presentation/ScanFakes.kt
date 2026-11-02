@@ -11,6 +11,7 @@ import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaAccess
 import com.vipuljha.dupedigger.domain.model.ScanFolder
+import com.vipuljha.dupedigger.domain.model.ScanPreset
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -38,6 +39,7 @@ import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileRemover
 import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
+import com.vipuljha.dupedigger.domain.repository.ScanPresetRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
@@ -48,15 +50,18 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 class FakeScheduler : ScanScheduler {
     val progress = MutableStateFlow<ScanProgress?>(null)
     val started = mutableListOf<ScanScope>()
+    val startedKinds = mutableListOf<Set<MediaKind>>()
     var cancelled = false
 
     override fun start(scope: ScanScope, kinds: Set<MediaKind>) {
         started += scope
+        startedKinds += kinds
     }
     override fun cancel() {
         cancelled = true
@@ -200,4 +205,23 @@ class FakeQuarantine : QuarantineRepository {
         files.update { list -> list.filterNot { it.id == id } }
         return Outcome.Success(Unit)
     }
+}
+
+class FakePresets : ScanPresetRepository {
+    val rows = MutableStateFlow<List<ScanPreset>>(emptyList())
+    private var nextId = 1L
+
+    override val presets = rows.map { it.toImmutableList() }
+
+    override suspend fun save(preset: ScanPreset): Long {
+        if (preset.id != 0L) {
+            rows.update { list -> list.map { if (it.id == preset.id) preset else it } }
+            return preset.id
+        }
+        val id = nextId++
+        rows.update { it + preset.copy(id = id) }
+        return id
+    }
+
+    override suspend fun delete(id: Long) = rows.update { list -> list.filterNot { it.id == id } }
 }

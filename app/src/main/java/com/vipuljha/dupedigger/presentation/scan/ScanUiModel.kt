@@ -4,14 +4,80 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.formatBytes
 import com.vipuljha.dupedigger.core.ui.formatCount
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
+import com.vipuljha.dupedigger.domain.model.BuiltInPreset
+import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.ScanFolder
+import com.vipuljha.dupedigger.domain.model.ScanPreset
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
+import com.vipuljha.dupedigger.domain.model.ScopeKind
+import com.vipuljha.dupedigger.domain.model.isReachableWith
 import com.vipuljha.dupedigger.domain.model.kind
 import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.presentation.common.label
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
+
+/** A built-in preset is named by its app; a disabled preset says what it needs. */
+fun ScanPreset.toUi(available: List<ScanScope>): PresetUi {
+    val reachable = scope.isReachableWith(available)
+    return PresetUi(
+        id = id,
+        title = builtIn?.let { UiText.res(it.titleRes()) } ?: UiText.Raw(name),
+        body = UiText.res(R.string.scan_preset_detail, scope.summary(), kindsSummary(kinds)),
+        enabled = reachable,
+        hint = if (reachable) null else when (scope) {
+            ScanScope.MediaOnly -> UiText.res(R.string.home_hint_media)
+            is ScanScope.Folders -> UiText.res(R.string.scan_preset_folders_gone)
+            ScanScope.WholeDevice, is ScanScope.Paths -> UiText.res(R.string.home_hint_all_files)
+        },
+        editable = deletable,
+    )
+}
+
+private fun BuiltInPreset.titleRes() = when (this) {
+    BuiltInPreset.WHATSAPP -> R.string.preset_whatsapp
+    BuiltInPreset.CAMERA -> R.string.preset_camera
+    BuiltInPreset.TELEGRAM -> R.string.preset_telegram
+    BuiltInPreset.SCREENSHOTS -> R.string.preset_screenshots
+    BuiltInPreset.FACEBOOK -> R.string.preset_facebook
+    BuiltInPreset.INSTAGRAM -> R.string.preset_instagram
+    BuiltInPreset.SNAPCHAT -> R.string.preset_snapchat
+    BuiltInPreset.REDDIT -> R.string.preset_reddit
+}
+
+private fun ScanScope.summary(): UiText = when (this) {
+    ScanScope.WholeDevice -> UiText.res(R.string.scope_whole_device)
+    ScanScope.MediaOnly -> UiText.res(R.string.scope_media)
+    is ScanScope.Folders -> UiText.plural(R.plurals.scan_scope_folders_body, folders.size, formatCount(folders.size))
+    is ScanScope.Paths -> roots().size.let { UiText.plural(R.plurals.scan_scope_paths_body, it, formatCount(it)) }
+}
+
+/** "All file types", one type's name, or how many types. */
+fun kindsSummary(kinds: Set<MediaKind>): UiText = when {
+    kinds.containsAll(AllMediaKinds) -> UiText.res(R.string.scan_kinds_all)
+    kinds.size == 1 -> kinds.single().label()
+    else -> UiText.plural(R.plurals.scan_kinds_count, kinds.size, formatCount(kinds.size))
+}
+
+fun kindOptions(selected: Set<MediaKind>): ImmutableList<KindOptionUi> =
+    MediaKind.entries.map { KindOptionUi(it, it.label(), it in selected) }.toImmutableList()
+
+/** Whole device and media library when they can be read, then picked folders, which can always be added to. */
+fun whereOptions(available: List<ScanScope>, picked: List<ScanFolder>): ImmutableList<ScopeOptionUi> =
+    (available.filterNot { it is ScanScope.Folders }.map { it.toOption() } + ScopeOptionUi(
+        kind = ScopeKind.FOLDERS,
+        title = ScopeKind.FOLDERS.label(),
+        body = if (picked.isEmpty()) {
+            UiText.res(R.string.scan_scope_folders_none)
+        } else {
+            UiText.plural(R.plurals.scan_scope_folders_body, picked.size, formatCount(picked.size))
+        },
+    )).toImmutableList()
 
 fun ScanScope.toOption() = ScopeOptionUi(
     kind = kind,
