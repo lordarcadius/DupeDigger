@@ -11,6 +11,7 @@ import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.storage.FileTreeWalker
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
@@ -56,7 +57,7 @@ class ExactEngineDeviceTest {
         listOf("a.mp4", "b.mp4", "c.mp4").forEach { File(root, it).writeBytes(video) }
         File(root, "near.mp4").writeBytes(video.copyOf().apply { this[1_000_000] = 0 })
         repeat(200) { File(root, "unique$it.bin").writeBytes(ByteArray(it + 1)) }
-        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         val walker = FileTreeWalker { null }
         val enumerator = object : FileEnumerator {
             override fun enumerate(scope: ScanScope, filter: ScanFilter) = walker.walk(listOf(root), filter)

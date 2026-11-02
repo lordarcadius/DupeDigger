@@ -54,6 +54,22 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 4, presets and a path scope in the domain (D-014).
+  - **Domain:**
+    - `ScanScope.Paths` with `roots()` cleaning, and `ScopeKind.PATHS`, reachable only with All files access.
+    - `ScanPreset` (needs at least one file type; deletable unless built in).
+    - `BuiltInPreset` for WhatsApp, Camera, Telegram, Screenshots, Facebook, Instagram, Snapchat and Reddit.
+    - `AllMediaKinds`.
+  - **Kind filter:** `RunScanUseCase` takes `kinds`. Indexing and pruning still cover the whole scope, and the exact, near and semantic stages look only at the chosen kinds.
+  - **Through to the worker:** `kinds` passes through `StartScanUseCase`, `ScanScheduler`, `ScanScopeCodec` and `ScanWorker`. Work queued without kinds searches every type.
+  - **Data:**
+    - `FileTreeWalker` can start at folders inside each volume, keeping the volume root as `volume`.
+    - `StorageVolumes` is shared by the enumerator and the index repository.
+    - `sourceUriPrefixes` gives Paths one exact-root prefix per root and volume.
+  - **UI:** only the labels the new scope kind needs (`scope_paths`, `scan_scope_paths_body`). The scan-start flow comes in step 6.
+  - **Tests:** new cases in `ScanScopeTest`, `ScanPresetTest`, `ScanScopeCodecTest`, `FileTreeWalkerTest` and `RunScanUseCaseTest`. All 238 JVM unit tests pass. `compileDebugAndroidTestKotlin` passes; the instrumented tests weren't run in this step. The domain purity check is clean.
+  - Next: PRM2-10075 step 5, saving user presets in Room.
+
 - 2026-11-02: PRM2-10075 faster reads, measured on a temporary API 36 x86_64 Pixel Tablet emulator (4 cores, 8 GB data partition), created for this and deleted after.
   - **Profile first.** A throwaway instrumented test (not kept) timed each part on the benchmark's 5,000 files of 32 KiB. Before any change, three runs on one emulator: walking took 785/371/394 ms, `record()` of new files 1748/1926/1551 ms, `record()` of unchanged files 166/210/206 ms. Partial hashing of all 5,000 took 5942/2819/1832 ms at the app's 4 readers.
   - **Changes:**

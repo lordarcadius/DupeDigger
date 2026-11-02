@@ -9,6 +9,7 @@ import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
 import com.vipuljha.dupedigger.data.local.db.entity.EmbeddingEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.data.storage.sourceUriPrefixes
 import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
@@ -46,6 +47,7 @@ class FileIndexRepositoryImpl @Inject constructor(
     private val fileHashDao: FileHashDao,
     private val perceptualHashDao: PerceptualHashDao,
     private val embeddingDao: EmbeddingDao,
+    private val volumes: StorageVolumes,
 ) : FileIndexRepository {
 
     override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats = db.withTransaction {
@@ -79,11 +81,11 @@ class FileIndexRepositoryImpl @Inject constructor(
     }
 
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int = db.withTransaction {
-        sourceUriPrefixes(scope).sumOf { fileIndexDao.deleteNotSeenSince(scanId, it) }
+        sourceUriPrefixes(scope, volumes.roots()).sumOf { fileIndexDao.deleteNotSeenSince(scanId, it) }
     }
 
-    override suspend fun filesSeenIn(scanId: Long): List<IndexedFile> =
-        fileHashDao.hashStateForScan(scanId).map { IndexedFile(it.id, it.sourceUri, it.size, it.mtime, it.partialHash, it.fullHash) }
+    override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>): List<IndexedFile> =
+        fileHashDao.hashStateForScan(scanId, kinds.map { it.name }).map { IndexedFile(it.id, it.sourceUri, it.size, it.mtime, it.partialHash, it.fullHash) }
 
     override suspend fun saveHashes(files: List<IndexedFile>) {
         if (files.isEmpty()) return

@@ -1,6 +1,11 @@
 package com.vipuljha.dupedigger.domain.model
 
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.toImmutableSet
+
 enum class MediaKind { IMAGE, VIDEO, AUDIO, DOCUMENT, OTHER }
+
+val AllMediaKinds: ImmutableSet<MediaKind> = MediaKind.entries.toImmutableSet()
 
 /** One file found by an enumerator; [sourceUri] identifies it across scans, [mtime] is epoch millis. */
 data class DiscoveredFile(

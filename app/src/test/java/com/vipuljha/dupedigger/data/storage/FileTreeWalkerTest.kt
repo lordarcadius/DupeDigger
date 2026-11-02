@@ -2,6 +2,9 @@ package com.vipuljha.dupedigger.data.storage
 
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanFilter
+import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.roots
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -66,6 +69,41 @@ class FileTreeWalkerTest {
             ).map { File(volume, it).path }.toSet(),
             paths.toSet(),
         )
+    }
+
+    @Test
+    fun `a paths walk covers only its folders, once, with the same rows as a whole-device walk`() = runBlocking {
+        val volume = tmp.newFolder("volume")
+        volume.touch("DCIM/Camera/a.jpg")
+        volume.touch("DCIM/Camera/sub/b.jpg")
+        volume.touch("DCIM/Camera2/c.jpg")
+        volume.touch("Pictures/Screenshots/d.jpg")
+        val scope = ScanScope.Paths(persistentListOf("DCIM/Camera", "/Pictures//Screenshots/", "dcim/camera/sub", "../etc", "Movies/Missing"))
+        val filter = ScanFilter(emptyList(), skipHidden = true)
+
+        val files = walker.walk(listOf(volume), filter, scope.roots()).toList()
+
+        assertEquals(listOf("a.jpg", "b.jpg", "d.jpg"), files.map { it.name }.sorted())
+        val whole = walker.walk(listOf(volume), filter).toList().associateBy { it.sourceUri }
+        files.forEach { assertEquals(whole[it.sourceUri], it) }
+    }
+
+    @Test
+    fun `paths prune prefixes match their folders exactly, even once a folder is gone`() = runBlocking {
+        val volume = tmp.newFolder("volume")
+        volume.touch("DCIM/Camera/a.jpg")
+        volume.touch("DCIM/Camera/sub/b.jpg")
+        volume.touch("DCIM/Camera2/c.jpg")
+        volume.touch("DCIM/Camera 3/d.jpg")
+        val scope = ScanScope.Paths(persistentListOf("DCIM/Camera", "DCIM/Camera 3"))
+        val uris = walker.walk(listOf(volume), ScanFilter(emptyList(), skipHidden = true)).toList().associate { it.name to it.sourceUri }
+
+        val prefixes = sourceUriPrefixes(scope, listOf(volume))
+
+        val covered = uris.filterValues { uri -> prefixes.any { uri.startsWith(it) } }.keys
+        assertEquals(setOf("a.jpg", "b.jpg", "d.jpg"), covered)
+        File(volume, "DCIM/Camera").deleteRecursively()
+        assertEquals(prefixes, sourceUriPrefixes(scope, listOf(volume)))
     }
 
     @Test

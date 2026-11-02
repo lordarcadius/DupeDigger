@@ -3,8 +3,10 @@ package com.vipuljha.dupedigger.domain.usecase
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.IndexStats
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ModelCatalog
 import com.vipuljha.dupedigger.domain.model.NearScanResult
 import com.vipuljha.dupedigger.domain.model.ScanFilter
@@ -28,6 +30,8 @@ import javax.inject.Inject
 /**
  * One scan of a scope, recorded as a scan run.
  * - Fails with PermissionDenied before touching the index when the scope can't be read.
+ * - Indexes the whole scope, then looks for duplicates only among files of the chosen kinds, so other files keep
+ *   their index rows and cached work.
  * - Runs the stages in order (index, exact, near when similar files are on, semantic when the AI tier is on and its
  *   model is chosen, unless it is set to run only while charging and the device isn't) and reports progress for each.
  * - Only a scan that completes replaces the saved groups; a cancelled or failed one leaves the previous results.
@@ -49,6 +53,7 @@ class RunScanUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         scope: ScanScope,
+        kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (ScanProgress) -> Unit = {},
     ): Outcome<ScanSummary> {
         if (!scope.isReachable(storageAccess.current(), scanFolders.folders.first())) {
@@ -64,12 +69,12 @@ class RunScanUseCase @Inject constructor(
                 onProgress(ScanProgress(ScanStage.INDEXING, 0, null))
                 val index = indexFiles(scope, filter, scanId) { onProgress(ScanProgress(ScanStage.INDEXING, it, null)) }
                 onProgress(ScanProgress(ScanStage.EXACT, 0, null))
-                val exact = findExact(scanId, appSettings.minFileSizeBytes) { done, total ->
+                val exact = findExact(scanId, appSettings.minFileSizeBytes, kinds) { done, total ->
                     onProgress(ScanProgress(ScanStage.EXACT, done, total))
                 }
                 val near = if (appSettings.nearDuplicatesEnabled) {
                     onProgress(ScanProgress(ScanStage.NEAR, 0, null))
-                    findNear(scanId, appSettings.nearHammingThreshold, exact.groups) { done, total ->
+                    findNear(scanId, appSettings.nearHammingThreshold, exact.groups, kinds) { done, total ->
                         onProgress(ScanProgress(ScanStage.NEAR, done, total))
                     }
                 } else {
@@ -78,7 +83,7 @@ class RunScanUseCase @Inject constructor(
                 val model = appSettings.aiModelId?.let(ModelCatalog::byId)
                 val semantic = if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
                     onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
-                    findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, exact.groups, near?.groups.orEmpty()) { done, total ->
+                    findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
                         onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
                     }
                 } else {

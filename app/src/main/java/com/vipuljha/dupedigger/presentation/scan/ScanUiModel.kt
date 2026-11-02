@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.kind
+import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.presentation.common.label
 
 fun ScanScope.toOption() = ScopeOptionUi(
@@ -19,6 +20,7 @@ fun ScanScope.toOption() = ScopeOptionUi(
         ScanScope.WholeDevice -> UiText.res(R.string.scan_scope_whole_device_body)
         ScanScope.MediaOnly -> UiText.res(R.string.scan_scope_media_body)
         is ScanScope.Folders -> UiText.plural(R.plurals.scan_scope_folders_body, folders.size, formatCount(folders.size))
+        is ScanScope.Paths -> roots().size.let { UiText.plural(R.plurals.scan_scope_paths_body, it, formatCount(it)) }
     },
 )
 

@@ -28,6 +28,7 @@
     <string name="scope_whole_device">Whole device</string>
     <string name="scope_media">Photos, videos and audio</string>
     <string name="scope_folders">Picked folders</string>
+    <string name="scope_paths">Preset folders</string>
 
     <string name="home_reclaim_title">Space you can free</string>
     <string name="home_reclaim_detail">%1$s · %2$s</string>
@@ -166,6 +167,10 @@
     <plurals name="scan_scope_folders_body">
         <item quantity="one">%1$s folder you picked</item>
         <item quantity="other">%1$s folders you picked</item>
+    </plurals>
+    <plurals name="scan_scope_paths_body">
+        <item quantity="one">%1$s folder on your storage</item>
+        <item quantity="other">%1$s folders on your storage</item>
     </plurals>
     <string name="scan_no_scope_title">Nothing to scan yet</string>
     <string name="scan_no_scope_body">Allow storage access, or add a folder in Settings.</string>

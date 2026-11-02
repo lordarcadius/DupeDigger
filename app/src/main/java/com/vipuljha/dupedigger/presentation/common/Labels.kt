@@ -22,6 +22,7 @@ fun ScopeKind.label(): UiText = UiText.res(
         ScopeKind.WHOLE_DEVICE -> R.string.scope_whole_device
         ScopeKind.MEDIA_ONLY -> R.string.scope_media
         ScopeKind.FOLDERS -> R.string.scope_folders
+        ScopeKind.PATHS -> R.string.scope_paths
     },
 )
 

@@ -22,9 +22,10 @@ import java.nio.file.attribute.BasicFileAttributes
  */
 class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
 
-    fun walk(roots: List<File>, filter: ScanFilter): Flow<DiscoveredFile> = flow {
-        for (root in roots) {
-            val pending = ArrayDeque<File>().apply { addLast(root) }
+    /** Walks each of [volumes], or only its [folders] (paths relative to the volume) when given. */
+    fun walk(volumes: List<File>, filter: ScanFilter, folders: List<String>? = null): Flow<DiscoveredFile> = flow {
+        for (volume in volumes) {
+            val pending = ArrayDeque(folders?.map { File(volume, it) } ?: listOf(volume))
             while (pending.isNotEmpty()) {
                 currentCoroutineContext().ensureActive()
                 val dir = pending.removeLast()
@@ -47,7 +48,7 @@ class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
                                 mediaKind = mediaKindOf(mime),
                                 size = attrs.size(),
                                 mtime = attrs.lastModifiedTime().toMillis(),
-                                volume = root.path,
+                                volume = volume.path,
                             ),
                         )
                     }

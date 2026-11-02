@@ -51,7 +51,7 @@ class IndexFilesUseCaseTest {
             return 7
         }
 
-        override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
+        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
 
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
 

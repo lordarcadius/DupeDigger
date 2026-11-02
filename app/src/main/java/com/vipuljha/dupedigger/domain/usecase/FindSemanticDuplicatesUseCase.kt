@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.domain.detector.MIN_DOCUMENT_WORDS
 import com.vipuljha.dupedigger.domain.detector.cosine
 import com.vipuljha.dupedigger.domain.detector.groupBySimilarity
 import com.vipuljha.dupedigger.domain.detector.normalizeWords
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.EMBEDDING_DIM
 import com.vipuljha.dupedigger.domain.model.EmbeddedFile
 import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
@@ -28,7 +29,7 @@ import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
 /**
- * Finds files that mean the same thing for the SEMANTIC tier, with the downloaded model [ModelVariant].
+ * Finds files of the chosen kinds that mean the same thing for the SEMANTIC tier, with the downloaded model [ModelVariant].
  * - Embeds what the model reads: images (small re-encodes) with vision, audio clips with audio, document text with
  *   text, prefixed with the similarity prompt and cut to [MAX_TEXT_CHARS].
  * - Vectors are stored under the model and size, so another model's vectors are kept and never compared.
@@ -51,16 +52,17 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         threshold: Float,
         exactGroups: List<ExactGroup>,
         nearGroups: List<NearGroup>,
+        kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult? {
         val key = embeddingKey(variant)
-        val kinds = buildSet {
+        val readable = buildSet {
             if (ModelCapability.VISION in variant.capabilities) add(MediaKind.IMAGE)
             if (ModelCapability.AUDIO in variant.capabilities) add(MediaKind.AUDIO)
             if (ModelCapability.TEXT in variant.capabilities) add(MediaKind.DOCUMENT)
         }
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cached, missing) = fileIndex.embeddingCandidates(scanId, key, kinds)
+        val (cached, missing) = fileIndex.embeddingCandidates(scanId, key, readable intersect kinds)
             .filter { it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(it.name, it.mimeType)) }
             .partition { it.vector != null }
 

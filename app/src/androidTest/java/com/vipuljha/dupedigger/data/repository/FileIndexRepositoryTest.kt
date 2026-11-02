@@ -9,6 +9,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.FileHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
 import com.vipuljha.dupedigger.data.storage.FileTreeWalker
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.ScanFilter
@@ -51,7 +52,7 @@ class FileIndexRepositoryTest {
     @Before
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(context, DupeDiggerDatabase::class.java).build()
-        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         index = IndexFilesUseCase(enumerator, repository)
         root.deleteRecursively()
         repeat(FOLDERS) { d ->

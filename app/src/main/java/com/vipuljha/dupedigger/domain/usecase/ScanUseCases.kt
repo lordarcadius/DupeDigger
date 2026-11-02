@@ -2,7 +2,9 @@ package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.availableScopes
 import com.vipuljha.dupedigger.domain.model.isReachable
@@ -22,15 +24,16 @@ class GetAvailableScopesUseCase @Inject constructor(
     suspend operator fun invoke(): ImmutableList<ScanScope> = availableScopes(storageAccess.current(), scanFolders.folders.first())
 }
 
-/** Queues a background scan of a readable scope; a scan already queued or running is left as it is. */
+/** Queues a background scan of a readable scope for duplicates among [kinds]; a scan already queued or running is left as it is. */
 class StartScanUseCase @Inject constructor(
     private val storageAccess: StorageAccess,
     private val scanFolders: ScanFolderRepository,
     private val scheduler: ScanScheduler,
 ) {
-    suspend operator fun invoke(scope: ScanScope): Outcome<Unit> {
+    suspend operator fun invoke(scope: ScanScope, kinds: Set<MediaKind> = AllMediaKinds): Outcome<Unit> {
+        require(kinds.isNotEmpty()) { "A scan needs at least one file type" }
         if (!scope.isReachable(storageAccess.current(), scanFolders.folders.first())) return Outcome.Failure(DomainError.PermissionDenied)
-        scheduler.start(scope)
+        scheduler.start(scope, kinds)
         return Outcome.Success(Unit)
     }
 }

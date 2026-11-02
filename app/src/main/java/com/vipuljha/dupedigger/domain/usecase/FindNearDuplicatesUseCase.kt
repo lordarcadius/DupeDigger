@@ -10,8 +10,10 @@ import com.vipuljha.dupedigger.domain.detector.groupNearImages
 import com.vipuljha.dupedigger.domain.detector.groupNearVideos
 import com.vipuljha.dupedigger.domain.detector.hammingDistance
 import com.vipuljha.dupedigger.domain.detector.simHash
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.ExactGroup
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.NO_TEXT_SIMHASH
 import com.vipuljha.dupedigger.domain.model.NearGroup
 import com.vipuljha.dupedigger.domain.model.NearScanResult
@@ -30,7 +32,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * Finds images, videos, documents and audio that look alike among the files seen in a scan, for the NEAR tier.
+ * Finds images, videos, documents and audio that look alike among the files of the chosen kinds seen in a scan, for the NEAR tier.
  * - Each exact group takes part through one member (its lowest id), so byte-identical copies stay in their exact
  *   group and no file's space is counted twice.
  * - Missing work is done per kind and saved as it completes, so a restarted scan redoes no saved work: images,
@@ -51,15 +53,19 @@ class FindNearDuplicatesUseCase @Inject constructor(
         scanId: Long,
         threshold: Int,
         exactGroups: List<ExactGroup>,
+        kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult {
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cachedImages, newImages) = fileIndex.imagesSeenIn(scanId).filter { it.id !in exactCopies }.partition { it.hashes != null }
-        val (cachedVideos, newVideos) = fileIndex.videosSeenIn(scanId).filter { it.id !in exactCopies }.partition { it.signature != null }
-        val (cachedDocs, newDocs) = fileIndex.documentsSeenIn(scanId)
+        val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.imagesSeenIn(scanId) else emptyList())
+            .filter { it.id !in exactCopies }.partition { it.hashes != null }
+        val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.videosSeenIn(scanId) else emptyList())
+            .filter { it.id !in exactCopies }.partition { it.signature != null }
+        val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.documentsSeenIn(scanId) else emptyList())
             .filter { it.id !in exactCopies && textReader.supports(it.name, it.mimeType) }
             .partition { it.simHash != null }
-        val (cachedAudio, newAudio) = fileIndex.audioSeenIn(scanId).filter { it.id !in exactCopies }.partition { it.signature != null }
+        val (cachedAudio, newAudio) = (if (MediaKind.AUDIO in kinds) fileIndex.audioSeenIn(scanId) else emptyList())
+            .filter { it.id !in exactCopies }.partition { it.signature != null }
         val total = newImages.size + newVideos.size + newDocs.size + newAudio.size
         val attempted = AtomicInteger()
         val step: suspend () -> Unit = { onProgress(attempted.incrementAndGet(), total) }

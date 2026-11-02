@@ -20,6 +20,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -80,7 +81,7 @@ class DeleteSafetyFlowTest {
             groups.replaceGroups(1, ids.mapIndexed { g, members -> FoundGroup("EXACT:$g", MatchTier.EXACT, 1f, members.toImmutableList()) })
             ids
         }
-        val files = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        val files = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         val viewModel = ResultsViewModel(
             groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups),
             DeleteDuplicatesUseCase(groups, files, remover), ConfirmTrashUseCase(files),

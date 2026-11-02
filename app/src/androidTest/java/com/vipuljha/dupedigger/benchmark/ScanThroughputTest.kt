@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.data.hashing.StreamingContentHasher
 import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.storage.FileTreeWalker
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanScope
@@ -41,7 +42,7 @@ class ScanThroughputTest {
         repeat(FILES) { i -> File(root, "d${i % 50}").apply { mkdirs() }.resolve("f$i.bin").writeBytes(contents[i % contents.size]) }
 
         val db = Room.inMemoryDatabaseBuilder(context, DupeDiggerDatabase::class.java).build()
-        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         val walker = FileTreeWalker { null }
         val enumerator = object : FileEnumerator {
             override fun enumerate(scope: ScanScope, filter: ScanFilter): Flow<DiscoveredFile> = walker.walk(listOf(root), filter)

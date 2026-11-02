@@ -55,7 +55,7 @@ class FakeScheduler : ScanScheduler {
     val started = mutableListOf<ScanScope>()
     var cancelled = false
 
-    override fun start(scope: ScanScope) {
+    override fun start(scope: ScanScope, kinds: Set<MediaKind>) {
         started += scope
     }
     override fun cancel() {
@@ -151,7 +151,7 @@ open class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
     }
     override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-    override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
+    override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
     override suspend fun saveHashes(files: List<IndexedFile>) = Unit
 }
 

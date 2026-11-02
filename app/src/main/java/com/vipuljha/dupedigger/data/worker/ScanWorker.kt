@@ -45,7 +45,7 @@ class ScanWorker @AssistedInject constructor(
         inForeground = runSuspendCatching { setForeground(notifications.foregroundInfo(id, null)) }
             .onFailure { Timber.w(it, "Scanning without a foreground notification") }
             .isSuccess
-        return when (val outcome = runScan(scope, ::report)) {
+        return when (val outcome = runScan(scope, ScanScopeCodec.mediaKindsFromData(inputData), ::report)) {
             is Outcome.Success -> Result.success()
             is Outcome.Failure -> {
                 Timber.w(outcome.cause, "Scan failed: %s", outcome.error)

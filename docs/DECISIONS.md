@@ -373,3 +373,22 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - The keystore in `signing/` was generated locally for P7-05. The owner should back it up, or replace it with their own key before the first Play upload. Play App Signing can manage the app signing key.
 
 **Privacy:** the note is `docs/PRIVACY.md`. The AI screen now says the model is downloaded once from Hugging Face.
+
+## D-014: Scan presets and path scopes (accepted, PRM2-10075)
+**`ScanScope.Paths`:** folders such as `DCIM/Camera`, relative to the root of every storage volume. It's walked with `FileTreeWalker`, so it needs All files access.
+- Each row's `sourceUri` and `volume` match what a whole-device walk writes, so the two scopes share index rows and cached hashes.
+- `roots()` cleans the paths:
+  - it ignores any path with a `.` or `..` segment;
+  - it drops a path equal to or inside another, ignoring case, so no file is indexed twice.
+- Pruning uses one prefix per root and volume, ending in `/`, so `DCIM/Camera` never prunes `DCIM/Camera2`.
+
+**File types limit the search, not the index.** A scan indexes and prunes its whole scope, then looks for duplicates only among files of the chosen kinds. This is done in the exact query (`mediaKind IN`), the near stage's per-kind lists, and the intersection with the model's kinds in the semantic stage.
+- Filtering during enumeration would let pruning delete every other-kind row in the scope, along with its cached hashes and embeddings.
+
+**Built-in presets** are the `BuiltInPreset` enum. Each becomes a `ScanPreset` with a negative id and can't be deleted. The UI names them by the enum, not by a domain string.
+- The folders not named in the ticket are common defaults and are not verified on devices:
+  - WhatsApp Business and the legacy `WhatsApp/Media`;
+  - Telegram under `Android/media`;
+  - `DCIM/Screenshots`;
+  - the Facebook, Instagram, Snapchat and Reddit folders.
+- A folder a device doesn't have is skipped.

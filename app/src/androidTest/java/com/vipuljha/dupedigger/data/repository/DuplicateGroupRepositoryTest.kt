@@ -7,6 +7,7 @@ import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.local.db.entity.IgnoredGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.detector.toItem
 import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.FoundGroup
@@ -102,7 +103,7 @@ class DuplicateGroupRepositoryTest {
         assertEquals(listOf(KindReclaim(MediaKind.OTHER, groups = 2, files = 3, bytes = 30)), repository.observeReclaimable().first())
 
         // What DeleteDuplicatesUseCase does after the files are trashed or quarantined.
-        FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao()).remove(listOf(ids[1], ids[4]))
+        FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(InstrumentationRegistry.getInstrumentation().targetContext)).remove(listOf(ids[1], ids[4]))
 
         assertEquals(listOf(KindReclaim(MediaKind.OTHER, groups = 1, files = 1, bytes = 10)), repository.observeReclaimable().first())
     }

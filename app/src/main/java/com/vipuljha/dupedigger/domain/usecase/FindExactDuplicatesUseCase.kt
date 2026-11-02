@@ -1,9 +1,11 @@
 package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.core.common.getOrNull
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.ExactGroup
 import com.vipuljha.dupedigger.domain.model.ExactScanResult
 import com.vipuljha.dupedigger.domain.model.IndexedFile
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.collections.immutable.toImmutableList
@@ -11,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 /**
- * Finds byte-identical files among those seen in a scan, reading as little as possible.
+ * Finds byte-identical files among those of the chosen kinds seen in a scan, reading as little as possible.
  * - Files under the minimum size, or with a size no other file has, are never opened.
  * - A partial hash, then a full hash, each only within buckets keyed by size and hash that still hold two or more files.
  * - Cached hashes are reused; new partials are saved per batch and each full hash as soon as it is computed.
@@ -25,9 +27,10 @@ class FindExactDuplicatesUseCase @Inject constructor(
     suspend operator fun invoke(
         scanId: Long,
         minSizeBytes: Long,
+        kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): ExactScanResult {
-        val sameSize = fileIndex.filesSeenIn(scanId).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
+        val sameSize = fileIndex.filesSeenIn(scanId, kinds).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
 
         val (withPartial, needPartial) = sameSize.partition { it.partialHash != null }
         val partials = withPartial.toMutableList()

@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.vipuljha.dupedigger.data.worker.ScanWorker.Companion.toScanProgress
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
@@ -23,9 +24,9 @@ class WorkManagerScanScheduler @Inject constructor(
 
     private val workManager: WorkManager get() = WorkManager.getInstance(context)
 
-    override fun start(scope: ScanScope) {
+    override fun start(scope: ScanScope, kinds: Set<MediaKind>) {
         val request = OneTimeWorkRequestBuilder<ScanWorker>()
-            .setInputData(ScanScopeCodec.toData(scope))
+            .setInputData(ScanScopeCodec.toData(scope, kinds))
             .build()
         workManager.enqueueUniqueWork(ScanWorker.UNIQUE_NAME, ExistingWorkPolicy.KEEP, request)
     }

@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
-import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
@@ -13,6 +12,7 @@ import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanScope
+import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.domain.model.mediaKindOf
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,13 +27,19 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The `sourceUri` prefixes [AndroidFileEnumerator] can emit for [scope]; must match how each branch builds its URIs. */
-fun sourceUriPrefixes(scope: ScanScope): List<String> = when (scope) {
+/**
+ * The `sourceUri` prefixes [AndroidFileEnumerator] can emit for [scope] on [volumes]; must match how each branch builds its URIs.
+ * A [ScanScope.Paths] prefix ends in `/` even when its folder is gone, so `DCIM/Camera` never prunes `DCIM/Camera2`.
+ */
+fun sourceUriPrefixes(scope: ScanScope, volumes: List<File>): List<String> = when (scope) {
     ScanScope.WholeDevice -> listOf("file:")
     ScanScope.MediaOnly -> listOf("${ContentResolver.SCHEME_CONTENT}://${MediaStore.AUTHORITY}/")
     is ScanScope.Folders -> scope.folders.map { folder ->
         val tree = Uri.parse(folder.uri)
         "${DocumentsContract.buildTreeDocumentUri(tree.authority, DocumentsContract.getTreeDocumentId(tree))}/document/"
+    }
+    is ScanScope.Paths -> scope.roots().flatMap { folder ->
+        volumes.map { File(it, folder).toURI().toString().trimEnd('/') + "/" }
     }
 }
 
@@ -41,6 +47,7 @@ fun sourceUriPrefixes(scope: ScanScope): List<String> = when (scope) {
 class AndroidFileEnumerator @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val volumes: StorageVolumes,
 ) : FileEnumerator {
 
     private val resolver: ContentResolver get() = context.contentResolver
@@ -49,13 +56,11 @@ class AndroidFileEnumerator @Inject constructor(
     }
 
     override fun enumerate(scope: ScanScope, filter: ScanFilter): Flow<DiscoveredFile> = when (scope) {
-        ScanScope.WholeDevice -> walker.walk(volumeRoots(), filter)
+        ScanScope.WholeDevice -> walker.walk(volumes.roots(), filter)
         ScanScope.MediaOnly -> mediaStore(filter)
         is ScanScope.Folders -> flow { scope.folders.forEach { emitAll(tree(it, filter)) } }
+        is ScanScope.Paths -> walker.walk(volumes.roots(), filter, scope.roots())
     }.flowOn(ioDispatcher)
-
-    private fun volumeRoots(): List<File> =
-        context.getSystemService(StorageManager::class.java).storageVolumes.mapNotNull { it.directory }
 
     /** Images, videos and audio on every external volume; the system already hides trashed and pending rows. */
     private fun mediaStore(filter: ScanFilter): Flow<DiscoveredFile> = flow {

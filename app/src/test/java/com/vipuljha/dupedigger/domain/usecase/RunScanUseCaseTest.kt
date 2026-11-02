@@ -149,6 +149,34 @@ class RunScanUseCaseTest {
     }
 
     @Test
+    fun `a scan for some file types indexes every file but groups only files of those types`() = runTest {
+        settings = settings.copy(semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        put("c.txt", "notes-1")
+        put("d.txt", "notes-1")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/b.jpg"] = ImageHashes(0L, 0L)
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+
+        val summary = (runScan(ScanScope.WholeDevice, setOf(MediaKind.OTHER)) as Outcome.Success).data
+
+        assertEquals(4, index.rows.size)
+        assertEquals(4, summary.index.added)
+        val saved = groups.saved!!.second
+        assertEquals(listOf(MatchTier.EXACT), saved.map { it.tier })
+        assertEquals(listOf(3L, 4L), saved.single().fileIds)
+
+        runScan(ScanScope.WholeDevice, setOf(MediaKind.IMAGE))
+
+        assertEquals(4, index.rows.size)
+        val images = groups.saved!!.second.single()
+        assertEquals(MatchTier.NEAR, images.tier)
+        assertEquals(listOf(1L, 2L), images.fileIds)
+    }
+
+    @Test
     fun `similar photos are saved as a near group with the exact ones, each copy counted once`() = runTest {
         put("a.jpg", "photo-1")
         put("b.jpg", "photo-1")
@@ -353,7 +381,8 @@ class RunScanUseCaseTest {
             filters += filter
             failWith?.let { throw it }
             disk.forEach { (uri, content) ->
-                emit(DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, MediaKind.OTHER, content.length.toLong(), 1, null))
+                val kind = if (uri.endsWith(".jpg")) MediaKind.IMAGE else MediaKind.OTHER
+                emit(DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, kind, content.length.toLong(), 1, null))
             }
         }
     }
@@ -397,6 +426,7 @@ class RunScanUseCaseTest {
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun deleteEmbeddings(modelId: String) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
+        private val kindOf = mutableMapOf<String, MediaKind>()
         private var nextId = 1L
 
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats {
@@ -415,6 +445,7 @@ class RunScanUseCaseTest {
                     }
                 }
                 lastSeen[f.sourceUri] = scanId
+                kindOf[f.sourceUri] = f.mediaKind
             }
             return IndexStats(added = added, changed = changed, unchanged = files.size - added - changed)
         }
@@ -425,7 +456,8 @@ class RunScanUseCaseTest {
             return stale.size
         }
 
-        override suspend fun filesSeenIn(scanId: Long) = rows.values.filter { lastSeen[it.sourceUri] == scanId }
+        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) =
+            rows.values.filter { lastSeen[it.sourceUri] == scanId && kindOf[it.sourceUri] in kinds }
 
         override suspend fun saveHashes(files: List<IndexedFile>) = files.forEach { rows[it.sourceUri] = it }
 

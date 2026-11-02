@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.DocumentFile
@@ -31,7 +32,7 @@ class ImageHashCacheTest {
     @Before
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, DupeDiggerDatabase::class.java).build()
-        repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(InstrumentationRegistry.getInstrumentation().targetContext))
     }
 
     @After
