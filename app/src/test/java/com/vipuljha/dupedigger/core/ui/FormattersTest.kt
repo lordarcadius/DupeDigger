@@ -30,4 +30,13 @@ class FormattersTest {
     fun `a time under a minute old is just now`() {
         assertEquals(UiText.res(R.string.time_just_now), formatRelativeTime(1_000, 30_000))
     }
+
+    @Test
+    fun `durations round down to the largest two units`() {
+        assertEquals(UiText.res(R.string.duration_under_second), formatDuration(999))
+        assertEquals(UiText.res(R.string.duration_seconds, "42"), formatDuration(42_900))
+        assertEquals(UiText.res(R.string.duration_minutes, "2", "5"), formatDuration(125_000))
+        assertEquals(UiText.res(R.string.duration_hours, "1", "1"), formatDuration(3_661_000))
+        assertEquals(UiText.res(R.string.duration_under_second), formatDuration(-5))
+    }
 }

@@ -4,6 +4,7 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.formatBytes
 import com.vipuljha.dupedigger.core.ui.formatCount
+import com.vipuljha.dupedigger.core.ui.formatDuration
 import com.vipuljha.dupedigger.core.ui.formatRelativeTime
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
@@ -47,4 +48,15 @@ private fun ScanRunInfo.toUi(nowMillis: Long) = LastScanUi(
             ScanStatus.INTERRUPTED -> R.string.home_scan_status_interrupted
         },
     ),
+    stats = scanStats(),
 )
+
+/** "Took 2 min 5 s · 12,345 files scanned"; either half alone when the record lacks the other, null with neither. */
+private fun ScanRunInfo.scanStats(): UiText? {
+    val took = finishedAt?.let { UiText.res(R.string.home_last_scan_took, formatDuration(it - startedAt)) }
+    val files = summary?.index?.scanned?.let { UiText.plural(R.plurals.home_files_scanned, it, formatCount(it)) }
+    return when {
+        took != null && files != null -> UiText.res(R.string.home_last_scan_stats, took, files)
+        else -> took ?: files
+    }
+}

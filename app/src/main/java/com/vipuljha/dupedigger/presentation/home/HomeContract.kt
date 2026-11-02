@@ -30,7 +30,8 @@ data class HomeUiModel(
 data class KindRowUi(val kind: MediaKind, val label: UiText, val size: UiText, val detail: UiText)
 
 @Immutable
-data class LastScanUi(val time: UiText, val scope: UiText?, val status: UiText)
+/** [stats] is how long the scan took and how many files it found, as far as the record knows them. */
+data class LastScanUi(val time: UiText, val scope: UiText?, val status: UiText, val stats: UiText? = null)
 
 sealed interface HomeIntent : UiIntent {
     data object Retry : HomeIntent

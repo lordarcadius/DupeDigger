@@ -180,6 +180,9 @@ private fun LastScanCard(model: HomeUiModel, progress: () -> ScanProgressUi?, on
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        last.stats?.let {
+            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

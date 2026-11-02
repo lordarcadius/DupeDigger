@@ -54,6 +54,17 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 11, stats on Home.
+  - **Last-scan card:** now has a stats line, "Took 2 min 5 s · 1,234 files scanned". It sits next to the existing space-you-can-free total and the per-type rows, so Home shows reclaimable space, duplicates by type, scan time, files scanned and the last scan.
+    - The duration comes from the run's start and finish times.
+    - The file count is `IndexStats.scanned` (added, changed and unchanged), which only completed runs record. A cancelled or failed run shows just how long it ran.
+  - **Formatter:** `formatDuration` gives "under a second", "42 s", "2 min 5 s" or "1 h 1 min", rounded down.
+  - **Tests:**
+    - `FormattersTest` (1 new): duration formatting.
+    - `HomeViewModelTest` (2 new): both halves for a completed run, and duration only for a cancelled run.
+    - All 271 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+  - Next: PRM2-10075 step 12, UI polish, the full test pass, lint and the PR.
+
 - 2026-11-02: PRM2-10075 step 10, quicker compare and delete (D-007 amended).
   - **Delete in place:**
     - Group shows a Delete button on every copy that isn't the keeper.

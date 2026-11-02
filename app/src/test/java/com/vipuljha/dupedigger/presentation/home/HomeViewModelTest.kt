@@ -4,12 +4,14 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.formatBytes
+import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
+import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.ScopeKind
 import com.vipuljha.dupedigger.presentation.FakeReclaimGroups
 import com.vipuljha.dupedigger.presentation.FakeScanRuns
@@ -64,6 +66,30 @@ class HomeViewModelTest {
         assertEquals(listOf(MediaKind.IMAGE, MediaKind.DOCUMENT), model.kinds.map { it.kind })
         assertEquals(UiText.res(R.string.home_scan_status_completed), model.lastScan!!.status)
         assertEquals(UiText.res(R.string.scope_media), model.lastScan!!.scope)
+    }
+
+    @Test
+    fun `the last scan shows how long it took and how many files it scanned`() {
+        val summary = ScanSummary(IndexStats(added = 1_000, changed = 200, unchanged = 34, removed = 5), 3, 4, 5_000, 0, 0)
+        runs.latest.value = ScanRunInfo(1, ScopeKind.WHOLE_DEVICE, ScanStatus.COMPLETED, startedAt = 10_000, finishedAt = 135_000, summary = summary)
+
+        val stats = viewModel().model().lastScan!!.stats
+
+        assertEquals(
+            UiText.res(
+                R.string.home_last_scan_stats,
+                UiText.res(R.string.home_last_scan_took, UiText.res(R.string.duration_minutes, "2", "5")),
+                UiText.plural(R.plurals.home_files_scanned, 1_234, "1,234"),
+            ),
+            stats,
+        )
+    }
+
+    @Test
+    fun `a cancelled scan shows only how long it ran`() {
+        runs.latest.value = ScanRunInfo(1, ScopeKind.MEDIA_ONLY, ScanStatus.CANCELLED, startedAt = 0, finishedAt = 42_000, summary = null)
+
+        assertEquals(UiText.res(R.string.home_last_scan_took, UiText.res(R.string.duration_seconds, "42")), viewModel().model().lastScan!!.stats)
     }
 
     @Test

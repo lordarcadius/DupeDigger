@@ -19,6 +19,10 @@
     <string name="size_tb">%1$s TB</string>
     <string name="size_pb">%1$s PB</string>
     <string name="time_just_now">Just now</string>
+    <string name="duration_under_second">under a second</string>
+    <string name="duration_seconds">%1$s s</string>
+    <string name="duration_minutes">%1$s min %2$s s</string>
+    <string name="duration_hours">%1$s h %2$s min</string>
 
     <string name="kind_images">Images</string>
     <string name="kind_videos">Videos</string>
@@ -43,6 +47,12 @@
     </plurals>
     <string name="home_last_scan_title">Last scan</string>
     <string name="home_last_scan_detail">%1$s · %2$s</string>
+    <string name="home_last_scan_took">Took %1$s</string>
+    <string name="home_last_scan_stats">%1$s · %2$s</string>
+    <plurals name="home_files_scanned">
+        <item quantity="one">%1$s file scanned</item>
+        <item quantity="other">%1$s files scanned</item>
+    </plurals>
     <string name="home_scan_status_running">Scanning now…</string>
     <string name="home_scan_status_completed">Finished</string>
     <string name="home_scan_status_cancelled">Cancelled</string>
