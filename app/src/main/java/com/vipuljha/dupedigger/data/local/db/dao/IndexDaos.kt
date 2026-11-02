@@ -33,6 +33,9 @@ interface FileIndexDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(file: FileIndexEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(files: List<FileIndexEntity>): List<Long>
+
     @Update
     suspend fun update(file: FileIndexEntity)
 

@@ -54,6 +54,28 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 faster reads, measured on a temporary API 36 x86_64 Pixel Tablet emulator (4 cores, 8 GB data partition), created for this and deleted after.
+  - **Profile first.** A throwaway instrumented test (not kept) timed each part on the benchmark's 5,000 files of 32 KiB. Before any change, three runs on one emulator: walking took 785/371/394 ms, `record()` of new files 1748/1926/1551 ms, `record()` of unchanged files 166/210/206 ms. Partial hashing of all 5,000 took 5942/2819/1832 ms at the app's 4 readers.
+  - **Changes:**
+    - `FileTreeWalker` reads each entry's attributes once with `Files.readAttributes(..., NOFOLLOW_LINKS)`, instead of separate symlink, directory, file, length and mtime calls. Filtered entries are dropped before any stat. An entry that vanishes mid-walk is skipped.
+    - `FileIndexRepositoryImpl.record()` inserts a batch's new files with one `insertAll`, instead of one `insert` per file. Counts and per-file behaviour are unchanged.
+  - **After, same profile on the same emulator:** walking 203/154/164 ms (about 2.4× faster), `record()` of new files 508/394/367 ms (about 4× faster), `record()` of unchanged files 128/94/89 ms (about 2× faster).
+  - **`ScanThroughputTest`, measured the same way as the 2026-10-30 baseline** (fresh emulator, seven runs, first dropped, median of six):
+
+    | Pass | Before | After | Six runs after (ms) |
+    |---|---|---|---|
+    | First scan, index | 1,920 ms | 1,527 ms (3,275 files/s) | 2227, 2373, 1824, 1229, 1120, 1103 |
+    | First scan, exact | 1,427 ms | 1,909 ms | 3008, 4069, 1897, 1921, 1617, 1433 |
+    | Rescan, index | 531 ms | 477 ms | 765, 583, 356, 496, 448, 458 |
+    | Rescan, exact | 75 ms | 65 ms | 71, 82, 47, 67, 63, 57 |
+
+    Indexing is faster in every pass. The exact stage's code didn't change, and its "after" runs spread from 1.4 to 4.1 s, so its higher median is emulator noise rather than a regression. Whole-run numbers on this emulator vary by up to 3× between runs, so the isolated profile above is the clearer measure.
+  - **Not changed:**
+    - **Parallelism** stays at 4 readers. In the profile, 8 readers hashed faster than 4 only when the reads ran on the IO dispatcher. The app hashes on `@DefaultDispatcher`, which has 4 threads on this 4-core device, so more readers would just queue. Moving hashing to IO would go against AGENTS.md's "hashing is CPU-heavy (`@DefaultDispatcher`)" rule, so it's left as its own decision.
+    - **The 256 KiB hash buffer** was not tuned. The benchmark's 32 KiB files are read whole by the partial hash and never reach the streaming full hash, so this benchmark can't measure the buffer.
+  - Tests: `FileTreeWalkerTest`, `IndexFilesUseCaseTest`, `ScanFilterTest` and `FindExactDuplicatesUseCaseTest` pass (19 tests). On the emulator, `FileIndexRepositoryTest`, `DaoTest`, `EnumeratorDeviceTest` and `ScanWorkerDeviceTest` pass (11 tests).
+  - Next: PRM2-10075 step 4, presets and a path-based scope in the domain.
+
 - 2026-10-30: PRM2-10075 baselines, measured before any code change, so the follow-up's speed and tap-count changes have a "before" to compare against.
   - **Scan throughput:** `ScanThroughputTest` (debug build, 5,000 files of 32 KiB, 1,000 copies, 50 folders) on a temporary API 36 x86_64 Pixel Tablet emulator with an 8 GB data partition (created for this and deleted after). Seven back-to-back runs; the first (cold emulator) is dropped, and the figure is the median of the other six.
 

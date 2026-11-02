@@ -51,16 +51,16 @@ class FileIndexRepositoryImpl @Inject constructor(
     override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats = db.withTransaction {
         val known = fileIndexDao.findBySourceUris(files.map { it.sourceUri }).associateByTo(HashMap()) { it.sourceUri }
         val seen = ArrayList<Long>()
-        var added = 0
+        val fresh = LinkedHashMap<String, FileIndexEntity>()
         var changed = 0
         for (file in files) {
             val row = known[file.sourceUri]
-            val entity = file.toEntity(id = row?.id ?: 0, scanId = scanId)
+            if (row == null) {
+                fresh.putIfAbsent(file.sourceUri, file.toEntity(id = 0, scanId = scanId))
+                continue
+            }
+            val entity = file.toEntity(id = row.id, scanId = scanId)
             when {
-                row == null -> {
-                    known[file.sourceUri] = entity.copy(id = fileIndexDao.insert(entity))
-                    added++
-                }
                 row.size != file.size || row.mtime != file.mtime -> {
                     fileIndexDao.update(entity)
                     fileHashDao.deleteForFile(row.id)
@@ -73,8 +73,9 @@ class FileIndexRepositoryImpl @Inject constructor(
                 else -> fileIndexDao.update(entity)
             }
         }
+        if (fresh.isNotEmpty()) fileIndexDao.insertAll(fresh.values.toList())
         if (seen.isNotEmpty()) fileIndexDao.markSeen(seen, scanId)
-        IndexStats(added = added, changed = changed, unchanged = files.size - added - changed)
+        IndexStats(added = fresh.size, changed = changed, unchanged = files.size - fresh.size - changed)
     }
 
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int = db.withTransaction {
