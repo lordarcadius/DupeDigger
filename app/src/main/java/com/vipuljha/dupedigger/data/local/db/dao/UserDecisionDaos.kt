@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.ExcludedPathEntity
 import com.vipuljha.dupedigger.data.local.db.entity.IgnoredGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
 import com.vipuljha.dupedigger.data.local.db.entity.QuarantineItemEntity
+import com.vipuljha.dupedigger.data.local.db.entity.ScanPresetEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -62,4 +63,20 @@ interface ExcludedPathDao {
 
     @Query("SELECT * FROM excluded_path ORDER BY path")
     fun observeAll(): Flow<List<ExcludedPathEntity>>
+}
+
+@Dao
+interface ScanPresetDao {
+    @Insert
+    suspend fun insert(preset: ScanPresetEntity): Long
+
+    /** Keeps `createdAt`, so an edited preset keeps its place. */
+    @Query("UPDATE scan_preset SET name = :name, scopeKind = :scopeKind, locations = :locations, mediaKinds = :mediaKinds WHERE id = :id")
+    suspend fun update(id: Long, name: String, scopeKind: String, locations: String, mediaKinds: String)
+
+    @Query("DELETE FROM scan_preset WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM scan_preset ORDER BY createdAt, id")
+    fun observeAll(): Flow<List<ScanPresetEntity>>
 }

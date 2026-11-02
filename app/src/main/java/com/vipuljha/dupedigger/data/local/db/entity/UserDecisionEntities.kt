@@ -35,3 +35,16 @@ data class ExcludedPathEntity(
     @PrimaryKey val path: String,
     val addedAt: Long,
 )
+
+@Entity(tableName = "scan_preset")
+data class ScanPresetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** A `ScopeKind` name. */
+    val scopeKind: String,
+    /** Tree URIs for FOLDERS, volume-relative paths for PATHS, one per line; empty for the other kinds. */
+    val locations: String,
+    /** `MediaKind` names, comma-separated. */
+    val mediaKinds: String,
+    val createdAt: Long,
+)

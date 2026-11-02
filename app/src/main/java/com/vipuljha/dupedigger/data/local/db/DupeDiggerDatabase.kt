@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.data.local.db
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.vipuljha.dupedigger.data.local.db.dao.DuplicateGroupDao
 import com.vipuljha.dupedigger.data.local.db.dao.EmbeddingDao
 import com.vipuljha.dupedigger.data.local.db.dao.ExcludedPathDao
@@ -12,6 +13,7 @@ import com.vipuljha.dupedigger.data.local.db.dao.IgnoredGroupDao
 import com.vipuljha.dupedigger.data.local.db.dao.KeepChoiceDao
 import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
 import com.vipuljha.dupedigger.data.local.db.dao.QuarantineDao
+import com.vipuljha.dupedigger.data.local.db.dao.ScanPresetDao
 import com.vipuljha.dupedigger.data.local.db.dao.ScanRunDao
 import com.vipuljha.dupedigger.data.local.db.entity.DuplicateGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.EmbeddingEntity
@@ -23,6 +25,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.IgnoredGroupEntity
 import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
 import com.vipuljha.dupedigger.data.local.db.entity.PerceptualHashEntity
 import com.vipuljha.dupedigger.data.local.db.entity.QuarantineItemEntity
+import com.vipuljha.dupedigger.data.local.db.entity.ScanPresetEntity
 import com.vipuljha.dupedigger.data.local.db.entity.ScanRunEntity
 
 /**
@@ -36,8 +39,9 @@ import com.vipuljha.dupedigger.data.local.db.entity.ScanRunEntity
         FileIndexEntity::class, FileHashEntity::class, PerceptualHashEntity::class, EmbeddingEntity::class,
         DuplicateGroupEntity::class, GroupMemberEntity::class, ScanRunEntity::class,
         IgnoredGroupEntity::class, KeepChoiceEntity::class, QuarantineItemEntity::class, ExcludedPathEntity::class,
+        ScanPresetEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class DupeDiggerDatabase : RoomDatabase() {
@@ -51,10 +55,21 @@ abstract class DupeDiggerDatabase : RoomDatabase() {
     abstract fun keepChoiceDao(): KeepChoiceDao
     abstract fun quarantineDao(): QuarantineDao
     abstract fun excludedPathDao(): ExcludedPathDao
+    abstract fun scanPresetDao(): ScanPresetDao
 
     companion object {
         const val NAME = "dupedigger.db"
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = emptyArray()
+/** Adds `scan_preset` for the user's own scan presets. */
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `scan_preset` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, " +
+                "`scopeKind` TEXT NOT NULL, `locations` TEXT NOT NULL, `mediaKinds` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        )
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)

@@ -392,3 +392,11 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
   - `DCIM/Screenshots`;
   - the Facebook, Instagram, Snapchat and Reddit folders.
 - A folder a device doesn't have is skipped.
+
+**Saved presets** live in `scan_preset`, which Room v2 adds with `MIGRATION_1_2`. Only the user's own presets are stored. `ObserveScanPresetsUseCase` lists them oldest first, then the built-ins.
+- **Scope.** A row stores its scope kind and its locations, one per line: tree URIs for picked folders, volume-relative paths for Paths.
+  - A picked folder whose grant was released drops out of the preset when it's read, as it does for queued work.
+  - A row with a scope kind this build doesn't know is skipped.
+- **File types** are stored as a comma-separated list of `MediaKind` names. Unknown names are dropped; a row left with none searches every type.
+- **Editing.** An edit keeps `createdAt`, so the preset keeps its place in the list.
+- **Errors.** Saving or deleting a built-in preset fails with `DomainError.BuiltInPreset`. A preset with a blank name or nothing to scan fails with `DomainError.InvalidPreset`.

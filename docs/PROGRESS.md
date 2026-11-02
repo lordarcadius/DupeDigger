@@ -54,6 +54,18 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 5, saving user presets (D-014).
+  - **Room v2:** a `scan_preset` table (`ScanPresetEntity`, `ScanPresetDao`), added by `MIGRATION_1_2` in `ALL_MIGRATIONS`. The SQL is the same as the exported `schemas/.../2.json`, and `1.json` is unchanged.
+  - **Domain:**
+    - `ScanPresetRepository`, implemented by `ScanPresetRepositoryImpl`, which maps rows against the current folder grants.
+    - `ObserveScanPresetsUseCase`, `SaveScanPresetUseCase` and `DeleteScanPresetUseCase`.
+    - `DomainError.BuiltInPreset` and `DomainError.InvalidPreset`, with their messages.
+  - **Tests:**
+    - JVM: `PresetUseCasesTest` (5) and `ScanPresetMappingTest` (3). All 246 unit tests pass, and `compileDebugAndroidTestKotlin` passes.
+    - On a temporary API 35 x86_64 Pixel Tablet emulator, created for this and deleted after: `DatabaseMigrationTest` (4, with the new `presetsCanBeSavedEditedAndDeletedAfterMigratingFromTheFirstVersion`), `DaoTest` (5) and `FileIndexRepositoryTest` (2) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 6, the scan-start flow UI.
+
 - 2026-11-02: PRM2-10075 step 4, presets and a path scope in the domain (D-014).
   - **Domain:**
     - `ScanScope.Paths` with `roots()` cleaning, and `ScopeKind.PATHS`, reachable only with All files access.

@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.vipuljha.dupedigger.data.local.db.entity.ScanPresetEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -14,6 +15,7 @@ import org.junit.runner.RunWith
 /**
  * Migration checks against the schemas exported to `app/schemas`:
  * - user decisions written in the oldest schema survive the migration to the current version;
+ * - presets, added in version 2, can be saved, edited and deleted in a database migrated from the oldest schema;
  * - every exported version migrates to the latest and matches it exactly;
  * - the database the app builds is the latest exported version, so a version bump can't ship without its schema.
  */
@@ -47,6 +49,26 @@ class DatabaseMigrationTest {
     }
 
     @Test
+    fun presetsCanBeSavedEditedAndDeletedAfterMigratingFromTheFirstVersion() = runTest {
+        helper.createDatabase(PRESET_DB, FIRST_VERSION).close()
+        val db = Room.databaseBuilder(
+            InstrumentationRegistry.getInstrumentation().targetContext,
+            DupeDiggerDatabase::class.java,
+            PRESET_DB,
+        ).addMigrations(*ALL_MIGRATIONS).build()
+        helper.closeWhenFinished(db)
+        val dao = db.scanPresetDao()
+
+        val first = dao.insert(ScanPresetEntity(name = "Images Only", scopeKind = "WHOLE_DEVICE", locations = "", mediaKinds = "IMAGE", createdAt = 1))
+        dao.insert(ScanPresetEntity(name = "Camera", scopeKind = "PATHS", locations = "DCIM/Camera", mediaKinds = "IMAGE,VIDEO", createdAt = 2))
+        dao.update(first, "Photos", "WHOLE_DEVICE", "", "IMAGE,VIDEO")
+
+        assertEquals(listOf("Photos" to 1L, "Camera" to 2L), dao.observeAll().first().map { it.name to it.createdAt })
+        dao.delete(first)
+        assertEquals(listOf("Camera"), dao.observeAll().first().map { it.name })
+    }
+
+    @Test
     fun everyExportedVersionMigratesToTheLatestSchema() {
         exportedVersions.forEach { version ->
             val name = "$TEST_DB-$version"
@@ -74,6 +96,7 @@ class DatabaseMigrationTest {
 
     private companion object {
         const val TEST_DB = "migration-test"
+        const val PRESET_DB = "migration-test-presets"
         const val FIRST_VERSION = 1
     }
 }
