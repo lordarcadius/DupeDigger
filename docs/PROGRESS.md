@@ -54,6 +54,23 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 9, smart selection on Results (D-014).
+  - **Domain:**
+    - `KeepRule` and `DuplicateFolder`.
+    - `GroupWithMembers.keeperFor(rule)`.
+    - `SelectAllButKeepersUseCase(filter, rule)`, which keeps its invariants: exact groups only with no tier chosen, and never a file that keeps any matching group.
+    - `GetDuplicateFoldersUseCase`.
+  - **UI:**
+    - Keep newest, oldest, largest and from folder chips beside "Select duplicates".
+    - A folder picker dialog.
+    - `ResultsState.keepRule` and `folderChoices`.
+  - **Tests:**
+    - `SelectAllButKeepersUseCaseTest` (6): the three rules; unknown times and ties; folder with fallback; the cross-group invariant under every rule; the folder list order.
+    - `ResultsViewModelTest` (2 new): a rule selects in one tap and clears on a manual change; the folder picker selects and closes.
+    - All 264 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+    - I didn't run the new chips on a device in this step.
+  - Next: PRM2-10075 step 10, quicker compare and delete.
+
 - 2026-11-02: PRM2-10075 step 8, background scanning (D-014).
   - **On a temporary API 35 Pixel Tablet emulator, deleted after**, with 30,000 seeded files in `/sdcard/Bench`:
     - **Swipe-away:** a whole-device scan started from the Scan screen. The app was swiped away in Recents mid-scan: no task or activity was left, the same process kept running under the foreground notification, and reopening the app showed "Finished · Just now · Whole device".

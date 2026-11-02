@@ -87,6 +87,17 @@
     <string name="results_empty_kind_title">Nothing in this category</string>
     <string name="results_empty_kind_body">Pick another category, or show all groups.</string>
     <string name="results_error_title">Couldn’t load the results</string>
+    <string name="results_keep_newest">Keep newest</string>
+    <string name="results_keep_oldest">Keep oldest</string>
+    <string name="results_keep_largest">Keep largest</string>
+    <string name="results_keep_folder">Keep from folder…</string>
+    <string name="results_keep_folder_title">Keep the copies in which folder?</string>
+    <string name="results_keep_folder_body">Everything else in the groups is selected. A group with no file there keeps its best one.</string>
+    <string name="results_folder_detail">%1$s · %2$s</string>
+    <plurals name="results_folder_files">
+        <item quantity="one">%1$s file</item>
+        <item quantity="other">%1$s files</item>
+    </plurals>
     <string name="results_error_more">Couldn’t load more groups.</string>
     <plurals name="results_delete_title">
         <item quantity="one">Delete %1$s file?</item>

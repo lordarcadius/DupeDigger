@@ -424,3 +424,12 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
   - The host then opens the Scan screen on the Home tab.
 - **Home:** shows the running scan's stage, count and bar, from its own progress flow.
 - **Retry after process death:** if the Scan screen didn't start the scan itself, as after process death, Retry goes back to setup instead of doing nothing.
+
+**Smart selection.** `SelectAllButKeepersUseCase` takes a `KeepRule`: `Best` (the keep choice, else the default ranking), `Newest`, `Oldest`, `Largest`, or `InFolder(path)`.
+- **Keeper per rule:** `GroupWithMembers.keeperFor(rule)` picks each group's keeper. Ties go to the default ranking (`rankKeeper`), so the pick is always the same.
+  - Newest and oldest ignore unknown times (0) unless every member's time is unknown.
+  - A group with no member in the chosen folder keeps its best member.
+  - A rule other than `Best` overrides a saved keep choice for this selection only. Nothing is saved.
+- **Invariants kept:** with no tier chosen, only exact groups are picked. A file that keeps any matching group is never selected, so deleting a selection can't empty a group.
+- **Results screen:** "Keep newest", "Keep oldest", "Keep largest" and "Keep from folder…" chips sit next to "Select duplicates" (which is `Best`). Each selects in one tap. The chip of the rule behind the current selection stays on until the selection is changed.
+  - "Keep from folder…" lists the folders holding the matching groups' files, most files first (`GetDuplicateFoldersUseCase`). Tapping one selects at once.

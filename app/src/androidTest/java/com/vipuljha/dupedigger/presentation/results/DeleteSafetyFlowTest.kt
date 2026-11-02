@@ -31,6 +31,7 @@ import com.vipuljha.dupedigger.domain.repository.FileRemover
 import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
+import com.vipuljha.dupedigger.domain.usecase.GetDuplicateFoldersUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
 import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
 import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
@@ -83,7 +84,7 @@ class DeleteSafetyFlowTest {
         }
         val files = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         val viewModel = ResultsViewModel(
-            groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups),
+            groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups), GetDuplicateFoldersUseCase(groups),
             DeleteDuplicatesUseCase(groups, files, remover), ConfirmTrashUseCase(files),
             UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
         )

@@ -32,6 +32,21 @@ data class GroupMember(
     val name: String = "",
 )
 
+/** Which member of each group a bulk selection keeps; every other member is selected. */
+sealed interface KeepRule {
+    /** The user's keep choice, else the default ranking. */
+    data object Best : KeepRule
+    data object Newest : KeepRule
+    data object Oldest : KeepRule
+    data object Largest : KeepRule
+
+    /** A member inside [folder] (an absolute path, subfolders included); a group with none there keeps its best. */
+    data class InFolder(val folder: String) : KeepRule
+}
+
+/** A folder holding members of the matching groups, and how many. */
+data class DuplicateFolder(val path: String, val files: Int)
+
 /** Which saved groups to list; null means any. */
 data class GroupFilter(val kind: MediaKind? = null, val tier: MatchTier? = null)
 

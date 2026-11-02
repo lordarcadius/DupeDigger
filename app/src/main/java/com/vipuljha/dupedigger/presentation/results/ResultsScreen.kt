@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
@@ -53,6 +55,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -81,7 +84,9 @@ import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
 import com.vipuljha.dupedigger.core.designsystem.shimmer
 import com.vipuljha.dupedigger.core.ui.asString
+import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun ResultsScreen(
@@ -108,7 +113,38 @@ fun ResultsScreen(
         }
     }
     state.confirmDelete?.let { DeleteDialog(it, onIntent) }
+    state.folderChoices?.let { FolderDialog(it, onIntent) }
 }
+
+/** Picking a folder selects every other copy in the matching groups at once. */
+@Composable
+private fun FolderDialog(folders: ImmutableList<FolderChoiceUi>, onIntent: (ResultsIntent) -> Unit) {
+    AppDialog(
+        onDismissRequest = { onIntent(ResultsIntent.FolderPickerDismissed) },
+        onEnter = { onIntent(ResultsIntent.FolderPickerDismissed) },
+        title = { Text(stringResource(R.string.results_keep_folder_title)) },
+        text = {
+            Column(Modifier.heightIn(max = FolderListMaxHeight).verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.results_keep_folder_body), modifier = Modifier.padding(bottom = Dimens.spaceSm))
+                folders.forEach { folder ->
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimens.touchTarget)
+                            .clickable(role = Role.Button) { onIntent(ResultsIntent.KeepRuleSelected(KeepRule.InFolder(folder.path))) }
+                            .padding(vertical = Dimens.spaceSm),
+                    ) {
+                        Text(folder.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(folder.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = { AppButton(stringResource(R.string.action_cancel), { onIntent(ResultsIntent.FolderPickerDismissed) }, kind = ButtonKind.Text) },
+    )
+}
+
+private val FolderListMaxHeight = 320.dp
 
 @Composable
 private fun DeleteDialog(confirm: DeleteConfirmUi, onIntent: (ResultsIntent) -> Unit) {
@@ -134,6 +170,39 @@ private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
                 selected = chip.kind == state.kind,
                 onClick = { onIntent(ResultsIntent.KindSelected(chip.kind)) },
                 label = { Text(chip.label.asString()) },
+            )
+        }
+    }
+}
+
+/** One tap selects every copy but the one each rule keeps; the chip of the rule behind the selection stays on. */
+@Composable
+private fun KeepChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit, modifier: Modifier = Modifier) {
+    val gutter = LocalPaneMetrics.current.gutter
+    val chips = listOf(
+        KeepRule.Newest to R.string.results_keep_newest,
+        KeepRule.Oldest to R.string.results_keep_oldest,
+        KeepRule.Largest to R.string.results_keep_largest,
+    )
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(start = gutter),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+    ) {
+        items(chips, key = { it.second }, contentType = { "keep" }) { (rule, label) ->
+            FilterChip(
+                selected = state.keepRule == rule,
+                onClick = { onIntent(ResultsIntent.KeepRuleSelected(rule)) },
+                enabled = !state.selecting,
+                label = { Text(stringResource(label)) },
+            )
+        }
+        item(key = "keep-folder", contentType = "keep") {
+            FilterChip(
+                selected = state.keepRule is KeepRule.InFolder,
+                onClick = { onIntent(ResultsIntent.KeepFromFolderClicked) },
+                enabled = !state.selecting,
+                label = { Text(stringResource(R.string.results_keep_folder)) },
             )
         }
     }
@@ -223,8 +292,14 @@ private fun GroupRows(
     val gutter = LocalPaneMetrics.current.gutter
     LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
         item(key = "actions", contentType = "actions") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = Dimens.spaceSm), horizontalArrangement = Arrangement.End) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = Dimens.spaceSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KeepChips(state, onIntent, Modifier.weight(1f))
                 AppButton(
+                    modifier = Modifier.padding(end = gutter),
                     label = stringResource(R.string.results_action_select_duplicates),
                     onClick = { onIntent(ResultsIntent.SelectAllButKeepers) },
                     kind = ButtonKind.Tonal,

@@ -5,6 +5,7 @@ import com.vipuljha.dupedigger.core.mvi.UiEffect
 import com.vipuljha.dupedigger.core.mvi.UiIntent
 import com.vipuljha.dupedigger.core.mvi.UiState
 import com.vipuljha.dupedigger.core.ui.UiText
+import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import kotlinx.collections.immutable.ImmutableList
@@ -12,7 +13,11 @@ import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 
-/** [selection] maps each selected file id to its size; it is cleared when the filter changes or a new scan starts. */
+/**
+ * [selection] maps each selected file id to its size; it is cleared when the filter changes or a new scan starts.
+ * [keepRule] is the rule the current selection was made with, null once the selection is changed by hand.
+ * [folderChoices] is set while the user picks the folder whose copies to keep.
+ */
 @Immutable
 data class ResultsState(
     val kind: MediaKind? = null,
@@ -22,6 +27,8 @@ data class ResultsState(
     val selection: ImmutableMap<Long, Long> = persistentMapOf(),
     val selectionSummary: UiText? = null,
     val selecting: Boolean = false,
+    val keepRule: KeepRule? = null,
+    val folderChoices: ImmutableList<FolderChoiceUi>? = null,
     val confirmDelete: DeleteConfirmUi? = null,
     val deleting: Boolean = false,
 ) : UiState
@@ -29,6 +36,9 @@ data class ResultsState(
 /** The delete confirmation: how many files and how much space. */
 @Immutable
 data class DeleteConfirmUi(val count: Int, val title: UiText, val body: UiText)
+
+@Immutable
+data class FolderChoiceUi(val path: String, val name: String, val detail: UiText)
 
 @Immutable
 data class KindChipUi(val kind: MediaKind?, val label: UiText)
@@ -57,6 +67,9 @@ sealed interface ResultsIntent : UiIntent {
     data object ShowAllClicked : ResultsIntent
     data class GroupToggled(val row: GroupRowUi) : ResultsIntent
     data object SelectAllButKeepers : ResultsIntent
+    data class KeepRuleSelected(val rule: KeepRule) : ResultsIntent
+    data object KeepFromFolderClicked : ResultsIntent
+    data object FolderPickerDismissed : ResultsIntent
     data object ClearSelection : ResultsIntent
     data object StartScanClicked : ResultsIntent
     data object DeleteClicked : ResultsIntent
