@@ -262,6 +262,26 @@ class ScanViewModelTest {
     }
 
     @Test
+    fun `reopened while a scan runs, as after process death, it follows that scan to its result`() = runTest {
+        runs.latest.value = ScanRunInfo(7, ScopeKind.WHOLE_DEVICE, ScanStatus.RUNNING, 0, null, null)
+        scheduler.progress.value = ScanProgress(ScanStage.EXACT, 30, 120)
+
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.progress.collect {} }
+
+        assertEquals(ScanPhase.Running, vm.state.value.phase)
+        assertEquals(0.25f, vm.progress.value!!.fraction)
+        scheduler.progress.value = null
+        runs.latest.value = completed(id = 7, duplicates = 0)
+        assertTrue(vm.state.value.phase is ScanPhase.Done)
+
+        vm.onIntent(ScanIntent.StartClicked)
+        assertEquals(ScanPhase.Setup, vm.state.value.phase)
+        assertEquals(SetupStep.Presets, vm.state.value.step)
+        assertTrue(scheduler.started.isEmpty())
+    }
+
+    @Test
     fun `an old finished run never shows as this screen's result`() {
         runs.latest.value = completed(id = 9, duplicates = 2)
 

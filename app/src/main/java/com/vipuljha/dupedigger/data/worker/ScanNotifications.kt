@@ -62,12 +62,17 @@ class ScanNotifications @Inject constructor(
     private fun skipAi(): PendingIntent =
         PendingIntent.getBroadcast(context, 0, Intent(context, SkipAiReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
 
+    /** Brings back the open app, or starts it, on the Scan screen. */
     private fun openApp(): PendingIntent? = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+        it.action = ACTION_OPEN_SCAN
+        it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
-    private companion object {
-        const val CHANNEL_ID = "scan"
-        const val NOTIFICATION_ID = 1001
+    companion object {
+        const val ACTION_OPEN_SCAN = "com.vipuljha.dupedigger.action.OPEN_SCAN"
+
+        private const val CHANNEL_ID = "scan"
+        private const val NOTIFICATION_ID = 1001
     }
 }

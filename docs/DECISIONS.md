@@ -417,3 +417,10 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - **Where the signal lives:** in memory (`InMemorySemanticStageSkip`). The worker, the Scan screen and the notification's `SkipAiReceiver` all run in the app's one process.
   - If the process dies after a skip, the restarted scan runs the AI stage again. Earlier stages' work is cached, so only the AI work repeats.
 - **Where Skip AI appears:** on the Scan screen and in the notification, only while the AI stage runs.
+
+**Background scans.** A scan's progress and result come only from WorkManager and the `scan_run` table, never from an Activity or ViewModel. So a screen opened after the app was closed or its process killed picks up the running scan.
+- **Notification tap:** it sends `ScanNotifications.ACTION_OPEN_SCAN` to `MainActivity` with `SINGLE_TOP | CLEAR_TOP`. That reaches `onNewIntent` when the app is open, or `onCreate` when it isn't.
+  - The activity hands it to `AppShortcuts.request(OpenScan)`, which waits until the navigation host has registered.
+  - The host then opens the Scan screen on the Home tab.
+- **Home:** shows the running scan's stage, count and bar, from its own progress flow.
+- **Retry after process death:** if the Scan screen didn't start the scan itself, as after process death, Retry goes back to setup instead of doing nothing.

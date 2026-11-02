@@ -9,8 +9,12 @@ import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
+import com.vipuljha.dupedigger.presentation.scan.ScanProgressUi
+import com.vipuljha.dupedigger.presentation.scan.toUi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -18,10 +22,13 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * Home: what the saved groups could free, the last scan, and the way into the Scan screen.
  * - The summary follows the database and the scan worker live.
+ * - A running scan's numbers go out on [progress], apart from [state], so ticks only redraw what reads them; they come
+ *   from WorkManager, so they reappear when the app is reopened, even after the process was killed.
  */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -31,6 +38,10 @@ class HomeViewModel @Inject constructor(
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
 
     private var summaryJob: Job? = null
+
+    val progress: StateFlow<ScanProgressUi?> = scheduler.observeProgress()
+        .map { it?.toUi(rate = null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     init {
         observeSummary()
@@ -58,5 +69,9 @@ class HomeViewModel @Inject constructor(
             .catch { emit(ContentState.Error(DomainError.Unknown.toUiText())) }
             .onEach { setState { copy(content = it) } }
             .launchIn(viewModelScope)
+    }
+
+    private companion object {
+        const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }

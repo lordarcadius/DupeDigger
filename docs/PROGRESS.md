@@ -54,6 +54,20 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
 
+- 2026-11-02: PRM2-10075 step 8, background scanning (D-014).
+  - **On a temporary API 35 Pixel Tablet emulator, deleted after**, with 30,000 seeded files in `/sdcard/Bench`:
+    - **Swipe-away:** a whole-device scan started from the Scan screen. The app was swiped away in Recents mid-scan: no task or activity was left, the same process kept running under the foreground notification, and reopening the app showed "Finished · Just now · Whole device".
+    - **Notification tap:** the notification's open-scan intent opened the Scan screen both while the app was open (`onNewIntent`) and after a force-stop (`onCreate`).
+    - **Home progress:** Home showed "Finding files… 13,000 files found" during a rescan, then "Finished".
+  - **Code:**
+    - `ScanNotifications` opens the app with `ACTION_OPEN_SCAN`.
+    - `MainActivity` hands the intent to `AppShortcuts.request`, which waits for the navigation host. `AppRoot.openScan` is shared with Results' "Start scan".
+    - `HomeViewModel.progress` shows on the last-scan card.
+    - The Scan screen's Retry falls back to setup when it didn't start the scan.
+  - **Tests:** new JVM cases. `ScanViewModelTest` covers reopening while a scan runs: it follows the scan to its result, and Retry then returns to setup. `HomeViewModelTest` covers live progress, and `AppShortcutTest` covers an early open-scan request. All 257 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+  - **Not checked on the device:** killing the process while a scan runs. I didn't try it. Only the ViewModel test covers reattaching after process death.
+  - Next: PRM2-10075 step 9, smart selection.
+
 - 2026-11-02: PRM2-10075 step 7, skipping the AI stage (D-014).
   - **Domain:** `SemanticStageSkip` and `SkipSemanticStageUseCase`. `RunScanUseCase` resets the signal when a scan starts and races only the semantic stage against it, so a skipped scan completes with its exact and near groups.
   - **Data:**

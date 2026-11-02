@@ -30,11 +30,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.designsystem.AppButton
+import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
@@ -52,11 +56,13 @@ import com.vipuljha.dupedigger.core.ui.StateSwitch
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.asString
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.presentation.scan.ScanProgressUi
 import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun HomeScreen(
     state: HomeState,
+    progress: () -> ScanProgressUi?,
     onIntent: (HomeIntent) -> Unit,
     snackbarHostState: SnackbarHostState,
     onMenuClick: (() -> Unit)?,
@@ -90,12 +96,12 @@ fun HomeScreen(
                     action = { AppButton(stringResource(R.string.action_retry), { onIntent(HomeIntent.Retry) }, loading = error.retrying) },
                 )
             },
-        ) { model -> HomeContent(model, onIntent) }
+        ) { model -> HomeContent(model, progress, onIntent) }
     }
 }
 
 @Composable
-private fun HomeContent(model: HomeUiModel, onIntent: (HomeIntent) -> Unit) {
+private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onIntent: (HomeIntent) -> Unit) {
     val gutter = LocalPaneMetrics.current.gutter
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -105,7 +111,7 @@ private fun HomeContent(model: HomeUiModel, onIntent: (HomeIntent) -> Unit) {
         ) {
             item(key = "summary", contentType = "summary") { SummaryCard(model, Modifier.animateItem()) }
             item(key = "last-scan", contentType = "last-scan") {
-                LastScanCard(model, onViewProgress = { onIntent(HomeIntent.OpenScanClicked) }, modifier = Modifier.animateItem())
+                LastScanCard(model, progress, onViewProgress = { onIntent(HomeIntent.OpenScanClicked) }, modifier = Modifier.animateItem())
             }
             item(key = "actions-header", contentType = "header") {
                 SectionHeader(stringResource(R.string.home_actions_title), modifier = Modifier.animateItem())
@@ -159,11 +165,11 @@ private fun SummaryCard(model: HomeUiModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LastScanCard(model: HomeUiModel, onViewProgress: () -> Unit, modifier: Modifier = Modifier) {
+private fun LastScanCard(model: HomeUiModel, progress: () -> ScanProgressUi?, onViewProgress: () -> Unit, modifier: Modifier = Modifier) {
     HomeCard(modifier) {
         Text(stringResource(R.string.home_last_scan_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (model.scanning) {
-            Text(stringResource(R.string.home_scan_status_running), style = MaterialTheme.typography.titleMedium)
+            LiveProgress(progress)
             AppButton(stringResource(R.string.home_action_view_progress), onViewProgress, kind = ButtonKind.Text)
             return@HomeCard
         }
@@ -174,6 +180,22 @@ private fun LastScanCard(model: HomeUiModel, onViewProgress: () -> Unit, modifie
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** The running scan's stage, count and bar; only this redraws on each progress tick. */
+@Composable
+private fun LiveProgress(progress: () -> ScanProgressUi?) {
+    val current = progress()
+    Column(
+        modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+    ) {
+        Text((current?.stage ?: UiText.res(R.string.home_scan_status_running)).asString(), style = MaterialTheme.typography.titleMedium)
+        current?.count?.let {
+            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        AppProgressBar(progress = current?.fraction?.let { fraction -> { fraction } }, modifier = Modifier.padding(top = Dimens.spaceXs))
     }
 }
 
@@ -215,6 +237,7 @@ private fun SkeletonCard(shimmer: Shimmer, lines: List<TextStyle>, offset: Int) 
 private fun HomeScreenPreview() {
     DupeDiggerTheme(dynamicColor = false) {
         HomeScreen(
+            progress = { null },
             state = HomeState(
                 content = ContentState.Success(
                     HomeUiModel(

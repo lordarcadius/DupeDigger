@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -72,6 +73,19 @@ class HomeViewModelTest {
 
         assertTrue(vm.model().scanning)
         assertFalse(vm.model().isEmpty)
+    }
+
+    @Test
+    fun `a running scan's live progress shows on home`() = runTest {
+        val vm = viewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.progress.collect {} }
+        assertNull(vm.progress.value)
+
+        scheduler.progress.value = ScanProgress(ScanStage.EXACT, 30, 120)
+
+        assertEquals(UiText.res(R.string.scan_stage_exact), vm.progress.value!!.stage)
+        assertEquals(UiText.res(R.string.scan_compared, "30", "120"), vm.progress.value!!.count)
+        assertEquals(0.25f, vm.progress.value!!.fraction)
     }
 
     @Test

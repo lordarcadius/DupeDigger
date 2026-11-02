@@ -234,11 +234,11 @@ class ScanViewModel @Inject constructor(
         return if (scope == null || kinds.isEmpty()) null else scope to kinds
     }
 
-    /** Retry repeats the last scan; setup starts the chosen preset, or what the later steps describe. */
+    /** Retry repeats the last scan, or goes back to setup when this screen never started one (as after process death). */
     private fun start() {
         val state = currentState
         val request = when {
-            state.phase is ScanPhase.Done -> lastStarted
+            state.phase is ScanPhase.Done -> lastStarted ?: return handleIntent(ScanIntent.ScanAgainClicked)
             state.step == SetupStep.Presets -> presets.firstOrNull { it.id == state.selectedPresetId }?.let { it.scope to it.kinds }
             state.step == SetupStep.Where && state.draft == null -> chosen()
             else -> null

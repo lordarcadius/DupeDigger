@@ -15,6 +15,7 @@ fun HomeRoute(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val progress = viewModel.progress.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     ObserveAsEvents(viewModel.effect) { effect ->
@@ -25,6 +26,7 @@ fun HomeRoute(
 
     HomeScreen(
         state = state,
+        progress = { progress.value },
         onIntent = viewModel::onIntent,
         snackbarHostState = snackbarHostState,
         onMenuClick = onMenuClick,
