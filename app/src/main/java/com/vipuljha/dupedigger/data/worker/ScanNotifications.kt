@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.work.ForegroundInfo
@@ -17,7 +18,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The ongoing scan notification: stage, count, a progress bar and Cancel. */
+/** The ongoing scan notification: stage, count, a progress bar, Cancel, and Skip AI while the AI stage runs. */
 @Singleton
 class ScanNotifications @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -37,7 +38,7 @@ class ScanNotifications @Inject constructor(
                 progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
         }
         val total = progress?.total?.takeIf { it > 0 }
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_scan)
             .setContentTitle(title)
             .setContentText(text)
@@ -48,8 +49,8 @@ class ScanNotifications @Inject constructor(
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openApp())
             .addAction(0, context.getString(R.string.scan_action_cancel), WorkManager.getInstance(context).createCancelPendingIntent(workId))
-            .build()
-        return ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        if (progress?.stage == ScanStage.SEMANTIC) builder.addAction(0, context.getString(R.string.scan_action_skip_ai), skipAi())
+        return ForegroundInfo(NOTIFICATION_ID, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 
     private fun ensureChannel() {
@@ -58,12 +59,20 @@ class ScanNotifications @Inject constructor(
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
+    private fun skipAi(): PendingIntent =
+        PendingIntent.getBroadcast(context, 0, Intent(context, SkipAiReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
+
+    /** Brings back the open app, or starts it, on the Scan screen. */
     private fun openApp(): PendingIntent? = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+        it.action = ACTION_OPEN_SCAN
+        it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
-    private companion object {
-        const val CHANNEL_ID = "scan"
-        const val NOTIFICATION_ID = 1001
+    companion object {
+        const val ACTION_OPEN_SCAN = "com.vipuljha.dupedigger.action.OPEN_SCAN"
+
+        private const val CHANNEL_ID = "scan"
+        private const val NOTIFICATION_ID = 1001
     }
 }

@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.vipuljha.dupedigger.data.local.db.DupeDiggerDatabase
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStatus
@@ -38,7 +39,7 @@ class ScanWorkerDeviceTest {
         val seen = mutableListOf<ScanProgress?>()
         val watcher = launch { scheduler.observeProgress().collect { seen += it } }
 
-        scheduler.start(ScanScope.MediaOnly)
+        scheduler.start(ScanScope.MediaOnly, AllMediaKinds)
         val finished = withTimeout(120_000) {
             WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(ScanWorker.UNIQUE_NAME)
                 .first { infos -> infos.isNotEmpty() && infos.all { it.state.isFinished } }

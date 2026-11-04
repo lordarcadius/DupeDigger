@@ -1,5 +1,8 @@
 package com.vipuljha.dupedigger.presentation.scan
 
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +29,11 @@ fun ScanRoute(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val withNotificationPermission = rememberNotificationPermissionGate()
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        viewModel.onIntent(ScanIntent.FolderPicked(uri?.toString()))
+    }
+    val inLaterStep = state.phase == ScanPhase.Setup && state.step != SetupStep.Presets
+    BackHandler(enabled = inLaterStep) { viewModel.onIntent(ScanIntent.BackClicked) }
 
     LifecycleResumeEffect(Unit) {
         viewModel.onIntent(ScanIntent.Refresh)
@@ -34,6 +42,7 @@ fun ScanRoute(
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
             ScanEffect.ViewResults -> onViewResults()
+            ScanEffect.PickFolder -> pickFolder.launch(null)
             is ScanEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
         }
     }
@@ -45,6 +54,6 @@ fun ScanRoute(
             if (intent == ScanIntent.StartClicked) withNotificationPermission { viewModel.onIntent(intent) } else viewModel.onIntent(intent)
         },
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
+        onBack = { if (inLaterStep) viewModel.onIntent(ScanIntent.BackClicked) else onBack() },
     )
 }

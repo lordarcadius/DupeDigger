@@ -20,6 +20,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
+import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -30,6 +31,7 @@ import com.vipuljha.dupedigger.domain.repository.FileRemover
 import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
+import com.vipuljha.dupedigger.domain.usecase.GetDuplicateFoldersUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
 import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
 import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
@@ -80,9 +82,9 @@ class DeleteSafetyFlowTest {
             groups.replaceGroups(1, ids.mapIndexed { g, members -> FoundGroup("EXACT:$g", MatchTier.EXACT, 1f, members.toImmutableList()) })
             ids
         }
-        val files = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao())
+        val files = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
         val viewModel = ResultsViewModel(
-            groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups),
+            groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups), GetDuplicateFoldersUseCase(groups),
             DeleteDuplicatesUseCase(groups, files, remover), ConfirmTrashUseCase(files),
             UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
         )

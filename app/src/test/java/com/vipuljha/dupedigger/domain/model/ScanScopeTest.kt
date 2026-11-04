@@ -42,4 +42,20 @@ class ScanScopeTest {
         assertFalse(ScanScope.Folders(persistentListOf(folder)).isReachable(none, emptyList()))
         assertFalse(ScanScope.Folders(persistentListOf()).isReachable(none, listOf(folder)))
     }
+
+    @Test
+    fun `paths need all files access and at least one usable folder`() {
+        val camera = ScanScope.Paths(persistentListOf("DCIM/Camera"))
+        assertTrue(camera.isReachable(StorageAccessState(MediaAccess.NONE, allFiles = true), emptyList()))
+        assertFalse(camera.isReachable(StorageAccessState(MediaAccess.FULL, allFiles = false), emptyList()))
+        assertFalse(ScanScope.Paths(persistentListOf("/", "..", "a/../b")).isReachable(StorageAccessState(MediaAccess.FULL, true), emptyList()))
+    }
+
+    @Test
+    fun `path roots are cleaned and never overlap`() {
+        val scope = ScanScope.Paths(
+            persistentListOf("/DCIM//Camera/", "Pictures/Screenshots", "dcim/camera/sub", "DCIM/camera", "./x", "Android/../data", "Telegram"),
+        )
+        assertEquals(listOf("Telegram", "DCIM/Camera", "Pictures/Screenshots"), scope.roots())
+    }
 }

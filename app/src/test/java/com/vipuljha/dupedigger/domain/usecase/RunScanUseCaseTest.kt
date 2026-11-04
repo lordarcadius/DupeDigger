@@ -45,6 +45,7 @@ import com.vipuljha.dupedigger.domain.repository.ImageHasher
 import com.vipuljha.dupedigger.domain.repository.PowerState
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
+import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import com.vipuljha.dupedigger.domain.repository.VideoHasher
@@ -75,6 +76,19 @@ class RunScanUseCaseTest {
     private val enumerator = FakeEnumerator(disk)
     private val access = MutableStateFlow(StorageAccessState(MediaAccess.FULL, allFiles = true))
     private var settings = AppSettings(minFileSizeBytes = 1, skipHiddenFiles = true)
+
+    private val skip = object : SemanticStageSkip {
+        override val requested = MutableStateFlow(false)
+        override fun request() {
+            requested.value = true
+        }
+        override fun reset() {
+            requested.value = false
+        }
+    }
+
+    /** While set, the AI model never answers, so the semantic stage runs until it is skipped or cancelled. */
+    private var embeddingBlocks = false
 
     private val runScan = RunScanUseCase(
         settings = object : SettingsRepository {
@@ -118,7 +132,7 @@ class RunScanUseCaseTest {
             index,
             object : Embedder {
                 override suspend fun embed(variant: ModelVariant, inputs: List<EmbeddingInput>, dim: Int, backend: EmbeddingBackend) =
-                    Outcome.Success(inputs.map { input -> FloatArray(4) { if (it == (input as EmbeddingInput.Image).encoded[0].toInt()) 1f else 0f } })
+                    if (embeddingBlocks) awaitCancellation() else Outcome.Success(inputs.map { input -> FloatArray(4) { if (it == (input as EmbeddingInput.Image).encoded[0].toInt()) 1f else 0f } })
                 override suspend fun close() = Unit
             },
             object : EmbeddingInputReader {
@@ -134,6 +148,7 @@ class RunScanUseCaseTest {
             override fun isCharging() = charging
         },
         saveGroups = SaveGroupsUseCase(groups),
+        skip = skip,
     )
 
     private var charging = true
@@ -146,6 +161,34 @@ class RunScanUseCaseTest {
 
     private fun put(name: String, content: String) {
         disk["file:/storage/emulated/0/$name"] = content
+    }
+
+    @Test
+    fun `a scan for some file types indexes every file but groups only files of those types`() = runTest {
+        settings = settings.copy(semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        put("c.txt", "notes-1")
+        put("d.txt", "notes-1")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/b.jpg"] = ImageHashes(0L, 0L)
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+
+        val summary = (runScan(ScanScope.WholeDevice, setOf(MediaKind.OTHER)) as Outcome.Success).data
+
+        assertEquals(4, index.rows.size)
+        assertEquals(4, summary.index.added)
+        val saved = groups.saved!!.second
+        assertEquals(listOf(MatchTier.EXACT), saved.map { it.tier })
+        assertEquals(listOf(3L, 4L), saved.single().fileIds)
+
+        runScan(ScanScope.WholeDevice, setOf(MediaKind.IMAGE))
+
+        assertEquals(4, index.rows.size)
+        val images = groups.saved!!.second.single()
+        assertEquals(MatchTier.NEAR, images.tier)
+        assertEquals(listOf(1L, 2L), images.fileIds)
     }
 
     @Test
@@ -183,6 +226,50 @@ class RunScanUseCaseTest {
         assertEquals(1, summary.duplicateFiles)
         assertEquals(8L, summary.reclaimableBytes)
         assertEquals(ScanStage.SEMANTIC, progress.last().stage)
+    }
+
+    @Test
+    fun `skipping the AI stage finishes the scan with its exact and near groups`() = runTest {
+        settings = settings.copy(semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-1")
+        put("b.jpg", "photo-1")
+        put("c.jpg", "photo-1x")
+        imageHashes["file:/storage/emulated/0/a.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/b.jpg"] = ImageHashes(0L, 0L)
+        imageHashes["file:/storage/emulated/0/c.jpg"] = ImageHashes(0b11L, 0b101L)
+        put("x.jpg", "scene-x1")
+        put("y.jpg", "scene-y22")
+        scenes["file:/storage/emulated/0/x.jpg"] = 2
+        scenes["file:/storage/emulated/0/y.jpg"] = 2
+        embeddingBlocks = true
+        val progress = mutableListOf<ScanProgress>()
+        var outcome: Outcome<ScanSummary>? = null
+
+        val scan = launch { outcome = runScan(ScanScope.WholeDevice) { progress += it } }
+        advanceUntilIdle()
+        assertEquals(ScanStage.SEMANTIC, progress.last().stage)
+        assertEquals(null, outcome)
+
+        skip.request()
+        scan.join()
+
+        assertTrue(outcome is Outcome.Success)
+        assertEquals(ScanStatus.COMPLETED, runs.runs.single().second)
+        assertEquals(listOf(MatchTier.EXACT, MatchTier.NEAR), groups.saved!!.second.map { it.tier })
+    }
+
+    @Test
+    fun `a skip asked for during an earlier scan doesn't skip the next one`() = runTest {
+        settings = settings.copy(nearDuplicatesEnabled = false, semanticEnabled = true, aiModelId = "embeddinggemma-440m-text-vision")
+        put("a.jpg", "photo-A1")
+        put("b.jpg", "photo-B22")
+        scenes["file:/storage/emulated/0/a.jpg"] = 1
+        scenes["file:/storage/emulated/0/b.jpg"] = 1
+        skip.request()
+
+        runScan(ScanScope.WholeDevice)
+
+        assertEquals(listOf(MatchTier.SEMANTIC), groups.saved!!.second.map { it.tier })
     }
 
     @Test
@@ -353,7 +440,8 @@ class RunScanUseCaseTest {
             filters += filter
             failWith?.let { throw it }
             disk.forEach { (uri, content) ->
-                emit(DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, MediaKind.OTHER, content.length.toLong(), 1, null))
+                val kind = if (uri.endsWith(".jpg")) MediaKind.IMAGE else MediaKind.OTHER
+                emit(DiscoveredFile(uri, uri.removePrefix("file:"), uri.substringAfterLast('/'), null, kind, content.length.toLong(), 1, null))
             }
         }
     }
@@ -397,6 +485,7 @@ class RunScanUseCaseTest {
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun deleteEmbeddings(modelId: String) = Unit
         private val lastSeen = mutableMapOf<String, Long>()
+        private val kindOf = mutableMapOf<String, MediaKind>()
         private var nextId = 1L
 
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats {
@@ -415,6 +504,7 @@ class RunScanUseCaseTest {
                     }
                 }
                 lastSeen[f.sourceUri] = scanId
+                kindOf[f.sourceUri] = f.mediaKind
             }
             return IndexStats(added = added, changed = changed, unchanged = files.size - added - changed)
         }
@@ -425,7 +515,8 @@ class RunScanUseCaseTest {
             return stale.size
         }
 
-        override suspend fun filesSeenIn(scanId: Long) = rows.values.filter { lastSeen[it.sourceUri] == scanId }
+        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) =
+            rows.values.filter { lastSeen[it.sourceUri] == scanId && kindOf[it.sourceUri] in kinds }
 
         override suspend fun saveHashes(files: List<IndexedFile>) = files.forEach { rows[it.sourceUri] = it }
 

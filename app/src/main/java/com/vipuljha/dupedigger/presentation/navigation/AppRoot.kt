@@ -67,8 +67,18 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
     }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    /** Sets the tab directly: reselecting Home would pop the Scan screen it is about to show. */
+    val openScan: () -> Unit = {
+        val home = backStacks.getValue(TopLevelTab.Home)
+        if (home.lastOrNull() != Destination.Scan) home.open(Destination.Scan)
+        currentTab = TopLevelTab.Home
+    }
     val onShortcut by rememberUpdatedState<(AppShortcut) -> Unit> { shortcut ->
         when {
+            shortcut == AppShortcut.OpenScan -> {
+                scope.launch { drawerState.close() }
+                openScan()
+            }
             shortcut != AppShortcut.Home && drawerState.isOpen -> scope.launch { drawerState.close() }
             shortcut == AppShortcut.Home -> selectTab(TopLevelTab.Home)
             shortcut == AppShortcut.Back -> back()
@@ -105,11 +115,7 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
                 onMenuClick = LocalMenuClick.current,
                 openGroup = (backStacks.getValue(TopLevelTab.Results).lastOrNull() as? Destination.Group)?.fingerprint,
                 onOpenGroup = openGroup,
-                onStartScan = {
-                    val home = backStacks.getValue(TopLevelTab.Home)
-                    if (home.lastOrNull() != Destination.Scan) home.open(Destination.Scan)
-                    selectTab(TopLevelTab.Home)
-                },
+                onStartScan = openScan,
             )
         }
         entry<Destination.Group>(metadata = paneRole(PaneRole.Detail)) { key ->

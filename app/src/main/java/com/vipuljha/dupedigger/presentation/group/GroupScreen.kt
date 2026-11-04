@@ -176,6 +176,7 @@ private fun MemberCard(member: MemberUi, resolution: UiText?, onIntent: (GroupIn
                 }
                 AppButton(stringResource(R.string.group_action_open), { onIntent(GroupIntent.OpenClicked(member.fileId)) }, kind = ButtonKind.Text)
                 if (!member.isKeeper) {
+                    AppButton(stringResource(R.string.action_delete), { onIntent(GroupIntent.DeleteClicked(member.fileId)) }, kind = ButtonKind.Text)
                     AppButton(stringResource(R.string.group_action_keep), { onIntent(GroupIntent.KeepClicked(member.fileId)) }, kind = ButtonKind.Tonal)
                 }
             }

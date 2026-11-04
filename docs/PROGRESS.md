@@ -49,10 +49,196 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P7-03 | Accessibility | done | Labels, 48dp targets, 200% font, AA contrast in a Compose test |
 | P7-04 | Test coverage | done | Domain tests alone: 91.9% of domain lines; lint 0 errors |
 | P7-05 | Release build | done | Full R8, signed, smoke-tested (D-013) |
+| PRM2-10075 | Scan presets, background scans, smart selection | done | 12 steps, 2026-11-02 (D-014) |
 
 ## Log
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
+
+- 2026-11-02: PRM2-10075 step 12, the final checks.
+  - **Accessibility:** `AccessibilityChecksTest` now also checks the scan presets list, with a user preset and an unavailable built-in one, at 100% and 200% font. It checks 48dp targets, labels on every control, and that the preset text shows.
+  - **Full pass:**
+    - 271 unit tests pass.
+    - 70 instrumented tests ran on a temporary API 35 Pixel Tablet emulator, created for this and deleted after. 62 passed, none failed, and 8 were skipped: the ones that need a downloaded model, a seed or a manual kill.
+    - `assembleDebug` builds.
+    - `lintDebug` has 0 errors and 41 warnings (39 before the ticket). Every warning type it reports was already in the app before the ticket.
+    - The domain purity check is clean.
+  - **Acceptance criteria:**
+    - Presets first, then file types, then whole storage or chosen folders: step 6, `ScanStartFlowTest`.
+    - User presets can be created, edited and deleted, and the 8 built-in ones can't be deleted: steps 4–6.
+    - `Android/media/com.whatsapp` is covered by a full-scan test: step 2.
+    - Skip AI keeps earlier results: step 7, `SkipAiActionTest`.
+    - Scans survive a swipe-away, and reopening shows live progress: step 8, checked on a device.
+    - Select all, and keep the newest, oldest or largest copy: step 9.
+    - Fewer taps to compare and delete: 7 → 3 on one pane and 6 → 3 on two (step 10).
+    - Stats for reclaimable space, duplicates by type and scan time: step 11.
+    - Faster scans, with timings: first-scan index 1,920 → 1,527 ms (step 3).
+    - Refreshed UI that passes the contrast checks: the contrast test still passes.
+    - Tests pass, including migration 1 → 2: `DatabaseMigrationTest`.
+  - Next: owner review of the local branch.
+
+- 2026-11-02: PRM2-10075 step 11, stats on Home.
+  - **Last-scan card:** now has a stats line, "Took 2 min 5 s · 1,234 files scanned". It sits next to the existing space-you-can-free total and the per-type rows, so Home shows reclaimable space, duplicates by type, scan time, files scanned and the last scan.
+    - The duration comes from the run's start and finish times.
+    - The file count is `IndexStats.scanned` (added, changed and unchanged), which only completed runs record. A cancelled or failed run shows just how long it ran.
+  - **Formatter:** `formatDuration` gives "under a second", "42 s", "2 min 5 s" or "1 h 1 min", rounded down.
+  - **Tests:**
+    - `FormattersTest` (1 new): duration formatting.
+    - `HomeViewModelTest` (2 new): both halves for a completed run, and duration only for a cancelled run.
+    - All 271 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+  - Next: PRM2-10075 step 12, UI polish, the full test pass, lint and the PR.
+
+- 2026-11-02: PRM2-10075 step 10, quicker compare and delete (D-007 amended).
+  - **Delete in place:**
+    - Group shows a Delete button on every copy that isn't the keeper.
+    - Compare has a "Delete this copy" top-bar action, which deletes the right-hand file and never the keeper.
+    - Neither has a confirmation dialog. Each shows a snackbar with Undo, and media still goes through the system trash prompt.
+    - `FileRemoval`, one instance per ViewModel, runs the delete and reports messages, Undo and the trash prompt. `rememberRemovalEventHandler` shows them.
+    - Finishing the trash prompt and Undo still work after the delete dissolved the group.
+  - **Swipe-to-select:** a sideways swipe on a Results row toggles its selection and springs back. It never deletes, and the checkbox stays.
+  - **Stale selection:** Results clears its selection when the reclaimable totals change, so a file deleted from Group or Compare can't make the next bulk delete fail with "not found".
+  - **Taps, re-counted from the new UI** (not timed on a device), for the baseline's task: look at a group, compare a copy with the keeper, delete it.
+    - **One pane:** 3 taps (Group row, Compare, "Delete this copy"). Was 7.
+    - **Two panes:** 3 taps. Was 6.
+    - **Without comparing:** 2 taps (Group row, Delete on the copy).
+    - **Media:** the system trash prompt adds one tap, for media only, as it did before. The baseline didn't count it either.
+    - **New:** one copy of a three-file group can now be deleted on its own, which the baseline couldn't do.
+  - **Tests:**
+    - `GroupViewModelTest` (2 new): delete in place with Undo, and the keeper is refused; the trash prompt is finished after the group dissolved.
+    - `CompareViewModelTest` (new, 1): deletes the right-hand copy only, with Undo.
+    - `ResultsViewModelTest` (1 new): a delete made elsewhere clears the selection.
+    - All 268 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+    - I didn't run the new buttons or the swipe on a device in this step.
+  - Next: PRM2-10075 step 11, stats.
+
+- 2026-11-02: PRM2-10075 step 9, smart selection on Results (D-014).
+  - **Domain:**
+    - `KeepRule` and `DuplicateFolder`.
+    - `GroupWithMembers.keeperFor(rule)`.
+    - `SelectAllButKeepersUseCase(filter, rule)`, which keeps its invariants: exact groups only with no tier chosen, and never a file that keeps any matching group.
+    - `GetDuplicateFoldersUseCase`.
+  - **UI:**
+    - Keep newest, oldest, largest and from folder chips beside "Select duplicates".
+    - A folder picker dialog.
+    - `ResultsState.keepRule` and `folderChoices`.
+  - **Tests:**
+    - `SelectAllButKeepersUseCaseTest` (6): the three rules; unknown times and ties; folder with fallback; the cross-group invariant under every rule; the folder list order.
+    - `ResultsViewModelTest` (2 new): a rule selects in one tap and clears on a manual change; the folder picker selects and closes.
+    - All 264 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+    - I didn't run the new chips on a device in this step.
+  - Next: PRM2-10075 step 10, quicker compare and delete.
+
+- 2026-11-02: PRM2-10075 step 8, background scanning (D-014).
+  - **On a temporary API 35 Pixel Tablet emulator, deleted after**, with 30,000 seeded files in `/sdcard/Bench`:
+    - **Swipe-away:** a whole-device scan started from the Scan screen. The app was swiped away in Recents mid-scan: no task or activity was left, the same process kept running under the foreground notification, and reopening the app showed "Finished · Just now · Whole device".
+    - **Notification tap:** the notification's open-scan intent opened the Scan screen both while the app was open (`onNewIntent`) and after a force-stop (`onCreate`).
+    - **Home progress:** Home showed "Finding files… 13,000 files found" during a rescan, then "Finished".
+  - **Code:**
+    - `ScanNotifications` opens the app with `ACTION_OPEN_SCAN`.
+    - `MainActivity` hands the intent to `AppShortcuts.request`, which waits for the navigation host. `AppRoot.openScan` is shared with Results' "Start scan".
+    - `HomeViewModel.progress` shows on the last-scan card.
+    - The Scan screen's Retry falls back to setup when it didn't start the scan.
+  - **Tests:** new JVM cases. `ScanViewModelTest` covers reopening while a scan runs: it follows the scan to its result, and Retry then returns to setup. `HomeViewModelTest` covers live progress, and `AppShortcutTest` covers an early open-scan request. All 257 unit tests pass, `compileDebugAndroidTestKotlin` passes, and the domain purity check is clean.
+  - **Not checked on the device:** killing the process while a scan runs. I didn't try it. Only the ViewModel test covers reattaching after process death.
+  - Next: PRM2-10075 step 9, smart selection.
+
+- 2026-11-02: PRM2-10075 step 7, skipping the AI stage (D-014).
+  - **Domain:** `SemanticStageSkip` and `SkipSemanticStageUseCase`. `RunScanUseCase` resets the signal when a scan starts and races only the semantic stage against it, so a skipped scan completes with its exact and near groups.
+  - **Data:**
+    - `InMemorySemanticStageSkip`.
+    - A "Skip AI" notification action while the stage is `SEMANTIC`, sent to a non-exported `SkipAiReceiver`, which reaches the singleton through a Hilt entry point.
+  - **UI:** a "Skip AI" text button next to "Cancel scan" while the AI stage runs, spinning once asked.
+  - **Tests:**
+    - JVM, `RunScanUseCaseTest`: a skip mid-stage completes the scan with exact and near groups only, and an old skip doesn't skip the next scan.
+    - JVM, `ScanViewModelTest`: Skip AI is offered only in the AI stage and sends the skip without cancelling. All 254 unit tests pass.
+    - On a temporary API 35 emulator, deleted after: the new `SkipAiActionTest` (2: the action appears only in the AI stage, and sending its PendingIntent sets the app's skip signal), `ScanStartFlowTest` (3) and `ScanWorkerDeviceTest` (1) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 8, background scanning.
+
+- 2026-11-02: PRM2-10075 step 6, the scan-start flow (D-014).
+  - **Scan screen:** setup is three steps (`SetupStep`).
+    - **Presets:** the user's presets, then the eight built-ins, plus "No preset". "New preset" is on this step, and edit and delete appear on user presets, with a delete confirmation.
+    - **File types:** all five are ticked by default, and Next is disabled with none ticked.
+    - **Where:** whole device or media library when they can be read, or picked folders with checkboxes and "Add folder".
+    - The tier switches appear wherever "Start scan" does. System and top-bar Back move back one step.
+  - **Scan start:** a scan starts with the preset's or the chosen scope and file types.
+  - **Home:** one "Start scan" button replaces the three one-tap scans. Results' "Start scan" already opened the Scan screen.
+  - **Domain:** `ScanScope.isReachableWith(available)` decides whether a preset can run.
+  - **Strings:** new ones for the flow and the built-in names. Removed `home_action_scan_everything`, `home_action_scan_media`, `home_action_scan_folder`, `home_action_custom_scan`, `scan_scope_title` and `scan_no_scope_*`, which nothing used any more.
+  - **Tests:**
+    - **Reworked:** the existing `ScanViewModelTest` start cases now go through the steps, and the three quick-action tests in `HomeViewModelTest` became one that checks Start scan opens the Scan screen.
+    - **New `ScanViewModelTest` cases:** step order, Next with no file types, back, a preset's scope and types reaching the scheduler, built-ins disabled without All files access and not editable, saving a new preset, editing and deleting a user preset, and a picked folder coming back selected (15 tests).
+    - **JVM total:** all 251 unit tests pass.
+    - **Emulator:** on a temporary API 35 Pixel Tablet emulator, deleted after, `ScanStartFlowTest` (3, new: no preset leads to file types and then where, a chosen preset starts, a new preset is saved) and `AccessibilityChecksTest` (5) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 7, skipping the AI stage.
+
+- 2026-11-02: PRM2-10075 step 5, saving user presets (D-014).
+  - **Room v2:** a `scan_preset` table (`ScanPresetEntity`, `ScanPresetDao`), added by `MIGRATION_1_2` in `ALL_MIGRATIONS`. The SQL is the same as the exported `schemas/.../2.json`, and `1.json` is unchanged.
+  - **Domain:**
+    - `ScanPresetRepository`, implemented by `ScanPresetRepositoryImpl`, which maps rows against the current folder grants.
+    - `ObserveScanPresetsUseCase`, `SaveScanPresetUseCase` and `DeleteScanPresetUseCase`.
+    - `DomainError.BuiltInPreset` and `DomainError.InvalidPreset`, with their messages.
+  - **Tests:**
+    - JVM: `PresetUseCasesTest` (5) and `ScanPresetMappingTest` (3). All 246 unit tests pass, and `compileDebugAndroidTestKotlin` passes.
+    - On a temporary API 35 x86_64 Pixel Tablet emulator, created for this and deleted after: `DatabaseMigrationTest` (4, with the new `presetsCanBeSavedEditedAndDeletedAfterMigratingFromTheFirstVersion`), `DaoTest` (5) and `FileIndexRepositoryTest` (2) pass.
+    - The domain purity check is clean.
+  - Next: PRM2-10075 step 6, the scan-start flow UI.
+
+- 2026-11-02: PRM2-10075 step 4, presets and a path scope in the domain (D-014).
+  - **Domain:**
+    - `ScanScope.Paths` with `roots()` cleaning, and `ScopeKind.PATHS`, reachable only with All files access.
+    - `ScanPreset` (needs at least one file type; deletable unless built in).
+    - `BuiltInPreset` for WhatsApp, Camera, Telegram, Screenshots, Facebook, Instagram, Snapchat and Reddit.
+    - `AllMediaKinds`.
+  - **Kind filter:** `RunScanUseCase` takes `kinds`. Indexing and pruning still cover the whole scope, and the exact, near and semantic stages look only at the chosen kinds.
+  - **Through to the worker:** `kinds` passes through `StartScanUseCase`, `ScanScheduler`, `ScanScopeCodec` and `ScanWorker`. Work queued without kinds searches every type.
+  - **Data:**
+    - `FileTreeWalker` can start at folders inside each volume, keeping the volume root as `volume`.
+    - `StorageVolumes` is shared by the enumerator and the index repository.
+    - `sourceUriPrefixes` gives Paths one exact-root prefix per root and volume.
+  - **UI:** only the labels the new scope kind needs (`scope_paths`, `scan_scope_paths_body`). The scan-start flow comes in step 6.
+  - **Tests:** new cases in `ScanScopeTest`, `ScanPresetTest`, `ScanScopeCodecTest`, `FileTreeWalkerTest` and `RunScanUseCaseTest`. All 238 JVM unit tests pass. `compileDebugAndroidTestKotlin` passes; the instrumented tests weren't run in this step. The domain purity check is clean.
+  - Next: PRM2-10075 step 5, saving user presets in Room.
+
+- 2026-11-02: PRM2-10075 faster reads, measured on a temporary API 36 x86_64 Pixel Tablet emulator (4 cores, 8 GB data partition), created for this and deleted after.
+  - **Profile first.** A throwaway instrumented test (not kept) timed each part on the benchmark's 5,000 files of 32 KiB. Before any change, three runs on one emulator: walking took 785/371/394 ms, `record()` of new files 1748/1926/1551 ms, `record()` of unchanged files 166/210/206 ms. Partial hashing of all 5,000 took 5942/2819/1832 ms at the app's 4 readers.
+  - **Changes:**
+    - `FileTreeWalker` reads each entry's attributes once with `Files.readAttributes(..., NOFOLLOW_LINKS)`, instead of separate symlink, directory, file, length and mtime calls. Filtered entries are dropped before any stat. An entry that vanishes mid-walk is skipped.
+    - `FileIndexRepositoryImpl.record()` inserts a batch's new files with one `insertAll`, instead of one `insert` per file. Counts and per-file behaviour are unchanged.
+  - **After, same profile on the same emulator:** walking 203/154/164 ms (about 2.4× faster), `record()` of new files 508/394/367 ms (about 4× faster), `record()` of unchanged files 128/94/89 ms (about 2× faster).
+  - **`ScanThroughputTest`, measured the same way as the 2026-10-30 baseline** (fresh emulator, seven runs, first dropped, median of six):
+
+    | Pass | Before | After | Six runs after (ms) |
+    |---|---|---|---|
+    | First scan, index | 1,920 ms | 1,527 ms (3,275 files/s) | 2227, 2373, 1824, 1229, 1120, 1103 |
+    | First scan, exact | 1,427 ms | 1,909 ms | 3008, 4069, 1897, 1921, 1617, 1433 |
+    | Rescan, index | 531 ms | 477 ms | 765, 583, 356, 496, 448, 458 |
+    | Rescan, exact | 75 ms | 65 ms | 71, 82, 47, 67, 63, 57 |
+
+    Indexing is faster in every pass. The exact stage's code didn't change, and its "after" runs spread from 1.4 to 4.1 s, so its higher median is emulator noise rather than a regression. Whole-run numbers on this emulator vary by up to 3× between runs, so the isolated profile above is the clearer measure.
+  - **Not changed:**
+    - **Parallelism** stays at 4 readers. In the profile, 8 readers hashed faster than 4 only when the reads ran on the IO dispatcher. The app hashes on `@DefaultDispatcher`, which has 4 threads on this 4-core device, so more readers would just queue. Moving hashing to IO would go against AGENTS.md's "hashing is CPU-heavy (`@DefaultDispatcher`)" rule, so it's left as its own decision.
+    - **The 256 KiB hash buffer** was not tuned. The benchmark's 32 KiB files are read whole by the partial hash and never reach the streaming full hash, so this benchmark can't measure the buffer.
+  - Tests: `FileTreeWalkerTest`, `IndexFilesUseCaseTest`, `ScanFilterTest` and `FindExactDuplicatesUseCaseTest` pass (19 tests). On the emulator, `FileIndexRepositoryTest`, `DaoTest`, `EnumeratorDeviceTest` and `ScanWorkerDeviceTest` pass (11 tests).
+  - Next: PRM2-10075 step 4, presets and a path-based scope in the domain.
+
+- 2026-10-30: PRM2-10075 baselines, measured before any code change, so the follow-up's speed and tap-count changes have a "before" to compare against.
+  - **Scan throughput:** `ScanThroughputTest` (debug build, 5,000 files of 32 KiB, 1,000 copies, 50 folders) on a temporary API 36 x86_64 Pixel Tablet emulator with an 8 GB data partition (created for this and deleted after). Seven back-to-back runs; the first (cold emulator) is dropped, and the figure is the median of the other six.
+
+    | Pass | Median | Six runs (ms) |
+    |---|---|---|
+    | First scan, index | 1,920 ms (2,605 files/s) | 3393, 2036, 2546, 1803, 1749, 1587 |
+    | First scan, exact | 1,427 ms (3,505 files/s) | 2404, 1769, 1423, 1430, 1312, 1145 |
+    | Rescan, index | 531 ms (9,425 files/s) | 591, 590, 492, 569, 479, 395 |
+    | Rescan, exact | 75 ms | 86, 79, 61, 86, 70, 45 |
+
+    Runs kept getting faster as the emulator warmed up. Compare an "after" figure only with one taken the same way: a fresh emulator, seven runs, first dropped, median of six. Command: `adb shell am instrument -w -e scanBenchmark true -e class com.vipuljha.dupedigger.benchmark.ScanThroughputTest com.vipuljha.dupedigger.test/androidx.test.runner.AndroidJUnitRunner`, then `adb logcat -d -s ScanThroughput:I`.
+  - **Compare and delete taps:** to look at a group, compare a copy with the keeper, then delete the copies.
+    - **One pane (phone):** 7 taps. Group row (opens Group), Compare on a member, Back, Back to Results, the row's checkbox, Delete, then Delete in the confirmation.
+    - **Two panes:** 6 taps, because Group opens beside the list and the second Back isn't needed.
+    - Group and Compare have no delete action. The Results checkbox always takes every copy but the keeper, so a single copy of a three-file group can't be deleted on its own.
+  - Next: PRM2-10075 step 2, a WhatsApp coverage test for full scans.
 
 - 2026-10-29: P7-05: release build (D-013).
   - **R8:** the `packageScope` limit is gone, so R8 shrinks and renames the whole app. `app/src/main/keepRules/litertlm.keep` keeps LiteRT-LM, which ships no rules of its own. Dex went from 7.7 MB to 4.5 MB.

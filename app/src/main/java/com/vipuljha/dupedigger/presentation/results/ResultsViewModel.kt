@@ -8,17 +8,20 @@ import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.model.GroupFilter
+import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.TrashConsent
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
+import com.vipuljha.dupedigger.domain.usecase.GetDuplicateFoldersUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
 import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
 import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
 import com.vipuljha.dupedigger.presentation.quarantine.restoreMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -47,6 +50,7 @@ class ResultsViewModel @Inject constructor(
     scanRuns: ScanRunRepository,
     getGroups: GetDuplicateGroupsUseCase,
     private val selectAllButKeepers: SelectAllButKeepersUseCase,
+    private val getDuplicateFolders: GetDuplicateFoldersUseCase,
     private val deleteDuplicates: DeleteDuplicatesUseCase,
     private val confirmTrash: ConfirmTrashUseCase,
     private val undoRemoval: UndoRemovalUseCase,
@@ -78,6 +82,12 @@ class ResultsViewModel @Inject constructor(
             .drop(1)
             .onEach { select(emptyMap()) }
             .launchIn(viewModelScope)
+        // A file deleted from Group or Compare leaves its groups; a selection still holding it would fail to delete.
+        groupRepository.observeReclaimable()
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { select(emptyMap()) }
+            .launchIn(viewModelScope)
         // A new keeper or a "not duplicates" may touch selected files; delete must never take a chosen keeper.
         groupRepository.observeDecisionChanges()
             .onEach { select(emptyMap()) }
@@ -102,7 +112,16 @@ class ResultsViewModel @Inject constructor(
                 setState { copy(kind = null, tier = null) }
                 select(emptyMap())
             }
-            ResultsIntent.SelectAllButKeepers -> selectAll(GroupFilter(currentState.kind, currentState.tier))
+            ResultsIntent.SelectAllButKeepers -> selectAll(GroupFilter(currentState.kind, currentState.tier), KeepRule.Best)
+            is ResultsIntent.KeepRuleSelected -> {
+                setState { copy(folderChoices = null) }
+                selectAll(GroupFilter(currentState.kind, currentState.tier), intent.rule)
+            }
+            ResultsIntent.KeepFromFolderClicked -> viewModelScope.launch {
+                val folders = getDuplicateFolders(GroupFilter(currentState.kind, currentState.tier))
+                setState { copy(folderChoices = folders.map { it.toChoice() }.toImmutableList()) }
+            }
+            ResultsIntent.FolderPickerDismissed -> setState { copy(folderChoices = null) }
             ResultsIntent.ClearSelection -> select(emptyMap())
             ResultsIntent.StartScanClicked -> sendEffect(ResultsEffect.OpenScan)
             ResultsIntent.DeleteClicked -> if (currentState.selection.isNotEmpty() && !currentState.deleting) {
@@ -156,20 +175,21 @@ class ResultsViewModel @Inject constructor(
         }
     }
 
-    private fun selectAll(filter: GroupFilter) {
+    private fun selectAll(filter: GroupFilter, rule: KeepRule) {
         if (currentState.selecting) return
         setState { copy(selecting = true) }
         viewModelScope.launch {
-            val files = selectAllButKeepers(filter)
+            val files = selectAllButKeepers(filter, rule)
             setState { copy(selecting = false) }
-            if (GroupFilter(currentState.kind, currentState.tier) == filter) select(files.associate { it.fileId to it.size })
+            if (GroupFilter(currentState.kind, currentState.tier) == filter) select(files.associate { it.fileId to it.size }, rule)
         }
     }
 
-    private fun select(selection: Map<Long, Long>) = setState {
+    private fun select(selection: Map<Long, Long>, rule: KeepRule? = null) = setState {
         copy(
             selection = if (selection.isEmpty()) persistentMapOf() else selection.toImmutableMap(),
             selectionSummary = selectionSummary(selection),
+            keepRule = rule,
         )
     }
 }

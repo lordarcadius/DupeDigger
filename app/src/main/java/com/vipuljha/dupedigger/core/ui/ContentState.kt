@@ -32,6 +32,8 @@ fun DomainError.toUiText(): UiText = UiText.Resource(
         DomainError.Io -> R.string.error_io
         DomainError.ModelUnavailable -> R.string.error_model_unavailable
         DomainError.WouldRemoveAllCopies -> R.string.error_would_remove_all_copies
+        DomainError.BuiltInPreset -> R.string.error_built_in_preset
+        DomainError.InvalidPreset -> R.string.error_invalid_preset
         DomainError.Unknown -> R.string.error_unknown
     },
 )

@@ -4,6 +4,7 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.formatBytes
 import com.vipuljha.dupedigger.core.ui.formatCount
+import com.vipuljha.dupedigger.domain.model.DuplicateFolder
 import com.vipuljha.dupedigger.domain.model.DuplicateGroupItem
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
@@ -73,3 +74,10 @@ fun removedMessage(count: Int, bytes: Long): UiText? =
 
 fun failedMessage(count: Int): UiText? =
     if (count == 0) null else UiText.plural(R.plurals.results_remove_failed, count, formatCount(count))
+
+/** A folder named by its last segment, with how many group members it holds and its full path. */
+fun DuplicateFolder.toChoice() = FolderChoiceUi(
+    path = path,
+    name = path.substringAfterLast('/'),
+    detail = UiText.res(R.string.results_folder_detail, UiText.plural(R.plurals.results_folder_files, files, formatCount(files)), path),
+)

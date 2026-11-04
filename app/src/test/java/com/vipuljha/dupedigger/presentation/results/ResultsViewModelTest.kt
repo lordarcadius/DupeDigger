@@ -7,6 +7,7 @@ import com.vipuljha.dupedigger.domain.detector.toItem
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupMember
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
+import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -16,6 +17,7 @@ import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
+import com.vipuljha.dupedigger.domain.usecase.GetDuplicateFoldersUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
 import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
 import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
@@ -81,7 +83,7 @@ class ResultsViewModelTest {
     private val quarantine = FakeQuarantine()
 
     private fun viewModel() = ResultsViewModel(
-        repo, runs, GetDuplicateGroupsUseCase(repo), SelectAllButKeepersUseCase(repo),
+        repo, runs, GetDuplicateGroupsUseCase(repo), SelectAllButKeepersUseCase(repo), GetDuplicateFoldersUseCase(repo),
         DeleteDuplicatesUseCase(repo, index, remover), ConfirmTrashUseCase(index), UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
     )
 
@@ -277,5 +279,44 @@ class ResultsViewModelTest {
         assertEquals("a.jpg", row.title)
         assertEquals(mapOf(2L to 100L), row.removable)
         assertEquals(UiText.res(R.string.results_frees, formatBytes(100)), row.reclaim)
+    }
+
+    @Test
+    fun `a keep rule selects every other copy in one tap and stays on until the selection is changed by hand`() {
+        val vm = viewModel()
+
+        vm.onIntent(ResultsIntent.KeepRuleSelected(KeepRule.Largest))
+
+        assertEquals(setOf(2L, 4L), vm.state.value.selection.keys)
+        assertEquals(KeepRule.Largest, vm.state.value.keepRule)
+        vm.onIntent(ResultsIntent.ClearSelection)
+        assertNull(vm.state.value.keepRule)
+    }
+
+    @Test
+    fun `keeping one folder's copies is picked from the folders the duplicates are in`() {
+        val vm = viewModel()
+
+        vm.onIntent(ResultsIntent.KeepFromFolderClicked)
+        val choices = vm.state.value.folderChoices!!
+        assertEquals("Download", choices.first().name)
+        vm.onIntent(ResultsIntent.KeepRuleSelected(KeepRule.InFolder(choices.first().path)))
+
+        assertNull(vm.state.value.folderChoices)
+        assertEquals(setOf(1L, 3L), vm.state.value.selection.keys)
+        assertEquals(KeepRule.InFolder("/storage/emulated/0/Download"), vm.state.value.keepRule)
+    }
+
+    @Test
+    fun `a delete made from Group or Compare clears the selection, so the next delete can't trip on a file that's gone`() {
+        val vm = viewModel()
+        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 2, files = 2, bytes = 200))
+        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        assertEquals(2, vm.state.value.selection.size)
+
+        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 1, files = 1, bytes = 100))
+
+        assertTrue(vm.state.value.selection.isEmpty())
+        assertNull(vm.state.value.selectionSummary)
     }
 }

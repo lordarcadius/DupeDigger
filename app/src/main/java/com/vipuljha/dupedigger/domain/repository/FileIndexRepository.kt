@@ -1,5 +1,6 @@
 package com.vipuljha.dupedigger.domain.repository
 
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
@@ -22,7 +23,8 @@ interface FileIndexRepository {
     /** Deletes files [scope] can produce that were not seen in [scanId], with everything derived from them. */
     suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int
 
-    suspend fun filesSeenIn(scanId: Long): List<IndexedFile>
+    /** Files of [kinds] seen in [scanId], each with its cached hashes. */
+    suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind> = AllMediaKinds): List<IndexedFile>
 
     /** Stores each file's partial and full hash together, replacing what was cached. */
     suspend fun saveHashes(files: List<IndexedFile>)

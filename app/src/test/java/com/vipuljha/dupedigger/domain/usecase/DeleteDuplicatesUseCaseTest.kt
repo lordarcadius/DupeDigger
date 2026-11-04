@@ -129,7 +129,7 @@ class DeleteDuplicatesUseCaseTest {
         }
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-        override suspend fun filesSeenIn(scanId: Long) = emptyList<IndexedFile>()
+        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
     }
 

@@ -230,7 +230,11 @@ The 270M and 740M downloads matched their SHA-256 exactly. The 440M file's size 
 - **Scan screen:** the "AI matches" row is a working switch once a model is chosen.
 
 ## D-007: Never auto-delete; always keep one (accepted)
-Deletion is always user-initiated and confirmed. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
+Deletion is always user-initiated and recoverable. Media goes to the system trash, and non-media to an in-app quarantine. A group can never be emptied. This is enforced in both the use case and the UI.
+- **Bulk deletes from Results** are confirmed in a dialog.
+- **A single copy deleted in place from Group or Compare** (PRM2-10075) isn't confirmed. Its snackbar offers Undo instead, as the ticket asked.
+  - Only a copy that isn't the keeper can be deleted there.
+  - Media still goes through the system trash prompt.
 
 **Known limit (P3-04):** the quarantine lives in the app's external files folder, so uninstalling the app or clearing its storage deletes quarantined files for good. The Quarantine screen (P4-05) should say so. `android:hasFragileUserData="true"` would make the uninstall dialog offer to keep app data; I have not verified that it covers this folder, and it isn't set yet.
 
@@ -373,3 +377,63 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - The keystore in `signing/` was generated locally for P7-05. The owner should back it up, or replace it with their own key before the first Play upload. Play App Signing can manage the app signing key.
 
 **Privacy:** the note is `docs/PRIVACY.md`. The AI screen now says the model is downloaded once from Hugging Face.
+
+## D-014: Scan presets and path scopes (accepted, PRM2-10075)
+**`ScanScope.Paths`:** folders such as `DCIM/Camera`, relative to the root of every storage volume. It's walked with `FileTreeWalker`, so it needs All files access.
+- Each row's `sourceUri` and `volume` match what a whole-device walk writes, so the two scopes share index rows and cached hashes.
+- `roots()` cleans the paths:
+  - it ignores any path with a `.` or `..` segment;
+  - it drops a path equal to or inside another, ignoring case, so no file is indexed twice.
+- Pruning uses one prefix per root and volume, ending in `/`, so `DCIM/Camera` never prunes `DCIM/Camera2`.
+
+**File types limit the search, not the index.** A scan indexes and prunes its whole scope, then looks for duplicates only among files of the chosen kinds. This is done in the exact query (`mediaKind IN`), the near stage's per-kind lists, and the intersection with the model's kinds in the semantic stage.
+- Filtering during enumeration would let pruning delete every other-kind row in the scope, along with its cached hashes and embeddings.
+
+**Built-in presets** are the `BuiltInPreset` enum. Each becomes a `ScanPreset` with a negative id and can't be deleted. The UI names them by the enum, not by a domain string.
+- The folders not named in the ticket are common defaults and are not verified on devices:
+  - WhatsApp Business and the legacy `WhatsApp/Media`;
+  - Telegram under `Android/media`;
+  - `DCIM/Screenshots`;
+  - the Facebook, Instagram, Snapchat and Reddit folders.
+- A folder a device doesn't have is skipped.
+
+**Saved presets** live in `scan_preset`, which Room v2 adds with `MIGRATION_1_2`. Only the user's own presets are stored. `ObserveScanPresetsUseCase` lists them oldest first, then the built-ins.
+- **Scope.** A row stores its scope kind and its locations, one per line: tree URIs for picked folders, volume-relative paths for Paths.
+  - A picked folder whose grant was released drops out of the preset when it's read, as it does for queued work.
+  - A row with a scope kind this build doesn't know is skipped.
+- **File types** are stored as a comma-separated list of `MediaKind` names. Unknown names are dropped; a row left with none searches every type.
+- **Editing.** An edit keeps `createdAt`, so the preset keeps its place in the list.
+- **Errors.** Saving or deleting a built-in preset fails with `DomainError.BuiltInPreset`. A preset with a blank name or nothing to scan fails with `DomainError.InvalidPreset`.
+
+**One way into a scan.** Every scan starts on the Scan screen, so a scan is always set up the same way: presets first, then file types, then where to look.
+- **Home:** the one-tap "Scan everything", "Scan media" and "Scan a folder" buttons are gone. One "Start scan" button opens the Scan screen, which Results' "Start scan" already did.
+- **Folders:** picking a folder moved to the Where step's "Add folder". A newly picked folder comes back selected.
+- **Presets step:**
+  - "No preset" leads on to file types.
+  - A preset that can't run right now is shown disabled with what it needs: All files access for built-ins and whole-device presets, or folders shared again for a user preset whose grants are gone.
+  - Edit and delete appear only on the user's own presets.
+- **Creating and editing:** both reuse the File types and Where steps, with a name field and "Save preset" in place of "Start scan".
+- **Retry** repeats the last scan that was started, whatever the setup now shows.
+
+**Skip AI.** `RunScanUseCase` runs the semantic stage against `SemanticStageSkip.requested` and cancels only that stage when a skip comes in. The scan then saves its exact and near groups and ends as completed.
+- **Cache:** vectors saved before the skip stay cached for the next scan.
+- **Reset:** each scan resets the signal when it starts, so an earlier skip never carries over.
+- **Where the signal lives:** in memory (`InMemorySemanticStageSkip`). The worker, the Scan screen and the notification's `SkipAiReceiver` all run in the app's one process.
+  - If the process dies after a skip, the restarted scan runs the AI stage again. Earlier stages' work is cached, so only the AI work repeats.
+- **Where Skip AI appears:** on the Scan screen and in the notification, only while the AI stage runs.
+
+**Background scans.** A scan's progress and result come only from WorkManager and the `scan_run` table, never from an Activity or ViewModel. So a screen opened after the app was closed or its process killed picks up the running scan.
+- **Notification tap:** it sends `ScanNotifications.ACTION_OPEN_SCAN` to `MainActivity` with `SINGLE_TOP | CLEAR_TOP`. That reaches `onNewIntent` when the app is open, or `onCreate` when it isn't.
+  - The activity hands it to `AppShortcuts.request(OpenScan)`, which waits until the navigation host has registered.
+  - The host then opens the Scan screen on the Home tab.
+- **Home:** shows the running scan's stage, count and bar, from its own progress flow.
+- **Retry after process death:** if the Scan screen didn't start the scan itself, as after process death, Retry goes back to setup instead of doing nothing.
+
+**Smart selection.** `SelectAllButKeepersUseCase` takes a `KeepRule`: `Best` (the keep choice, else the default ranking), `Newest`, `Oldest`, `Largest`, or `InFolder(path)`.
+- **Keeper per rule:** `GroupWithMembers.keeperFor(rule)` picks each group's keeper. Ties go to the default ranking (`rankKeeper`), so the pick is always the same.
+  - Newest and oldest ignore unknown times (0) unless every member's time is unknown.
+  - A group with no member in the chosen folder keeps its best member.
+  - A rule other than `Best` overrides a saved keep choice for this selection only. Nothing is saved.
+- **Invariants kept:** with no tier chosen, only exact groups are picked. A file that keeps any matching group is never selected, so deleting a selection can't empty a group.
+- **Results screen:** "Keep newest", "Keep oldest", "Keep largest" and "Keep from folder…" chips sit next to "Select duplicates" (which is `Best`). Each selects in one tap. The chip of the rule behind the current selection stays on until the selection is changed.
+  - "Keep from folder…" lists the folders holding the matching groups' files, most files first (`GetDuplicateFoldersUseCase`). Tapping one selects at once.

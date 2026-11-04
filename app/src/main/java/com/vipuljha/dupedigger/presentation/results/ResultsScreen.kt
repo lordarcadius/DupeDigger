@@ -23,7 +23,11 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
@@ -40,12 +44,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +61,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -81,7 +90,10 @@ import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
 import com.vipuljha.dupedigger.core.designsystem.shimmer
 import com.vipuljha.dupedigger.core.ui.asString
+import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.launch
 
 @Composable
 fun ResultsScreen(
@@ -108,7 +120,38 @@ fun ResultsScreen(
         }
     }
     state.confirmDelete?.let { DeleteDialog(it, onIntent) }
+    state.folderChoices?.let { FolderDialog(it, onIntent) }
 }
+
+/** Picking a folder selects every other copy in the matching groups at once. */
+@Composable
+private fun FolderDialog(folders: ImmutableList<FolderChoiceUi>, onIntent: (ResultsIntent) -> Unit) {
+    AppDialog(
+        onDismissRequest = { onIntent(ResultsIntent.FolderPickerDismissed) },
+        onEnter = { onIntent(ResultsIntent.FolderPickerDismissed) },
+        title = { Text(stringResource(R.string.results_keep_folder_title)) },
+        text = {
+            Column(Modifier.heightIn(max = FolderListMaxHeight).verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.results_keep_folder_body), modifier = Modifier.padding(bottom = Dimens.spaceSm))
+                folders.forEach { folder ->
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimens.touchTarget)
+                            .clickable(role = Role.Button) { onIntent(ResultsIntent.KeepRuleSelected(KeepRule.InFolder(folder.path))) }
+                            .padding(vertical = Dimens.spaceSm),
+                    ) {
+                        Text(folder.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(folder.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = { AppButton(stringResource(R.string.action_cancel), { onIntent(ResultsIntent.FolderPickerDismissed) }, kind = ButtonKind.Text) },
+    )
+}
+
+private val FolderListMaxHeight = 320.dp
 
 @Composable
 private fun DeleteDialog(confirm: DeleteConfirmUi, onIntent: (ResultsIntent) -> Unit) {
@@ -134,6 +177,39 @@ private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
                 selected = chip.kind == state.kind,
                 onClick = { onIntent(ResultsIntent.KindSelected(chip.kind)) },
                 label = { Text(chip.label.asString()) },
+            )
+        }
+    }
+}
+
+/** One tap selects every copy but the one each rule keeps; the chip of the rule behind the selection stays on. */
+@Composable
+private fun KeepChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit, modifier: Modifier = Modifier) {
+    val gutter = LocalPaneMetrics.current.gutter
+    val chips = listOf(
+        KeepRule.Newest to R.string.results_keep_newest,
+        KeepRule.Oldest to R.string.results_keep_oldest,
+        KeepRule.Largest to R.string.results_keep_largest,
+    )
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(start = gutter),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+    ) {
+        items(chips, key = { it.second }, contentType = { "keep" }) { (rule, label) ->
+            FilterChip(
+                selected = state.keepRule == rule,
+                onClick = { onIntent(ResultsIntent.KeepRuleSelected(rule)) },
+                enabled = !state.selecting,
+                label = { Text(stringResource(label)) },
+            )
+        }
+        item(key = "keep-folder", contentType = "keep") {
+            FilterChip(
+                selected = state.keepRule is KeepRule.InFolder,
+                onClick = { onIntent(ResultsIntent.KeepFromFolderClicked) },
+                enabled = !state.selecting,
+                label = { Text(stringResource(R.string.results_keep_folder)) },
             )
         }
     }
@@ -212,6 +288,35 @@ private fun GroupList(
 
 private enum class Phase { Loading, Error, Empty, Content }
 
+/** A sideways swipe toggles the row's selection and the row springs back; it never deletes. The checkbox stays the pointer and keyboard path. */
+@Composable
+private fun SwipeToSelect(selected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
+    SwipeToDismissBox(
+        state = state,
+        modifier = modifier,
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer).padding(horizontal = Dimens.spaceXl),
+                contentAlignment = if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                Icon(
+                    if (selected) Icons.Filled.CheckBoxOutlineBlank else Icons.Filled.CheckBox,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        },
+        onDismiss = {
+            onToggle()
+            scope.launch { state.reset() }
+        },
+    ) {
+        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { content() }
+    }
+}
+
 @Composable
 private fun GroupRows(
     state: ResultsState,
@@ -223,8 +328,14 @@ private fun GroupRows(
     val gutter = LocalPaneMetrics.current.gutter
     LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
         item(key = "actions", contentType = "actions") {
-            Row(Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = Dimens.spaceSm), horizontalArrangement = Arrangement.End) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = Dimens.spaceSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KeepChips(state, onIntent, Modifier.weight(1f))
                 AppButton(
+                    modifier = Modifier.padding(end = gutter),
                     label = stringResource(R.string.results_action_select_duplicates),
                     onClick = { onIntent(ResultsIntent.SelectAllButKeepers) },
                     kind = ButtonKind.Tonal,
@@ -234,13 +345,14 @@ private fun GroupRows(
         }
         items(count = groups.itemCount, key = groups.itemKey { it.groupId }, contentType = groups.itemContentType { "group" }) { index ->
             groups[index]?.let { row ->
-                GroupRow(
-                    row,
-                    open = row.fingerprint == openGroup,
-                    onOpen = { onOpenGroup(row.fingerprint) },
-                    onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
-                    modifier = Modifier.animateItem(),
-                )
+                SwipeToSelect(row.selected, onToggle = { onIntent(ResultsIntent.GroupToggled(row)) }, modifier = Modifier.animateItem()) {
+                    GroupRow(
+                        row,
+                        open = row.fingerprint == openGroup,
+                        onOpen = { onOpenGroup(row.fingerprint) },
+                        onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
+                    )
+                }
             }
         }
         when (groups.loadState.append) {

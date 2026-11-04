@@ -27,4 +27,18 @@ class AppShortcutTest {
         assertNull(shortcut(KeyEvent.KEYCODE_ESCAPE, meta = true))
         assertNull(shortcut(KeyEvent.KEYCODE_F, ctrl = true))
     }
+
+    @Test
+    fun `a notification's open-scan request waits for the navigation host`() {
+        val shortcuts = AppShortcuts()
+        val handled = mutableListOf<AppShortcut>()
+
+        shortcuts.request(AppShortcut.OpenScan)
+        shortcuts.handler = { handled += it }
+        shortcuts.handler = null
+        shortcuts.handler = { handled += it }
+        shortcuts.request(AppShortcut.OpenScan)
+
+        assertEquals(listOf(AppShortcut.OpenScan, AppShortcut.OpenScan), handled)
+    }
 }

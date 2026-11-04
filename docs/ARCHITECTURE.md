@@ -124,6 +124,7 @@ Rules:
 | `keep_choice` | the user's chosen keeper for a group fingerprint, stored by its `sourceUri` |
 | `quarantine_item` | original path, quarantine path, size, movedAt (non-media soft delete) |
 | `excluded_path` | folders that are never scanned |
+| `scan_preset` | the user's own scan presets: name, scope kind, folder tree URIs or volume-relative paths, file types (v2); built-in presets are code, not rows |
 
 All tables live in one database, `dupedigger.db`, under the user-data policy (D-010). User-decision tables never reference the index tables, which may be rebuilt. Rows derived from a file cascade when its `file_index` row is deleted.
 

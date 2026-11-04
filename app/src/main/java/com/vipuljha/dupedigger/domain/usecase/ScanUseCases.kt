@@ -2,12 +2,15 @@ package com.vipuljha.dupedigger.domain.usecase
 
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.core.common.Outcome
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.AppSettings
+import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.availableScopes
 import com.vipuljha.dupedigger.domain.model.isReachable
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
+import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import kotlinx.collections.immutable.ImmutableList
@@ -22,15 +25,16 @@ class GetAvailableScopesUseCase @Inject constructor(
     suspend operator fun invoke(): ImmutableList<ScanScope> = availableScopes(storageAccess.current(), scanFolders.folders.first())
 }
 
-/** Queues a background scan of a readable scope; a scan already queued or running is left as it is. */
+/** Queues a background scan of a readable scope for duplicates among [kinds]; a scan already queued or running is left as it is. */
 class StartScanUseCase @Inject constructor(
     private val storageAccess: StorageAccess,
     private val scanFolders: ScanFolderRepository,
     private val scheduler: ScanScheduler,
 ) {
-    suspend operator fun invoke(scope: ScanScope): Outcome<Unit> {
+    suspend operator fun invoke(scope: ScanScope, kinds: Set<MediaKind> = AllMediaKinds): Outcome<Unit> {
+        require(kinds.isNotEmpty()) { "A scan needs at least one file type" }
         if (!scope.isReachable(storageAccess.current(), scanFolders.folders.first())) return Outcome.Failure(DomainError.PermissionDenied)
-        scheduler.start(scope)
+        scheduler.start(scope, kinds)
         return Outcome.Success(Unit)
     }
 }
@@ -47,4 +51,9 @@ class SetNearDuplicatesEnabledUseCase @Inject constructor(private val settings: 
 class SetNearThresholdUseCase @Inject constructor(private val settings: SettingsRepository) {
     suspend operator fun invoke(bits: Int) =
         settings.update { it.copy(nearHammingThreshold = bits.coerceIn(AppSettings.NearThresholdChoices)) }
+}
+
+/** Ends the running scan's AI stage early; the scan still finishes with its exact and similar matches. */
+class SkipSemanticStageUseCase @Inject constructor(private val skip: SemanticStageSkip) {
+    operator fun invoke() = skip.request()
 }

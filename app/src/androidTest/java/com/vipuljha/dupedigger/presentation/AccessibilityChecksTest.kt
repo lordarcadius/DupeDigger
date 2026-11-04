@@ -15,6 +15,7 @@ import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,10 @@ import com.vipuljha.dupedigger.presentation.results.GroupRowUi
 import com.vipuljha.dupedigger.presentation.results.KindChipUi
 import com.vipuljha.dupedigger.presentation.results.ResultsScreen
 import com.vipuljha.dupedigger.presentation.results.ResultsState
+import com.vipuljha.dupedigger.presentation.scan.PresetUi
+import com.vipuljha.dupedigger.presentation.scan.ScanPhase
+import com.vipuljha.dupedigger.presentation.scan.ScanScreen
+import com.vipuljha.dupedigger.presentation.scan.ScanState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.flowOf
@@ -43,7 +48,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Accessibility checks on Results and Group detail, at the default font size and at 200%:
+ * Accessibility checks on Results, Group detail and the scan presets, at the default font size and at 200%:
  * - every clickable control has something for TalkBack to read, and a 48dp touch target when fully on screen;
  * - the controls a card or row needs stay on screen at 200%;
  * - the colour-role pairs these screens draw text with reach 4.5:1, in light and dark, static and dynamic colour.
@@ -59,6 +64,10 @@ class AccessibilityChecksTest {
     @Test fun groupAtDefaultFont() = checkGroup(1f)
 
     @Test fun groupAtDoubleFont() = checkGroup(2f)
+
+    @Test fun scanPresetsAtDefaultFont() = checkScanPresets(1f)
+
+    @Test fun scanPresetsAtDoubleFont() = checkScanPresets(2f)
 
     @Test
     fun textColourPairsReachAaContrast() {
@@ -128,6 +137,30 @@ class AccessibilityChecksTest {
         assertControlsAccessible()
         rule.onAllNodesWithText("Keep this").onFirst().assertIsDisplayed()
         rule.onAllNodesWithText("Compare").onFirst().assertIsDisplayed()
+    }
+
+    private fun checkScanPresets(fontScale: Float) {
+        show(fontScale) {
+            ScanScreen(
+                state = ScanState(
+                    phase = ScanPhase.Setup,
+                    presets = persistentListOf(
+                        PresetUi(1, UiText.Raw("Images only"), UiText.Raw("Whole device · Images"), enabled = true, hint = null, editable = true),
+                        PresetUi(
+                            -2, UiText.Raw("Camera"), UiText.Raw("1 folder on your storage · 2 file types"),
+                            enabled = false, hint = UiText.Raw("Needs All files access."), editable = false,
+                        ),
+                    ),
+                ),
+                progress = { null },
+                onIntent = {},
+                snackbarHostState = remember { SnackbarHostState() },
+                onBack = {},
+            )
+        }
+        assertControlsAccessible()
+        rule.onAllNodesWithText("Images only").onFirst().assertIsDisplayed()
+        rule.onAllNodesWithContentDescription("Delete preset").onFirst().assertIsDisplayed()
     }
 
     private fun assertControlsAccessible() {

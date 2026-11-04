@@ -13,6 +13,7 @@ import com.vipuljha.dupedigger.data.local.db.dao.IgnoredGroupDao
 import com.vipuljha.dupedigger.data.local.db.dao.KeepChoiceDao
 import com.vipuljha.dupedigger.data.local.db.dao.PerceptualHashDao
 import com.vipuljha.dupedigger.data.local.db.dao.QuarantineDao
+import com.vipuljha.dupedigger.data.local.db.dao.ScanPresetDao
 import com.vipuljha.dupedigger.data.local.db.dao.ScanRunDao
 import dagger.Module
 import dagger.Provides
@@ -42,4 +43,5 @@ object DatabaseModule {
     @Provides fun provideKeepChoiceDao(db: DupeDiggerDatabase): KeepChoiceDao = db.keepChoiceDao()
     @Provides fun provideQuarantineDao(db: DupeDiggerDatabase): QuarantineDao = db.quarantineDao()
     @Provides fun provideExcludedPathDao(db: DupeDiggerDatabase): ExcludedPathDao = db.excludedPathDao()
+    @Provides fun provideScanPresetDao(db: DupeDiggerDatabase): ScanPresetDao = db.scanPresetDao()
 }

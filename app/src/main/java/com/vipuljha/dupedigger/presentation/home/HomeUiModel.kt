@@ -4,13 +4,12 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.formatBytes
 import com.vipuljha.dupedigger.core.ui.formatCount
+import com.vipuljha.dupedigger.core.ui.formatDuration
 import com.vipuljha.dupedigger.core.ui.formatRelativeTime
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
-import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.presentation.common.label
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
 /** Kinds with the most to free come first. */
@@ -49,19 +48,15 @@ private fun ScanRunInfo.toUi(nowMillis: Long) = LastScanUi(
             ScanStatus.INTERRUPTED -> R.string.home_scan_status_interrupted
         },
     ),
+    stats = scanStats(),
 )
 
-/** Everything and Media need their access; picking a folder always works. */
-fun quickActions(available: List<ScanScope>): ImmutableList<QuickActionUi> = listOf(
-    QuickActionUi(
-        QuickAction.Everything,
-        enabled = ScanScope.WholeDevice in available,
-        hint = if (ScanScope.WholeDevice in available) null else UiText.res(R.string.home_hint_all_files),
-    ),
-    QuickActionUi(
-        QuickAction.Media,
-        enabled = ScanScope.MediaOnly in available,
-        hint = if (ScanScope.MediaOnly in available) null else UiText.res(R.string.home_hint_media),
-    ),
-    QuickActionUi(QuickAction.Folder, enabled = true, hint = null),
-).toImmutableList()
+/** "Took 2 min 5 s · 12,345 files scanned"; either half alone when the record lacks the other, null with neither. */
+private fun ScanRunInfo.scanStats(): UiText? {
+    val took = finishedAt?.let { UiText.res(R.string.home_last_scan_took, formatDuration(it - startedAt)) }
+    val files = summary?.index?.scanned?.let { UiText.plural(R.plurals.home_files_scanned, it, formatCount(it)) }
+    return when {
+        took != null && files != null -> UiText.res(R.string.home_last_scan_stats, took, files)
+        else -> took ?: files
+    }
+}

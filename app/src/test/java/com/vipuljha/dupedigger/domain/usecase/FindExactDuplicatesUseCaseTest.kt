@@ -46,7 +46,7 @@ class FindExactDuplicatesUseCaseTest {
 
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-        override suspend fun filesSeenIn(scanId: Long) = synchronized(this) { files.values.toList() }
+        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = synchronized(this) { files.values.toList() }
         override suspend fun saveHashes(files: List<IndexedFile>) = synchronized(this) { files.forEach { this.files[it.id] = it } }
         override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit

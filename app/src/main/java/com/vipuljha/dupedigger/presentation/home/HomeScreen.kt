@@ -15,10 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FindInPage
 import androidx.compose.material3.MaterialTheme
@@ -33,11 +30,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.designsystem.AppButton
+import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
@@ -55,11 +56,13 @@ import com.vipuljha.dupedigger.core.ui.StateSwitch
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.asString
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.presentation.scan.ScanProgressUi
 import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun HomeScreen(
     state: HomeState,
+    progress: () -> ScanProgressUi?,
     onIntent: (HomeIntent) -> Unit,
     snackbarHostState: SnackbarHostState,
     onMenuClick: (() -> Unit)?,
@@ -93,12 +96,12 @@ fun HomeScreen(
                     action = { AppButton(stringResource(R.string.action_retry), { onIntent(HomeIntent.Retry) }, loading = error.retrying) },
                 )
             },
-        ) { model -> HomeContent(model, state, onIntent) }
+        ) { model -> HomeContent(model, progress, onIntent) }
     }
 }
 
 @Composable
-private fun HomeContent(model: HomeUiModel, state: HomeState, onIntent: (HomeIntent) -> Unit) {
+private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onIntent: (HomeIntent) -> Unit) {
     val gutter = LocalPaneMetrics.current.gutter
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -108,26 +111,17 @@ private fun HomeContent(model: HomeUiModel, state: HomeState, onIntent: (HomeInt
         ) {
             item(key = "summary", contentType = "summary") { SummaryCard(model, Modifier.animateItem()) }
             item(key = "last-scan", contentType = "last-scan") {
-                LastScanCard(model, onViewProgress = { onIntent(HomeIntent.OpenScanClicked) }, modifier = Modifier.animateItem())
+                LastScanCard(model, progress, onViewProgress = { onIntent(HomeIntent.OpenScanClicked) }, modifier = Modifier.animateItem())
             }
             item(key = "actions-header", contentType = "header") {
                 SectionHeader(stringResource(R.string.home_actions_title), modifier = Modifier.animateItem())
             }
-            items(state.quickActions, key = { it.action }, contentType = { "action" }) { action ->
-                QuickActionRow(
-                    action = action,
-                    loading = state.startingAction == action.action,
-                    busy = state.startingAction != null || model.scanning,
-                    onClick = { onIntent(HomeIntent.QuickActionClicked(action.action)) },
-                    modifier = Modifier.animateItem(),
-                )
-            }
-            item(key = "custom", contentType = "custom") {
+            item(key = "start-scan", contentType = "start-scan") {
                 AppButton(
-                    label = stringResource(R.string.home_action_custom_scan),
+                    label = stringResource(R.string.home_action_start_scan),
                     onClick = { onIntent(HomeIntent.OpenScanClicked) },
-                    icon = Icons.Filled.Tune,
-                    modifier = Modifier.padding(top = Dimens.spaceSm).animateItem(),
+                    icon = Icons.Filled.Search,
+                    modifier = Modifier.fillMaxWidth().animateItem(),
                 )
             }
         }
@@ -171,11 +165,11 @@ private fun SummaryCard(model: HomeUiModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LastScanCard(model: HomeUiModel, onViewProgress: () -> Unit, modifier: Modifier = Modifier) {
+private fun LastScanCard(model: HomeUiModel, progress: () -> ScanProgressUi?, onViewProgress: () -> Unit, modifier: Modifier = Modifier) {
     HomeCard(modifier) {
         Text(stringResource(R.string.home_last_scan_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (model.scanning) {
-            Text(stringResource(R.string.home_scan_status_running), style = MaterialTheme.typography.titleMedium)
+            LiveProgress(progress)
             AppButton(stringResource(R.string.home_action_view_progress), onViewProgress, kind = ButtonKind.Text)
             return@HomeCard
         }
@@ -186,34 +180,25 @@ private fun LastScanCard(model: HomeUiModel, onViewProgress: () -> Unit, modifie
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        last.stats?.let {
+            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
+/** The running scan's stage, count and bar; only this redraws on each progress tick. */
 @Composable
-private fun QuickActionRow(action: QuickActionUi, loading: Boolean, busy: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val (label, icon) = when (action.action) {
-        QuickAction.Everything -> R.string.home_action_scan_everything to Icons.Filled.PhoneAndroid
-        QuickAction.Media -> R.string.home_action_scan_media to Icons.Filled.PhotoLibrary
-        QuickAction.Folder -> R.string.home_action_scan_folder to Icons.Filled.Folder
-    }
-    Column(modifier.fillMaxWidth()) {
-        AppButton(
-            label = stringResource(label),
-            onClick = onClick,
-            kind = ButtonKind.Tonal,
-            icon = icon,
-            loading = loading,
-            enabled = action.enabled && !busy,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        action.hint?.let {
-            Text(
-                it.asString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Dimens.spaceLg, vertical = Dimens.spaceXs),
-            )
+private fun LiveProgress(progress: () -> ScanProgressUi?) {
+    val current = progress()
+    Column(
+        modifier = Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+    ) {
+        Text((current?.stage ?: UiText.res(R.string.home_scan_status_running)).asString(), style = MaterialTheme.typography.titleMedium)
+        current?.count?.let {
+            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        AppProgressBar(progress = current?.fraction?.let { fraction -> { fraction } }, modifier = Modifier.padding(top = Dimens.spaceXs))
     }
 }
 
@@ -255,6 +240,7 @@ private fun SkeletonCard(shimmer: Shimmer, lines: List<TextStyle>, offset: Int) 
 private fun HomeScreenPreview() {
     DupeDiggerTheme(dynamicColor = false) {
         HomeScreen(
+            progress = { null },
             state = HomeState(
                 content = ContentState.Success(
                     HomeUiModel(
@@ -265,7 +251,6 @@ private fun HomeScreenPreview() {
                         scanning = false,
                     ),
                 ),
-                quickActions = quickActions(emptyList()),
             ),
             onIntent = {},
             snackbarHostState = remember { SnackbarHostState() },

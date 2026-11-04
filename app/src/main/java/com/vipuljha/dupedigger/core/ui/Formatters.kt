@@ -49,6 +49,17 @@ fun formatRelativeTime(epochMillis: Long, nowMillis: Long): UiText {
     }
 }
 
+/** How long something took: under a second, seconds, minutes and seconds, or hours and minutes, rounded down. */
+fun formatDuration(millis: Long): UiText {
+    val seconds = millis.coerceAtLeast(0L) / 1000
+    return when {
+        seconds < 1 -> UiText.res(R.string.duration_under_second)
+        seconds < 60 -> UiText.res(R.string.duration_seconds, formatCount(seconds))
+        seconds < 3600 -> UiText.res(R.string.duration_minutes, formatCount(seconds / 60), formatCount(seconds % 60))
+        else -> UiText.res(R.string.duration_hours, formatCount(seconds / 3600), formatCount(seconds % 3600 / 60))
+    }
+}
+
 /** A 0–1 similarity as a whole percentage rounded down and capped at 99%, so a near match never reads as identical. */
 fun formatSimilarity(score: Float): UiText {
     val percent = kotlin.math.floor(score.coerceIn(0f, 1f) * 100.0).coerceAtMost(99.0) / 100

@@ -33,6 +33,9 @@ interface FileIndexDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(file: FileIndexEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(files: List<FileIndexEntity>): List<Long>
+
     @Update
     suspend fun update(file: FileIndexEntity)
 
@@ -63,9 +66,9 @@ interface FileHashDao {
 
     @Query(
         "SELECT f.id, f.sourceUri, f.size, f.mtime, h.partialHash, h.fullHash FROM file_index f " +
-            "LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.lastSeenScanId = :scanId",
+            "LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.lastSeenScanId = :scanId AND f.mediaKind IN (:kinds)",
     )
-    suspend fun hashStateForScan(scanId: Long): List<FileHashState>
+    suspend fun hashStateForScan(scanId: Long, kinds: List<String>): List<FileHashState>
 }
 
 data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)

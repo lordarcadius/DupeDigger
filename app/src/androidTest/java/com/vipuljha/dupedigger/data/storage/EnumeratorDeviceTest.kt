@@ -76,7 +76,7 @@ class EnumeratorDeviceTest {
 
     @Test
     fun mediaStoreEnumerationRuns() = runBlocking {
-        val count = AndroidFileEnumerator(context, Dispatchers.IO).enumerate(ScanScope.MediaOnly, keepAll).count()
+        val count = AndroidFileEnumerator(context, Dispatchers.IO, StorageVolumes(context)).enumerate(ScanScope.MediaOnly, keepAll).count()
         Timber.i("MediaStore returned %d media files", count)
         assertTrue(count >= 0)
     }

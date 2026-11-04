@@ -11,15 +11,24 @@ import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ViewTarget
 import com.vipuljha.dupedigger.domain.repository.FileInspector
 import com.vipuljha.dupedigger.domain.usecase.ChooseKeeperUseCase
+import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
+import com.vipuljha.dupedigger.domain.usecase.DeleteDuplicatesUseCase
 import com.vipuljha.dupedigger.domain.usecase.GetViewTargetUseCase
 import com.vipuljha.dupedigger.domain.usecase.MarkNotDuplicatesUseCase
 import com.vipuljha.dupedigger.domain.usecase.ObserveGroupUseCase
 import com.vipuljha.dupedigger.domain.usecase.ReadMediaInfoUseCase
+import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
+import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
+import com.vipuljha.dupedigger.presentation.FakeFileIndex
+import com.vipuljha.dupedigger.presentation.FakeQuarantine
 import com.vipuljha.dupedigger.presentation.FakeReclaimGroups
+import com.vipuljha.dupedigger.presentation.FakeRemover
+import com.vipuljha.dupedigger.presentation.common.FileRemoval
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -71,7 +80,24 @@ class GroupViewModelTest {
         MarkNotDuplicatesUseCase(repo),
         ReadMediaInfoUseCase(inspector),
         GetViewTargetUseCase(inspector),
+        removal(),
     )
+
+    private val index = FakeFileIndex(setOf(1L, 2L))
+    private val remover = FakeRemover()
+    private val quarantine = FakeQuarantine()
+
+    private fun removal() = FileRemoval(
+        DeleteDuplicatesUseCase(repo, index, remover),
+        ConfirmTrashUseCase(index),
+        UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
+    )
+
+    private fun TestScope.removalEvents(vm: GroupViewModel) = mutableListOf<FileRemoval.Event>().also { events ->
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.effect.collect { if (it is GroupEffect.Removal) events += it.event }
+        }
+    }
 
     private fun GroupViewModel.detail() = (state.value.content as ContentState.Success).data!!
 
@@ -132,5 +158,38 @@ class GroupViewModelTest {
         vm.onIntent(GroupIntent.OpenClicked(2))
 
         assertTrue(effects.single() == GroupEffect.OpenFile("content://media/external/images/media/2", "image/jpeg"))
+    }
+
+    @Test
+    fun `a copy is deleted in place with Undo, and the keeper can't be deleted here`() = runTest {
+        repo.groups += group
+        val vm = viewModel()
+        val events = removalEvents(vm)
+
+        vm.onIntent(GroupIntent.DeleteClicked(2))
+        assertEquals(setOf(1L, 2L), index.ids)
+        vm.onIntent(GroupIntent.DeleteClicked(1))
+
+        assertEquals(setOf(2L), index.ids)
+        val message = events.single() as FileRemoval.Event.Message
+        assertEquals(listOf(101L), message.undo!!.quarantineIds)
+        vm.onIntent(GroupIntent.UndoClicked(message.undo!!))
+        assertEquals(listOf(101L), quarantine.restored)
+    }
+
+    @Test
+    fun `media waiting for the trash prompt is finished even after the group dissolved`() = runTest {
+        repo.groups += group
+        remover.needConsent += 1L
+        val vm = viewModel()
+        val events = removalEvents(vm)
+
+        vm.onIntent(GroupIntent.DeleteClicked(1))
+        assertEquals(FileRemoval.Event.LaunchTrash("prompt"), events.single())
+        repo.detail.value = null
+        vm.onIntent(GroupIntent.TrashAnswered(accepted = true))
+
+        assertEquals(setOf(2L), index.ids)
+        assertTrue(events.last() is FileRemoval.Event.Message)
     }
 }

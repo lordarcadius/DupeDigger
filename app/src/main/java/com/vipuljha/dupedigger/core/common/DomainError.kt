@@ -8,5 +8,11 @@ sealed interface DomainError {
 
     /** The request would remove every copy in a duplicate group. */
     data object WouldRemoveAllCopies : DomainError
+
+    /** A built-in scan preset can't be changed or deleted. */
+    data object BuiltInPreset : DomainError
+
+    /** A scan preset needs a name and something to scan. */
+    data object InvalidPreset : DomainError
     data object Unknown : DomainError
 }
