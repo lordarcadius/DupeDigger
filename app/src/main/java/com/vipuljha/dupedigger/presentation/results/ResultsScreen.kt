@@ -86,6 +86,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SkeletonBarFractions
 import com.vipuljha.dupedigger.core.designsystem.StateAlpha
@@ -318,7 +319,7 @@ private fun GroupRows(
     openGroup: String?,
     onOpenGroup: (String) -> Unit,
 ) {
-    LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
+    LazyColumn(contentPadding = PaddingValues(bottom = listEndPadding())) {
         item(key = "select-all", contentType = "select-all") { SelectAllRow(state, onIntent) }
         item(key = "keep-rules", contentType = "keep-rules") {
             KeepChips(state, onIntent, Modifier.padding(bottom = Dimens.spaceSm))
@@ -494,8 +495,12 @@ private fun SelectionBar(state: ResultsState, onIntent: (ResultsIntent) -> Unit)
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
+        // Sits clear of the floating navigation bar, which overlays the bottom of the pane.
         val summary = state.selectionSummary?.asString().orEmpty()
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.padding(bottom = LocalPaneMetrics.current.bottomOverlay),
+        ) {
             Column {
                 if (state.deleting) {
                     AppProgressBar(

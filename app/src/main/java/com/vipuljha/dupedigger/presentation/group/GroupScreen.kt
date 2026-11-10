@@ -47,6 +47,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
 import com.vipuljha.dupedigger.core.designsystem.TooltipIconButton
@@ -124,7 +125,7 @@ private fun Members(detail: GroupDetailUi, resolutions: ImmutableMap<Long, UiTex
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             modifier = Modifier.widthIn(max = Dimens.maxWidthDetailHeader).fillMaxWidth(),
-            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
+            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
         ) {
             item(key = "header", contentType = "header") {

@@ -58,6 +58,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
@@ -124,7 +125,7 @@ private fun SetupPanel(state: ScanState, onIntent: (ScanIntent) -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             modifier = Modifier.widthIn(max = Dimens.maxWidthReading).fillMaxWidth().testTag(ScanTestTags.setupList),
-            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
+            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
         ) {
             when (state.step) {
                 SetupStep.Presets -> presetsStep(state, onIntent)

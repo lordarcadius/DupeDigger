@@ -43,6 +43,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
@@ -107,7 +108,7 @@ private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onI
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             modifier = Modifier.widthIn(max = Dimens.maxWidthReading).fillMaxWidth(),
-            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
+            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
         ) {
             model.storage?.let { storage ->

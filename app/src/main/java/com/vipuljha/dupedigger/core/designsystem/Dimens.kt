@@ -68,3 +68,7 @@ object WindowBreakpoints {
     val Medium = 600.dp
     val Expanded = 840.dp
 }
+
+/** The space a scrollable leaves at its end: the usual gap, plus whatever the floating bar covers. */
+@androidx.compose.runtime.Composable
+fun listEndPadding(): androidx.compose.ui.unit.Dp = Dimens.listEndSpace + LocalPaneMetrics.current.bottomOverlay

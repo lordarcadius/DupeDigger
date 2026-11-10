@@ -525,3 +525,17 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **Why anyway:** the owner asked for it twice and pointed at Google's Clock app, which ships this shape for its four top-level destinations. It is a look Google itself uses even though the published navigation-bar spec doesn't describe it. Taking M3's items and changing only the container keeps every behavioural rule that matters — one active destination, fill for selected, labels always present, 3:1 contrast — and departs only on shape and placement.
 
 **What it costs:** the bar no longer spans the window, so it is a documented deviation a future M3 audit will flag. It does not overlay content; it sits below it in the shell's column, so nothing is hidden behind it and no screen needed extra bottom padding.
+
+## D-026: The floating bar is icons-only glass (accepted, P9-05)
+**Extends D-025** with the look the owner specified from a reference screenshot.
+
+**Decision:** the bottom bar is a custom component, not `ShortNavigationBar`:
+- **Icons only, no labels.** Each icon is 28dp, filled when its destination is open and outlined otherwise.
+- **Active indicator** is a 20dp-cornered rounded rectangle, 56dp tall and at most 80dp wide, carrying `secondary container` with `on secondary container` on the icon. It fills its share of the bar rather than hugging the icon, which is what the reference shows.
+- **Glass:** the content pane is recorded into a `GraphicsLayer` each frame, and the bar re-draws that layer through a 24dp `BlurEffect` clipped to the pill, under a `surface container` tint at 72% alpha. The content scrolls under the bar, so the blur is live, not a static scrim.
+
+**Why a custom component:** `ShortNavigationBarItem` with no label draws M3's small pill around a 24dp icon, which reads as a wide pill with a lot of empty space. The reference's proportions — a bigger icon inside a near-square indicator — are not reachable by configuring the M3 item.
+
+**What this costs, stated plainly.** M3 says a navigation item's label is required and "don't remove the labels from navigation items"; a label is also how M3 expects the destination to be announced. The icons therefore carry their destination name as `contentDescription`, and each keeps `Role.Tab` and a 56×80dp target, so assistive tech and touch targets still hold. It remains a documented deviation.
+
+**Blur cost:** recording the pane into a layer every frame is extra GPU work on every screen, and the blur only exists while the bar is on screen. `GraphicsLayer` and `BlurEffect` are platform APIs available from API 31, and this app's minSdk is 31, so no fallback path is needed. Not measured on a low-end device.

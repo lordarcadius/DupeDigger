@@ -48,6 +48,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
@@ -80,7 +81,7 @@ fun SettingsScreen(
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
                 modifier = Modifier.widthIn(max = Dimens.maxWidthReading).fillMaxWidth(),
-                contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
+                contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
             ) {
                 folderSection(

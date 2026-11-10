@@ -47,6 +47,7 @@ import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
+import com.vipuljha.dupedigger.core.designsystem.listEndPadding
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
@@ -101,7 +102,7 @@ private fun AiContent(ui: AiUi, onIntent: (AiIntent) -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
             modifier = Modifier.widthIn(max = Dimens.maxWidthReading).fillMaxWidth(),
-            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
+            contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
         ) {
             item(key = "intro", contentType = "intro") {
