@@ -60,3 +60,6 @@ Thumbs.db
 google-services.json
 secrets.properties
 keystore.properties
+
+# Release build outputs: mapping.txt is regenerated per build and belongs in the Play Console, not here.
+/app/release/

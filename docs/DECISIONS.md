@@ -569,3 +569,14 @@ A bar that overlays the pane bottom changes what else can live there. Three thin
 **Dialog headlines read ragged.** `AppDialog` wrapped the title in a `Box` to make room for PrimeOS's close button. That inset is zero on every other device, but the wrapper still left-aligned the headline. M3 aligns a dialog to its centre when it has an icon and to the start when it doesn't; Compose centres the title's *box* but leaves the text start-aligned, so a headline long enough to wrap still looked ragged under a centred icon. `AppDialog` now sets `TextAlign` on both headline and body from whether an icon is present.
 
 **The AI entry's chevron** was centred against its body line because the heading sat outside the row. The heading moved inside, so the chevron centres against the whole entry.
+
+## D-030: Quarantine is a selection list (accepted, P9-08)
+**Decision:** quarantine files are picked with a checkbox and acted on together, the way Results works. Each card carries a checkbox and no buttons; a "Select all" row sits above the list; an action bar appears with the first pick and holds **Restore** and **Delete**.
+
+**Why:** every card previously carried its own "Restore" and "Delete permanently", so a list of six files showed twelve buttons and emptying quarantine meant twelve taps. Two buttons that act on a selection do the same work, read as one pattern with Results, and make "restore everything" one tap.
+
+**Selection is pruned,** not kept blindly: the repository's flow drives it, so a file that leaves quarantine drops out of the selection and an action never names one that has already gone.
+
+**Delete still confirms,** now naming how many files it would erase, because it is the one place a file leaves the app for good (D-007).
+
+**Use cases folded:** `DeleteQuarantinedUseCase` now takes a collection and returns how many failed, mirroring `RestoreQuarantinedUseCase`; the single-id version is gone.

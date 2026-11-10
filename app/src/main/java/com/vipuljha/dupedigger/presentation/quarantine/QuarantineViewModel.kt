@@ -1,17 +1,15 @@
 package com.vipuljha.dupedigger.presentation.quarantine
 
 import androidx.lifecycle.viewModelScope
-import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.common.DomainError
-import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.ContentState
-import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.usecase.DeleteQuarantinedUseCase
 import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.flow.catch
@@ -20,19 +18,29 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Files moved out of the way by a delete: put each back, or delete it for good after a confirmation. */
+/**
+ * Files moved out of the way by a delete: pick them with a checkbox, then put them all back or erase them.
+ * The selection is pruned to the files still here, so an action never names one that has already gone.
+ */
 @HiltViewModel
 class QuarantineViewModel @Inject constructor(
     quarantine: QuarantineRepository,
     private val restore: RestoreQuarantinedUseCase,
-    private val deletePermanently: DeleteQuarantinedUseCase,
+    private val deleteAll: DeleteQuarantinedUseCase,
 ) : MviViewModel<QuarantineState, QuarantineIntent, QuarantineEffect>(QuarantineState()) {
 
     init {
         quarantine.observeAll()
             .onEach { files ->
                 val now = System.currentTimeMillis()
-                setState { copy(content = ContentState.Success(files.map { it.toUi(now) }.toImmutableList())) }
+                val here = files.map { it.id }.toSet()
+                setState {
+                    val kept = selection.filterTo(mutableSetOf()) { it in here }
+                    copy(
+                        content = ContentState.Success(files.map { it.toUi(now, it.id in kept) }.toImmutableList()),
+                        selection = kept.toImmutableSet(),
+                    )
+                }
             }
             .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
             .launchIn(viewModelScope)
@@ -40,34 +48,50 @@ class QuarantineViewModel @Inject constructor(
 
     override fun handleIntent(intent: QuarantineIntent) {
         when (intent) {
-            is QuarantineIntent.RestoreClicked -> work(intent.id) {
-                val failed = restore(listOf(intent.id))
-                sendEffect(QuarantineEffect.ShowMessage(restoreMessage(restored = 1 - failed, failed = failed)))
+            is QuarantineIntent.ItemToggled -> select(
+                if (intent.id in currentState.selection) currentState.selection - intent.id else currentState.selection + intent.id,
+            )
+            QuarantineIntent.SelectAllToggled ->
+                select(if (allSelected()) emptySet() else items().map { it.id }.toSet())
+            QuarantineIntent.RestoreClicked -> work { picked ->
+                val failed = restore(picked)
+                sendEffect(QuarantineEffect.ShowMessage(restoreMessage(restored = picked.size - failed, failed = failed)))
             }
-            is QuarantineIntent.DeleteClicked -> setState { copy(confirmDelete = intent.item) }
+            QuarantineIntent.DeleteClicked -> currentState.selection.size.takeIf { it > 0 }?.let { count ->
+                setState { copy(confirmDelete = count) }
+            }
             QuarantineIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             QuarantineIntent.DeleteConfirmed -> {
-                val item = currentState.confirmDelete ?: return
                 setState { copy(confirmDelete = null) }
-                work(item.id) {
-                    val outcome = deletePermanently(item.id)
-                    sendEffect(
-                        QuarantineEffect.ShowMessage(
-                            if (outcome is Outcome.Failure) outcome.error.toUiText() else UiText.res(R.string.quarantine_deleted, item.name),
-                        ),
-                    )
+                work { picked ->
+                    val failed = deleteAll(picked)
+                    sendEffect(QuarantineEffect.ShowMessage(deletedMessage(deleted = picked.size - failed, failed = failed)))
                 }
             }
         }
     }
 
-    /** Runs [block] for one file at a time; a second tap while it runs is ignored. */
-    private fun work(id: Long, block: suspend () -> Unit) {
-        if (id in currentState.busy) return
-        setState { copy(busy = (busy + id).toImmutableSet()) }
+    private fun items(): List<QuarantineItemUi> = (currentState.content as? ContentState.Success)?.data.orEmpty()
+
+    private fun allSelected(): Boolean = items().isNotEmpty() && currentState.selection.size >= items().size
+
+    /** Runs [block] over the current selection; a second tap while one runs is ignored. */
+    private fun work(block: suspend (picked: List<Long>) -> Unit) {
+        val picked = currentState.selection.toList()
+        if (currentState.working || picked.isEmpty()) return
+        setState { copy(working = true) }
         viewModelScope.launch {
-            block()
-            setState { copy(busy = (busy - id).toImmutableSet()) }
+            block(picked)
+            setState { copy(working = false) }
         }
+    }
+
+    private fun select(ids: Set<Long>) = setState {
+        copy(
+            selection = if (ids.isEmpty()) persistentSetOf() else ids.toImmutableSet(),
+            content = (content as? ContentState.Success)
+                ?.let { ContentState.Success(it.data.map { item -> item.copy(selected = item.id in ids) }.toImmutableList()) }
+                ?: content,
+        )
     }
 }

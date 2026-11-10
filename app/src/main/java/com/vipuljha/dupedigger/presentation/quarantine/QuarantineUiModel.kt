@@ -7,8 +7,9 @@ import com.vipuljha.dupedigger.core.ui.formatCount
 import com.vipuljha.dupedigger.core.ui.formatRelativeTime
 import com.vipuljha.dupedigger.domain.model.QuarantinedFile
 
-fun QuarantinedFile.toUi(nowMillis: Long) = QuarantineItemUi(
+fun QuarantinedFile.toUi(nowMillis: Long, selected: Boolean = false) = QuarantineItemUi(
     id = id,
+    selected = selected,
     name = name,
     folder = originalPath.substringBeforeLast('/', "").takeIf { it.isNotEmpty() }?.let { UiText.Raw(it) } ?: UiText.res(R.string.value_unknown),
     details = UiText.res(R.string.quarantine_item_details, formatBytes(size), formatRelativeTime(movedAt, nowMillis)),
@@ -20,4 +21,12 @@ fun restoreMessage(restored: Int, failed: Int): UiText =
         UiText.plural(R.plurals.restored, restored, formatCount(restored))
     } else {
         UiText.plural(R.plurals.restore_failed, failed, formatCount(failed))
+    }
+
+/** What a delete did, as a snackbar line; a failure is named rather than reported as a success. */
+fun deletedMessage(deleted: Int, failed: Int): UiText =
+    if (failed == 0) {
+        UiText.plural(R.plurals.quarantine_deleted_count, deleted, formatCount(deleted))
+    } else {
+        UiText.plural(R.plurals.quarantine_delete_failed, failed, formatCount(failed))
     }

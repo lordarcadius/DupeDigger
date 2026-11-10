@@ -10,11 +10,6 @@ class RestoreQuarantinedUseCase @Inject constructor(private val quarantine: Quar
     suspend operator fun invoke(ids: Collection<Long>): Int = ids.count { quarantine.restore(it) is Outcome.Failure }
 }
 
-/** The only way a file leaves Dupe Digger for good (D-007). */
-class DeleteQuarantinedUseCase @Inject constructor(private val quarantine: QuarantineRepository) {
-    suspend operator fun invoke(id: Long) = quarantine.deletePermanently(id)
-}
-
 /** Undoes a delete: media this app trashed comes out of the trash, quarantined files go back; returns how many couldn't. */
 class UndoRemovalUseCase @Inject constructor(
     private val remover: FileRemover,
@@ -22,4 +17,9 @@ class UndoRemovalUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(trashedUris: List<String>, quarantineIds: List<Long>): Int =
         remover.untrash(trashedUris) + restoreQuarantined(quarantineIds)
+}
+
+/** Deletes each file for good, the only way a file leaves Dupe Digger (D-007); returns how many could not go. */
+class DeleteQuarantinedUseCase @Inject constructor(private val quarantine: QuarantineRepository) {
+    suspend operator fun invoke(ids: Collection<Long>): Int = ids.count { quarantine.deletePermanently(it) is Outcome.Failure }
 }

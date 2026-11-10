@@ -140,10 +140,29 @@
     <string name="quarantine_note">Files here are kept until you restore or delete them. Uninstalling Dupe Digger deletes them.</string>
     <string name="quarantine_item_details">%1$s · moved %2$s</string>
     <string name="quarantine_action_restore">Restore</string>
+    <string name="quarantine_select_all">Select all</string>
+    <string name="quarantine_select_file">Select %1$s</string>
+    <plurals name="quarantine_selected">
+        <item quantity="one">%1$s file selected</item>
+        <item quantity="other">%1$s files selected</item>
+    </plurals>
     <string name="quarantine_action_delete">Delete permanently</string>
     <string name="quarantine_delete_title">Delete “%1$s” permanently?</string>
     <string name="quarantine_delete_body">The file is erased from this device. You can’t undo this.</string>
     <string name="quarantine_deleted">“%1$s” deleted</string>
+    <plurals name="quarantine_delete_all_title">
+        <item quantity="one">Delete %1$s file permanently?</item>
+        <item quantity="other">Delete %1$s files permanently?</item>
+    </plurals>
+    <string name="quarantine_delete_all_body">They are erased from this device. You can’t undo this.</string>
+    <plurals name="quarantine_deleted_count">
+        <item quantity="one">%1$s file deleted permanently</item>
+        <item quantity="other">%1$s files deleted permanently</item>
+    </plurals>
+    <plurals name="quarantine_delete_failed">
+        <item quantity="one">Couldn’t delete %1$s file.</item>
+        <item quantity="other">Couldn’t delete %1$s files.</item>
+    </plurals>
     <string name="quarantine_empty_title">Quarantine is empty</string>
     <string name="quarantine_empty_body">Deleted files that aren’t photos, videos or music wait here until you restore them.</string>
     <string name="quarantine_error_title">Couldn’t load quarantine</string>
