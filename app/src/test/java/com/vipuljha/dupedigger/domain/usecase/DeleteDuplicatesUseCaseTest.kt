@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.domain.usecase
 import androidx.paging.PagingData
 import com.vipuljha.dupedigger.domain.model.AudioFile
 import com.vipuljha.dupedigger.domain.model.AudioSignature
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.core.common.DomainError
@@ -99,7 +100,8 @@ class DeleteDuplicatesUseCaseTest {
         override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = Unit
         override suspend fun keepChoice(fingerprint: String): String? = null
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
-        override fun observeTierCounts() = emptyFlow<Map<MatchTier, Int>>()
+        override fun observeFacets() = emptyFlow<List<GroupFacet>>()
+        override suspend fun stillRemovable(fileIds: Set<Long>) = fileIds
         override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
         override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
         override fun observeGroup(fingerprint: String) = emptyFlow<GroupWithMembers?>()
@@ -138,7 +140,7 @@ class DeleteDuplicatesUseCaseTest {
         val fail = mutableSetOf<Long>()
         val needConsent = mutableSetOf<Long>()
 
-        override suspend fun remove(files: List<StoredFile>): RemovalResult {
+        override suspend fun remove(files: List<StoredFile>, onProgress: suspend (done: Int, total: Int) -> Unit): RemovalResult {
             calls += files.map { it.id }
             val ids = files.map { it.id }
             val consentIds = ids.filter { it in needConsent }

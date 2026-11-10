@@ -16,6 +16,7 @@ import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.QuarantineRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanPresetRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
+import com.vipuljha.dupedigger.data.storage.AndroidDeviceStorage
 import com.vipuljha.dupedigger.data.storage.AndroidFileEnumerator
 import com.vipuljha.dupedigger.data.storage.AndroidFileInspector
 import com.vipuljha.dupedigger.data.storage.AndroidFileRemover
@@ -32,6 +33,7 @@ import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.Embedder
 import com.vipuljha.dupedigger.domain.repository.EmbeddingInputReader
 import com.vipuljha.dupedigger.domain.repository.ExcludedPathRepository
+import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileInspector
@@ -62,6 +64,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindStorageAccess(impl: AndroidStorageAccess): StorageAccess
+
+    @Binds
+    abstract fun bindDeviceStorage(impl: AndroidDeviceStorage): DeviceStorage
 
     @Binds
     abstract fun bindScanFolderRepository(impl: AndroidScanFolderRepository): ScanFolderRepository

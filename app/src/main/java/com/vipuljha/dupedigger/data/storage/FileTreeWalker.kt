@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.data.storage
 import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.mediaKindOf
+import com.vipuljha.dupedigger.domain.model.mimeTypeForName
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -38,14 +39,14 @@ class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
                     if (attrs.isDirectory) {
                         pending.addLast(child)
                     } else if (attrs.isRegularFile) {
-                        val mime = mimeTypeOf(child.name)
+                        val mime = mimeTypeOf(child.name) ?: mimeTypeForName(child.name)
                         emit(
                             DiscoveredFile(
                                 sourceUri = child.toURI().toString(),
                                 path = path,
                                 name = child.name,
                                 mimeType = mime,
-                                mediaKind = mediaKindOf(mime),
+                                mediaKind = mediaKindOf(mime, child.name),
                                 size = attrs.size(),
                                 mtime = attrs.lastModifiedTime().toMillis(),
                                 volume = volume.path,

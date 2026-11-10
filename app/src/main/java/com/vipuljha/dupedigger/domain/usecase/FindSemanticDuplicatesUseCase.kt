@@ -50,6 +50,7 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         variant: ModelVariant,
         backend: EmbeddingBackend,
         threshold: Float,
+        minSizeBytes: Long,
         exactGroups: List<ExactGroup>,
         nearGroups: List<NearGroup>,
         kinds: Set<MediaKind> = AllMediaKinds,
@@ -63,7 +64,7 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         }
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
         val (cached, missing) = fileIndex.embeddingCandidates(scanId, key, readable intersect kinds)
-            .filter { it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(it.name, it.mimeType)) }
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(it.name, it.mimeType)) }
             .partition { it.vector != null }
 
         val embedded = mutableListOf<EmbeddedFile>()

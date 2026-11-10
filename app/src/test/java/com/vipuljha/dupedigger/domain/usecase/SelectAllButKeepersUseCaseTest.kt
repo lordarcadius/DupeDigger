@@ -86,7 +86,10 @@ class SelectAllButKeepersUseCaseTest {
             val nearKeeper = repo.groups[1].keeperFor(rule).fileId
             assertFalse("$rule selected the near group's keeper", nearKeeper in selected)
         }
-        assertEquals(listOf(2L), SelectAllButKeepersUseCase(repo)(GroupFilter(), KeepRule.Newest).map { it.fileId })
+        // With no tier chosen the selection spans every tier, and each pick carries the tier it came from.
+        val everywhere = SelectAllButKeepersUseCase(repo)(GroupFilter(), KeepRule.Newest)
+        assertEquals(listOf(2L, 3L), everywhere.map { it.fileId }.sorted())
+        assertEquals(setOf(MatchTier.EXACT, MatchTier.NEAR), everywhere.map { it.tier }.toSet())
     }
 
     @Test

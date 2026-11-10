@@ -42,3 +42,10 @@ fun mediaKindOf(mimeType: String?): MediaKind {
         else -> MediaKind.OTHER
     }
 }
+
+/**
+ * The kind of a file the provider gave a MIME type for, falling back to [fileName]'s extension when the type is
+ * missing or too generic to place: SAF often answers `application/octet-stream`, and `MimeTypeMap` knows no HEIC.
+ */
+fun mediaKindOf(mimeType: String?, fileName: String): MediaKind =
+    mediaKindOf(mimeType).takeIf { it != MediaKind.OTHER } ?: mediaKindForName(fileName)

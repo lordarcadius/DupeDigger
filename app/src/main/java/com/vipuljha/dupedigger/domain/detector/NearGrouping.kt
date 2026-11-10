@@ -5,15 +5,24 @@ import com.vipuljha.dupedigger.domain.model.ImageHashes
 fun hammingDistance(a: Long, b: Long): Int = (a xor b).countOneBits()
 
 /**
- * Groups items whose perceptual hashes are within [threshold] bits of each other.
- * - Candidate pairs come from a multi-index over pHash; each is confirmed on both pHash and dHash.
+ * How far dHash may differ once pHash already agrees. dHash reacts far more strongly to resizing and
+ * re-encoding than pHash does, so holding it to the match threshold drops true re-saves; at 16 of 64 bits two
+ * unrelated images still pass it only about once in 100,000.
+ */
+const val DHASH_CONFIRM_BITS = 16
+
+/**
+ * Groups images whose perceptual hashes are close enough to be the same picture.
+ * - Candidate pairs come from a multi-index over pHash; each is confirmed on pHash within [threshold] and on dHash
+ *   within the wider [DHASH_CONFIRM_BITS], which cuts pHash false positives without dropping re-encoded copies.
  * - Matching is transitive through union-find, so a chain of close images forms one group.
  * Returns groups of two or more ids, each sorted, largest group first.
  */
 fun groupNearImages(items: List<Pair<Long, ImageHashes>>, threshold: Int): List<List<Long>> {
     val dHashes = LongArray(items.size) { items[it].second.dHash }
+    val confirm = maxOf(threshold, DHASH_CONFIRM_BITS)
     return groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second.pHash }, threshold) { i, j ->
-        hammingDistance(dHashes[i], dHashes[j]) <= threshold
+        hammingDistance(dHashes[i], dHashes[j]) <= confirm
     }
 }
 

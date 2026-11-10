@@ -34,6 +34,10 @@
     <string name="scope_folders">Picked folders</string>
     <string name="scope_paths">Preset folders</string>
 
+    <string name="home_storage_title">Storage</string>
+    <string name="home_storage_used">%1$s used of %2$s</string>
+    <string name="home_storage_free">%1$s free now</string>
+    <string name="home_storage_after">%1$s free after clearing the duplicates</string>
     <string name="home_reclaim_title">Space you can free</string>
     <string name="home_reclaim_detail">%1$s · %2$s</string>
     <string name="home_reclaim_none">No duplicates found yet.</string>
@@ -87,7 +91,8 @@
         <item quantity="one">%1$s file selected · %2$s</item>
         <item quantity="other">%1$s files selected · %2$s</item>
     </plurals>
-    <string name="results_action_select_duplicates">Select duplicates</string>
+    <string name="results_action_select_all">Select all duplicates</string>
+    <string name="results_select_all_detail">%1$s copies · frees %2$s</string>
     <string name="results_open_group">Open group</string>
     <string name="results_select_group">Select %1$s</string>
     <string name="results_action_clear">Clear</string>
@@ -115,6 +120,11 @@
         <item quantity="other">Delete %1$s files?</item>
     </plurals>
     <string name="results_delete_body">This frees %1$s. Photos, videos and music go to the system trash, where they stay for 30 days. Other files move to Quarantine, where you can restore them.</string>
+    <string name="results_delete_free_after">You would have %1$s free of %2$s.</string>
+    <plurals name="results_delete_similar">
+        <item quantity="one">%1$s of these is similar rather than identical. Check it before deleting.</item>
+        <item quantity="other">%1$s of these are similar rather than identical. Check them before deleting.</item>
+    </plurals>
     <plurals name="results_removed">
         <item quantity="one">%1$s file removed · %2$s freed</item>
         <item quantity="other">%1$s files removed · %2$s freed</item>
@@ -242,6 +252,7 @@
     <string name="ai_error_title">Couldn’t load AI settings</string>
     <string name="scan_action_start">Start scan</string>
     <string name="scan_action_next">Next</string>
+    <string name="scan_action_customise">Choose what to scan</string>
     <string name="scan_action_new_preset">New preset</string>
     <string name="scan_action_edit_preset">Edit preset</string>
     <string name="scan_action_delete_preset">Delete preset</string>
@@ -249,7 +260,7 @@
     <string name="scan_action_add_folder">Add folder</string>
     <string name="scan_presets_title">Presets</string>
     <string name="scan_preset_none">No preset</string>
-    <string name="scan_preset_none_body">Choose the file types and where to look.</string>
+    <string name="scan_preset_none_body">Scan every file type, or choose what to look at.</string>
     <string name="scan_preset_detail">%1$s · %2$s</string>
     <string name="scan_preset_folders_gone">Its folders aren’t shared with Dupe Digger anymore. Edit it to pick folders again.</string>
     <string name="scan_preset_name_label">Preset name</string>

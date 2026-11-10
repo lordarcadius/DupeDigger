@@ -2,14 +2,12 @@ package com.vipuljha.dupedigger.core.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.vipuljha.dupedigger.core.designsystem.AppMotion
+import com.vipuljha.dupedigger.core.designsystem.stateChangeSpec
 
 /** Cross-fades a content area only when the kind of state changes: loading, error, empty or content. */
 @Composable
@@ -22,7 +20,8 @@ fun <T> StateSwitch(
     modifier: Modifier = Modifier,
     content: @Composable (T) -> Unit,
 ) {
-    val fade = tween<Float>(AppMotion.StateFadeMillis, easing = FastOutSlowInEasing)
+    // The theme's own effects spec, so a state change reads like the rest of the app rather than a hand-set curve.
+    val fade = stateChangeSpec()
     AnimatedContent(
         targetState = state,
         modifier = modifier,

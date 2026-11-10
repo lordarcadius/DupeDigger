@@ -117,3 +117,21 @@ Scan presets, background scans and smart selection, done in 12 steps. Design is 
 - Similar-but-not-duplicate cleanup (blurry, screenshots, large files).
 - Cloud folders through SAF providers (Drive and similar). These are slow, so treat them as a separate scope.
 - Multi-module split (`:core:*`, `:feature:*`), if build times grow.
+
+---
+
+## P8: Detection gaps, filters, selection and storage impact
+
+Raised by the owner after using the app: identical-looking photos not reported, filters that disagreed with the list,
+a selection that kept clearing, no select-all, a delete gesture nobody wanted, cramped small screens and slow scans.
+
+| ID | Task | Done when |
+|---|---|---|
+| P8-01 | **File kind from the name.** Extension table for the formats `MimeTypeMap` and SAF don't place (HEIC, AVIF, Matroska, Opus, Markdown and the rest); every enumerator uses it. | A HEIC photo copied twice is reported as an exact duplicate, and a scan asking only for photos includes it. |
+| P8-02 | **Near-tier recall.** dHash confirms on its own wider band (D-016); the minimum file size reaches the near and AI tiers (D-017). | A re-encoded copy whose dHash drifted still groups; unrelated images still don't. Unit tests. |
+| P8-03 | **Filters.** One (kind, tier) facet query drives both chip rows and the select-all preview; the chosen chip survives at zero. | A chip count always matches the list that opens, and no filter can be reached that can't be left. |
+| P8-04 | **Selection.** Swipe-to-select gone; a tri-state Select all over everything the filter shows; selection pruned rather than cleared; per-group tri-state. | Selecting 5,000 copies survives a delete made elsewhere and a keep choice. |
+| P8-05 | **Scan speed.** Parallelism follows the core count; hashes are written per batch and flushed when a scan stops. | A scan stopped part-way re-reads nothing it already hashed. |
+| P8-06 | **Storage impact.** `DeviceStorage`; a Home meter showing used, duplicates and free, and what a clean-up would leave; the delete confirmation names the space and the free space after. | Home and the confirmation both say what deleting would change. |
+| P8-07 | **Small screens and motion.** Action rows wrap; the quarantine and group cards stack; state changes and list moves use the theme's expressive specs. | Every screen works at 320 dp and 200% font scale with nothing cut off. |
+| P8-08 | **Scan friction.** The first step starts a scan on every file type and the widest scope, with "Choose what to scan" beside it. | Scanning everything takes one tap from the Scan screen. |

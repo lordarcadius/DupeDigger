@@ -19,12 +19,16 @@ class DeleteDuplicatesUseCase @Inject constructor(
     private val fileIndex: FileIndexRepository,
     private val remover: FileRemover,
 ) {
-    suspend operator fun invoke(fileIds: Set<Long>): Outcome<RemovalResult> {
+    /** [onProgress] gets files handled so far and the total; a delete of thousands takes long enough to show it. */
+    suspend operator fun invoke(
+        fileIds: Set<Long>,
+        onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): Outcome<RemovalResult> {
         val memberSets = groups.groupsContaining(fileIds)
         if (!memberSets.flatten().toSet().containsAll(fileIds)) return Outcome.Failure(DomainError.NotFound)
         if (memberSets.any { members -> members.all { it in fileIds } }) return Outcome.Failure(DomainError.WouldRemoveAllCopies)
 
-        val result = remover.remove(fileIndex.filesByIds(fileIds))
+        val result = remover.remove(fileIndex.filesByIds(fileIds), onProgress)
         fileIndex.remove(result.removedIds)
         return Outcome.Success(result)
     }

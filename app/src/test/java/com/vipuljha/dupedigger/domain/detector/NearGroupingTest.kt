@@ -42,6 +42,18 @@ class NearGroupingTest {
     }
 
     @Test
+    fun `a re-encode whose dHash drifted still groups, while an unrelated pair does not`() {
+        // A re-saved photo keeps its pHash but its dHash moves; holding dHash to the match threshold lost it.
+        val items = listOf(
+            1L to ImageHashes(dHash = 0L, pHash = 0L),
+            2L to ImageHashes(dHash = 0x0F0FL, pHash = 0b11L),
+            3L to ImageHashes(dHash = -1L, pHash = 0b111L),
+        )
+
+        assertEquals(listOf(listOf(1L, 2L)), groupNearImages(items, threshold = 10))
+    }
+
+    @Test
     fun `both hashes must agree for a match`() {
         val items = listOf(1L to ImageHashes(dHash = 0L, pHash = 0L), 2L to ImageHashes(dHash = -1L, pHash = 1L))
 
@@ -80,7 +92,7 @@ class NearGroupingTest {
         val sets = UnionFind(items.size)
         for (i in items.indices) for (j in 0 until i) {
             val (a, b) = items[i].second to items[j].second
-            if (hammingDistance(a.pHash, b.pHash) <= threshold && hammingDistance(a.dHash, b.dHash) <= threshold) sets.union(i, j)
+            if (hammingDistance(a.pHash, b.pHash) <= threshold && hammingDistance(a.dHash, b.dHash) <= maxOf(threshold, DHASH_CONFIRM_BITS)) sets.union(i, j)
         }
         return items.indices.groupBy(sets::find).values.filter { it.size > 1 }
             .map { members -> members.map { items[it].first }.sorted() }

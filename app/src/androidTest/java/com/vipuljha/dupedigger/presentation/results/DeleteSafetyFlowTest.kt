@@ -20,6 +20,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.FileIndexEntity
 import com.vipuljha.dupedigger.data.repository.DuplicateGroupRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.FileIndexRepositoryImpl
 import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
+import com.vipuljha.dupedigger.data.storage.AndroidDeviceStorage
 import com.vipuljha.dupedigger.data.storage.StorageVolumes
 import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.MatchTier
@@ -38,6 +39,7 @@ import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
 import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -87,6 +89,7 @@ class DeleteSafetyFlowTest {
             groups, ScanRunRepositoryImpl(db, db.scanRunDao()), GetDuplicateGroupsUseCase(groups), SelectAllButKeepersUseCase(groups), GetDuplicateFoldersUseCase(groups),
             DeleteDuplicatesUseCase(groups, files, remover), ConfirmTrashUseCase(files),
             UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
+            AndroidDeviceStorage(Dispatchers.IO, StorageVolumes(context)),
         )
         rule.setContent {
             DupeDiggerTheme { ResultsRoute(onMenuClick = null, openGroup = null, onOpenGroup = {}, onStartScan = {}, viewModel = viewModel) }
@@ -129,7 +132,7 @@ class DeleteSafetyFlowTest {
     /** Selects every copy but each group's keeper, then opens the confirmation and checks it names 4 files and their size. */
     private fun selectDuplicatesAndAskToDelete() {
         rule.waitUntil(TIMEOUT) { rule.onAllNodes(hasText("report-", substring = true)).fetchSemanticsNodes().size >= 2 }
-        rule.onNodeWithText(string(R.string.results_action_select_duplicates)).performClick()
+        rule.onNodeWithText(string(R.string.results_action_select_all)).performClick()
         rule.waitUntil(TIMEOUT) { rule.onAllNodes(hasText(selectedSummary())).fetchSemanticsNodes().isNotEmpty() }
 
         rule.onNodeWithText(string(R.string.action_delete)).performClick()
@@ -151,7 +154,7 @@ class DeleteSafetyFlowTest {
     private class RecordingRemover : FileRemover {
         val asked: MutableList<Long> = Collections.synchronizedList(mutableListOf())
 
-        override suspend fun remove(files: List<StoredFile>): RemovalResult {
+        override suspend fun remove(files: List<StoredFile>, onProgress: suspend (done: Int, total: Int) -> Unit): RemovalResult {
             val ids = files.map { it.id }
             asked += ids
             return RemovalResult(

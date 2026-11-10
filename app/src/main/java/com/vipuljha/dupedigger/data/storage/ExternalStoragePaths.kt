@@ -13,3 +13,6 @@ fun externalStorageDocIdToPath(docId: String): String? {
     val root = if (volume == "primary") PRIMARY_ROOT else "/storage/$volume"
     return if (relative.isEmpty()) root else "$root/$relative"
 }
+
+/** What a document provider answers when it can't place a file; the name's extension is a better guess. */
+const val GENERIC_MIME = "application/octet-stream"

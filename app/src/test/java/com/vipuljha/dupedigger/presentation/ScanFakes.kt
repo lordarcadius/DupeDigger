@@ -1,6 +1,8 @@
 package com.vipuljha.dupedigger.presentation
 
 import androidx.paging.PagingData
+import com.vipuljha.dupedigger.domain.model.GroupFacet
+import com.vipuljha.dupedigger.domain.model.StorageUsage
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.core.common.Outcome
@@ -34,6 +36,7 @@ import com.vipuljha.dupedigger.domain.model.TrashConsent
 import com.vipuljha.dupedigger.domain.model.VideoFile
 import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.core.common.DomainError
+import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileRemover
@@ -105,8 +108,8 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     val filters = mutableListOf<GroupFilter>()
 
     override fun observeReclaimable() = reclaimable
-    val tierCounts = MutableStateFlow<Map<MatchTier, Int>>(emptyMap())
-    override fun observeTierCounts() = tierCounts
+    val facets = MutableStateFlow<List<GroupFacet>>(emptyList())
+    override fun observeFacets() = facets
     override fun pagedGroups(filter: GroupFilter) = flowOf(PagingData.from(groups.toList()))
     override suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers> {
         filters += filter
@@ -117,6 +120,11 @@ class FakeReclaimGroups : DuplicateGroupRepository {
     override suspend fun groupsContaining(fileIds: Set<Long>) =
         groups.map { g -> g.members.map { it.fileId }.toSet() }.filter { set -> set.any { it in fileIds } }
     override suspend fun keepChoice(fingerprint: String): String? = null
+    override suspend fun stillRemovable(fileIds: Set<Long>): Set<Long> {
+        val keepers = groups.mapNotNull { group -> group.members.firstOrNull { it.sourceUri == group.keepChoice }?.fileId }.toSet()
+        return groups.filter { it.members.size >= 2 }.flatMap { it.members }.map { it.fileId }
+            .filter { it in fileIds && it !in keepers }.toSet()
+    }
 
     val detail = MutableStateFlow<GroupWithMembers?>(null)
     val decisions = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -169,7 +177,7 @@ class FakeRemover : FileRemover {
     val trashable = mutableSetOf<Long>()
     val untrashed = mutableListOf<String>()
 
-    override suspend fun remove(files: List<StoredFile>): RemovalResult {
+    override suspend fun remove(files: List<StoredFile>, onProgress: suspend (done: Int, total: Int) -> Unit): RemovalResult {
         val ids = files.map { it.id }
         val removed = ids.filter { it !in needConsent }
         val consentIds = ids.filter { it in needConsent }
@@ -224,4 +232,12 @@ class FakePresets : ScanPresetRepository {
     }
 
     override suspend fun delete(id: Long) = rows.update { list -> list.filterNot { it.id == id } }
+}
+
+/** Space on a 128 GB volume with [freeBytes] left; zero totals stand for a volume that couldn't be read. */
+class FakeDeviceStorage(
+    private val totalBytes: Long = 0,
+    private val freeBytes: Long = 0,
+) : DeviceStorage {
+    override suspend fun usage() = StorageUsage(totalBytes, freeBytes)
 }

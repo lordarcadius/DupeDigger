@@ -13,6 +13,7 @@ import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.model.ScanStatus
 import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.model.ScopeKind
+import com.vipuljha.dupedigger.presentation.FakeDeviceStorage
 import com.vipuljha.dupedigger.presentation.FakeReclaimGroups
 import com.vipuljha.dupedigger.presentation.FakeScanRuns
 import com.vipuljha.dupedigger.presentation.FakeScheduler
@@ -35,6 +36,7 @@ class HomeViewModelTest {
     private val groups = FakeReclaimGroups()
     private val runs = FakeScanRuns()
     private val scheduler = FakeScheduler()
+    private var storage = FakeDeviceStorage()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -42,7 +44,7 @@ class HomeViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun viewModel() = HomeViewModel(groups, runs, scheduler)
+    private fun viewModel() = HomeViewModel(groups, runs, scheduler, storage)
 
     private fun HomeViewModel.model() = (state.value.content as ContentState.Success).data
 
@@ -66,6 +68,25 @@ class HomeViewModelTest {
         assertEquals(listOf(MediaKind.IMAGE, MediaKind.DOCUMENT), model.kinds.map { it.kind })
         assertEquals(UiText.res(R.string.home_scan_status_completed), model.lastScan!!.status)
         assertEquals(UiText.res(R.string.scope_media), model.lastScan!!.scope)
+    }
+
+    @Test
+    fun `the storage card shows what is used, what is free, and what clearing the duplicates would leave`() {
+        storage = FakeDeviceStorage(totalBytes = 100_000, freeBytes = 40_000)
+        groups.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 2, files = 3, bytes = 10_000))
+
+        val card = viewModel().model().storage!!
+
+        assertEquals(UiText.res(R.string.home_storage_used, formatBytes(60_000), formatBytes(100_000)), card.headline)
+        assertEquals(UiText.res(R.string.home_storage_free, formatBytes(40_000)), card.freeNow)
+        assertEquals(UiText.res(R.string.home_storage_after, formatBytes(50_000)), card.afterCleanup)
+        assertEquals(0.6f, card.usedFraction, 1e-6f)
+        assertEquals(0.1f, card.duplicateFraction, 1e-6f)
+    }
+
+    @Test
+    fun `a volume that cannot be read leaves the storage card out`() {
+        assertNull(viewModel().model().storage)
     }
 
     @Test

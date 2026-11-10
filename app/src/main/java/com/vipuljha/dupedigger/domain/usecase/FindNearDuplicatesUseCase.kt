@@ -40,6 +40,7 @@ import kotlin.math.max
  * - Documents too short to compare are stored as [NO_TEXT_SIMHASH] and never match; formats the device can't read are
  *   skipped. A file that fails to read is counted as unreadable, never failing the scan.
  * - Documents use their own SimHash threshold; audio matches on title, artist and duration (no Hamming threshold).
+ * - Files under [minSizeBytes] are left out, like the exact tier, so the setting holds for every tier.
  */
 class FindNearDuplicatesUseCase @Inject constructor(
     private val fileIndex: FileIndexRepository,
@@ -52,20 +53,21 @@ class FindNearDuplicatesUseCase @Inject constructor(
     suspend operator fun invoke(
         scanId: Long,
         threshold: Int,
+        minSizeBytes: Long,
         exactGroups: List<ExactGroup>,
         kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult {
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
         val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.imagesSeenIn(scanId) else emptyList())
-            .filter { it.id !in exactCopies }.partition { it.hashes != null }
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.hashes != null }
         val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.videosSeenIn(scanId) else emptyList())
-            .filter { it.id !in exactCopies }.partition { it.signature != null }
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.signature != null }
         val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.documentsSeenIn(scanId) else emptyList())
-            .filter { it.id !in exactCopies && textReader.supports(it.name, it.mimeType) }
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies && textReader.supports(it.name, it.mimeType) }
             .partition { it.simHash != null }
         val (cachedAudio, newAudio) = (if (MediaKind.AUDIO in kinds) fileIndex.audioSeenIn(scanId) else emptyList())
-            .filter { it.id !in exactCopies }.partition { it.signature != null }
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.signature != null }
         val total = newImages.size + newVideos.size + newDocs.size + newAudio.size
         val attempted = AtomicInteger()
         val step: suspend () -> Unit = { onProgress(attempted.incrementAndGet(), total) }

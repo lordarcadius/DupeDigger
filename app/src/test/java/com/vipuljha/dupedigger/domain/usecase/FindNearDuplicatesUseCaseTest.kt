@@ -96,7 +96,7 @@ class FindNearDuplicatesUseCaseTest {
         texts["file:/d/3.txt"] = "Short note."
         texts["file:/d/4.txt"] = "Short note."
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList())
 
         assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
         assertEquals(NO_TEXT_SIMHASH, index.savedDocs[3L])
@@ -115,7 +115,7 @@ class FindNearDuplicatesUseCaseTest {
             AudioFile(4, "file:/a/4.mp3", "Track 05.mp3", 30, untagged),
         )
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList())
 
         assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
     }
@@ -132,7 +132,7 @@ class FindNearDuplicatesUseCaseTest {
         signed["file:/v/11.mp4"] = clip(60_400, flip = 3)
         val progress = mutableListOf<Pair<Int, Int>>()
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList()) { done, total -> progress += done to total }
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList()) { done, total -> progress += done to total }
 
         assertEquals(listOf(listOf(1L, 2L), listOf(10L, 11L)), result.groups.map { it.fileIds })
         assertEquals(mapOf(11L to clip(60_400, flip = 3)), index.savedVideos)
@@ -149,7 +149,7 @@ class FindNearDuplicatesUseCaseTest {
         index.images += listOf(image(1, origin), image(2))
         decoded["file:/p/2.jpg"] = close
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList())
 
         assertEquals(listOf("file:/p/2.jpg"), requested)
         assertEquals(mapOf(2L to close), index.saved)
@@ -161,10 +161,22 @@ class FindNearDuplicatesUseCaseTest {
     }
 
     @Test
+    fun `files under the minimum size are never read or grouped`() = runTest {
+        index.images += listOf(image(1, origin), image(2, origin), image(3))
+        decoded["file:/p/3.jpg"] = close
+
+        // Sizes are id * 10, so only image 3 clears 25 bytes and is left alone in its kind.
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 25, exactGroups = emptyList())
+
+        assertTrue(result.groups.isEmpty())
+        assertEquals(listOf("file:/p/3.jpg"), requested)
+    }
+
+    @Test
     fun `an exact group takes part through one member only`() = runTest {
         index.images += listOf(image(1, origin), image(2, origin), image(3, close))
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = listOf(ExactGroup(10, "h", persistentListOf(2, 1))))
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = listOf(ExactGroup(10, "h", persistentListOf(2, 1))))
 
         assertEquals(listOf(listOf(1L, 3L)), result.groups.map { it.fileIds })
     }
@@ -173,7 +185,7 @@ class FindNearDuplicatesUseCaseTest {
     fun `an image that can't be decoded is skipped and counted`() = runTest {
         index.images += listOf(image(1, origin), image(2))
 
-        val result = find(scanId = 1, threshold = 10, exactGroups = emptyList())
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList())
 
         assertTrue(result.groups.isEmpty())
         assertEquals(1, result.unreadable)

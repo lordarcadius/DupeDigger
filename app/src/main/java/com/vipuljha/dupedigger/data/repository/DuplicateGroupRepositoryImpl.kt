@@ -15,6 +15,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.KeepChoiceEntity
 import com.vipuljha.dupedigger.data.paging.GroupPage
 import com.vipuljha.dupedigger.data.paging.GroupPagingSource
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupMember
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
@@ -40,8 +41,8 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
         rows.map { KindReclaim(MediaKind.valueOf(it.mediaKind), it.groupCount, it.files, it.bytes) }
     }
 
-    override fun observeTierCounts(): Flow<Map<MatchTier, Int>> = groupDao.observeTierCounts().map { rows ->
-        rows.associate { MatchTier.valueOf(it.tier) to it.groupCount }
+    override fun observeFacets(): Flow<List<GroupFacet>> = groupDao.observeFacets().map { rows ->
+        rows.map { GroupFacet(MediaKind.valueOf(it.mediaKind), MatchTier.valueOf(it.tier), it.groupCount, it.files, it.bytes) }
     }
 
     override fun observeGroup(fingerprint: String): Flow<GroupWithMembers?> = groupDao.observeGroupDetail(fingerprint).map { rows ->
@@ -58,7 +59,7 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
     }
 
     override fun observeDecisionChanges(): Flow<Unit> =
-        db.invalidationTracker.createFlow("keep_choice", "duplicate_group", emitInitialState = false).map { }
+        db.invalidationTracker.createFlow("keep_choice", "duplicate_group", "group_member", emitInitialState = false).map { }
 
     override suspend fun setKeepChoice(fingerprint: String, sourceUri: String) =
         keepChoiceDao.upsert(KeepChoiceEntity(fingerprint, sourceUri, chosenAt = System.currentTimeMillis()))
@@ -80,6 +81,9 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
             groups.zip(ids).flatMap { (group, groupId) -> group.fileIds.map { GroupMemberEntity(groupId, it, similarity = group.score) } },
         )
     }
+
+    override suspend fun stillRemovable(fileIds: Set<Long>): Set<Long> =
+        fileIds.chunked(MAX_QUERY_ARGS).flatMap { groupDao.stillRemovable(it) }.toSet()
 
     override suspend fun groupsContaining(fileIds: Set<Long>): List<Set<Long>> =
         fileIds.chunked(MAX_QUERY_ARGS)

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.RemoveDone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -48,6 +49,7 @@ import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
+import com.vipuljha.dupedigger.core.designsystem.TooltipIconButton
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.StateSwitch
@@ -72,8 +74,13 @@ fun GroupScreen(
             AppTopBar(
                 onBack = onBack,
                 actions = {
+                    // An icon keeps its 48dp target at any font scale, where a worded button would crowd out the title.
                     if (hasGroup) {
-                        AppButton(stringResource(R.string.group_action_not_duplicates), { onIntent(GroupIntent.NotDuplicatesClicked) }, kind = ButtonKind.Text)
+                        TooltipIconButton(
+                            Icons.Outlined.RemoveDone,
+                            stringResource(R.string.group_action_not_duplicates),
+                            { onIntent(GroupIntent.NotDuplicatesClicked) },
+                        )
                     }
                 },
             ) { TopBarTitle(stringResource(R.string.group_title)) }

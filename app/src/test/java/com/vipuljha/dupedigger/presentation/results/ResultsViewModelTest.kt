@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupMember
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.domain.model.KeepRule
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
@@ -22,6 +23,7 @@ import com.vipuljha.dupedigger.domain.usecase.GetDuplicateGroupsUseCase
 import com.vipuljha.dupedigger.domain.usecase.RestoreQuarantinedUseCase
 import com.vipuljha.dupedigger.domain.usecase.UndoRemovalUseCase
 import com.vipuljha.dupedigger.domain.usecase.SelectAllButKeepersUseCase
+import com.vipuljha.dupedigger.presentation.FakeDeviceStorage
 import com.vipuljha.dupedigger.presentation.FakeFileIndex
 import com.vipuljha.dupedigger.presentation.FakeQuarantine
 import com.vipuljha.dupedigger.presentation.FakeReclaimGroups
@@ -85,6 +87,7 @@ class ResultsViewModelTest {
     private fun viewModel() = ResultsViewModel(
         repo, runs, GetDuplicateGroupsUseCase(repo), SelectAllButKeepersUseCase(repo), GetDuplicateFoldersUseCase(repo),
         DeleteDuplicatesUseCase(repo, index, remover), ConfirmTrashUseCase(index), UndoRemovalUseCase(remover, RestoreQuarantinedUseCase(quarantine)),
+        FakeDeviceStorage(),
     )
 
     private fun TestScope.effectsOf(vm: ResultsViewModel) = mutableListOf<ResultsEffect>().also { effects ->
@@ -94,7 +97,7 @@ class ResultsViewModelTest {
     @Test
     fun `delete asks first, naming the count and the space`() {
         val vm = viewModel()
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
         vm.onIntent(ResultsIntent.DeleteClicked)
         assertEquals(
@@ -112,7 +115,7 @@ class ResultsViewModelTest {
         remover.trashable += 2L
         val vm = viewModel()
         val effects = effectsOf(vm)
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
         vm.onIntent(ResultsIntent.DeleteClicked)
 
         vm.onIntent(ResultsIntent.DeleteConfirmed)
@@ -135,7 +138,7 @@ class ResultsViewModelTest {
         remover.needConsent += 2L
         val vm = viewModel()
         val effects = effectsOf(vm)
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
         vm.onIntent(ResultsIntent.DeleteConfirmed)
 
@@ -151,7 +154,7 @@ class ResultsViewModelTest {
     fun `declining the trash prompt keeps the media`() = runTest {
         remover.needConsent += 2L
         val vm = viewModel()
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
         vm.onIntent(ResultsIntent.DeleteConfirmed)
 
         vm.onIntent(ResultsIntent.TrashAnswered(accepted = false))
@@ -175,7 +178,7 @@ class ResultsViewModelTest {
     fun `select duplicates takes every file but each group's keeper`() {
         val vm = viewModel()
 
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
         assertEquals(setOf(2L, 3L), vm.state.value.selection.keys)
         assertEquals(UiText.plural(R.plurals.results_selected, 2, "2", formatBytes(200)), vm.state.value.selectionSummary)
@@ -186,9 +189,9 @@ class ResultsViewModelTest {
     fun `a category limits what is selected and changing it clears the selection`() {
         val vm = viewModel()
         vm.onIntent(ResultsIntent.KindSelected(MediaKind.IMAGE))
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
-        assertEquals(GroupFilter(kind = MediaKind.IMAGE, tier = MatchTier.EXACT), repo.filters.last())
+        assertEquals(GroupFilter(kind = MediaKind.IMAGE), repo.filters.last())
         assertEquals(setOf(2L), vm.state.value.selection.keys)
 
         vm.onIntent(ResultsIntent.KindSelected(null))
@@ -212,7 +215,7 @@ class ResultsViewModelTest {
     fun `a new scan clears the selection`() {
         runs.latest.value = ScanRunInfo(1, null, ScanStatus.COMPLETED, 0, 1, null)
         val vm = viewModel()
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
         runs.latest.value = ScanRunInfo(2, null, ScanStatus.RUNNING, 2, null, null)
 
@@ -220,34 +223,92 @@ class ResultsViewModelTest {
     }
 
     @Test
-    fun `a keeper change or a not-duplicates mark clears the selection`() {
+    fun `a new keeper drops only that file from the selection, leaving the rest`() {
         val vm = viewModel()
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
+        assertEquals(setOf(2L, 3L), vm.state.value.selection.keys)
 
+        repo.groups[0] = images.copy(keepChoice = "file:/storage/emulated/0/Download/a.jpg")
         repo.decisions.tryEmit(Unit)
 
-        assertTrue(vm.state.value.selection.isEmpty())
+        assertEquals(setOf(3L), vm.state.value.selection.keys)
+    }
+
+    @Test
+    fun `a file that left its group drops out of the selection`() {
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllToggled)
+
+        repo.groups.remove(documents)
+        repo.decisions.tryEmit(Unit)
+
+        assertEquals(setOf(2L), vm.state.value.selection.keys)
     }
 
     @Test
     fun `tier chips appear per tier and choosing one filters the list and clears the selection`() {
-        repo.tierCounts.value = mapOf(MatchTier.EXACT to 3, MatchTier.NEAR to 2)
+        repo.facets.value = listOf(
+            GroupFacet(MediaKind.IMAGE, MatchTier.EXACT, groups = 3, files = 3, bytes = 300),
+            GroupFacet(MediaKind.IMAGE, MatchTier.NEAR, groups = 2, files = 2, bytes = 200),
+        )
         val vm = viewModel()
         assertEquals(listOf(null, MatchTier.EXACT, MatchTier.NEAR), vm.state.value.tierChips.map { it.tier })
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
 
         vm.onIntent(ResultsIntent.TierSelected(MatchTier.NEAR))
 
         assertTrue(vm.state.value.selection.isEmpty())
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
         assertEquals(GroupFilter(tier = MatchTier.NEAR), repo.filters.last())
     }
 
     @Test
-    fun `under all tiers, select duplicates takes exact groups only`() {
+    fun `select all covers every tier the filter shows, and says how many are only similar`() {
+        repo.groups[1] = documents.copy(tier = MatchTier.NEAR, keepChoice = null)
         val vm = viewModel()
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
-        assertEquals(GroupFilter(tier = MatchTier.EXACT), repo.filters.last())
+
+        vm.onIntent(ResultsIntent.SelectAllToggled)
+
+        assertEquals(GroupFilter(), repo.filters.last())
+        assertEquals(setOf(2L, 4L), vm.state.value.selection.keys)
+
+        vm.onIntent(ResultsIntent.DeleteClicked)
+        assertEquals(
+            UiText.plural(R.plurals.results_delete_similar, 1, "1"),
+            vm.state.value.confirmDelete?.similarWarning,
+        )
+    }
+
+    @Test
+    fun `select all clears the selection once everything the filter offers is picked`() {
+        repo.facets.value = listOf(GroupFacet(MediaKind.IMAGE, MatchTier.EXACT, groups = 2, files = 2, bytes = 200))
+        val vm = viewModel()
+        vm.onIntent(ResultsIntent.SelectAllToggled)
+        assertTrue(vm.state.value.allSelected)
+
+        vm.onIntent(ResultsIntent.SelectAllToggled)
+
+        assertTrue(vm.state.value.selection.isEmpty())
+    }
+
+    @Test
+    fun `chip counts follow the other filter, and the chosen chip stays even at zero`() {
+        repo.facets.value = listOf(
+            GroupFacet(MediaKind.IMAGE, MatchTier.EXACT, groups = 3, files = 3, bytes = 300),
+            GroupFacet(MediaKind.VIDEO, MatchTier.NEAR, groups = 2, files = 2, bytes = 200),
+        )
+        val vm = viewModel()
+
+        vm.onIntent(ResultsIntent.TierSelected(MatchTier.NEAR))
+
+        assertEquals(listOf(null, MediaKind.VIDEO), vm.state.value.kindChips.map { it.kind })
+
+        // Videos have no exact groups, but the chip the user is standing on stays, at zero, so they can leave it.
+        vm.onIntent(ResultsIntent.KindSelected(MediaKind.VIDEO))
+        vm.onIntent(ResultsIntent.TierSelected(MatchTier.EXACT))
+        assertEquals(listOf(null, MediaKind.IMAGE, MediaKind.VIDEO), vm.state.value.kindChips.map { it.kind })
+        assertEquals("0", (vm.state.value.kindChips.last().label as UiText.Resource).args[1])
+        assertEquals(SelectableUi(), vm.state.value.selectable)
     }
 
     @Test
@@ -261,15 +322,16 @@ class ResultsViewModelTest {
 
     @Test
     fun `chips list all, then each kind with groups, with counts`() {
-        repo.reclaimable.value = listOf(
-            KindReclaim(MediaKind.DOCUMENT, groups = 2, files = 2, bytes = 10),
-            KindReclaim(MediaKind.IMAGE, groups = 3, files = 4, bytes = 20),
+        repo.facets.value = listOf(
+            GroupFacet(MediaKind.DOCUMENT, MatchTier.EXACT, groups = 2, files = 2, bytes = 10),
+            GroupFacet(MediaKind.IMAGE, MatchTier.EXACT, groups = 3, files = 4, bytes = 20),
         )
 
-        val chips = viewModel().state.value.kindChips
+        val state = viewModel().state.value
 
-        assertEquals(listOf(null, MediaKind.IMAGE, MediaKind.DOCUMENT), chips.map { it.kind })
-        assertEquals(UiText.res(R.string.results_chip_count, UiText.res(R.string.results_chip_all), "5"), chips.first().label)
+        assertEquals(listOf(null, MediaKind.IMAGE, MediaKind.DOCUMENT), state.kindChips.map { it.kind })
+        assertEquals(UiText.res(R.string.results_chip_count, UiText.res(R.string.results_chip_all), "5"), state.kindChips.first().label)
+        assertEquals(SelectableUi(files = 6, bytes = 30), state.selectable)
     }
 
     @Test
@@ -308,15 +370,16 @@ class ResultsViewModelTest {
     }
 
     @Test
-    fun `a delete made from Group or Compare clears the selection, so the next delete can't trip on a file that's gone`() {
+    fun `a delete made from Group or Compare drops only the gone file, so the next delete can't trip on it`() {
         val vm = viewModel()
-        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 2, files = 2, bytes = 200))
-        vm.onIntent(ResultsIntent.SelectAllButKeepers)
+        vm.onIntent(ResultsIntent.SelectAllToggled)
         assertEquals(2, vm.state.value.selection.size)
 
-        repo.reclaimable.value = listOf(KindReclaim(MediaKind.IMAGE, groups = 1, files = 1, bytes = 100))
+        // The group shrank below two members, so neither of its files can go any more.
+        repo.groups[1] = documents.copy(members = persistentListOf(member(4, "/storage/emulated/0/Download/b.pdf")))
+        repo.decisions.tryEmit(Unit)
 
-        assertTrue(vm.state.value.selection.isEmpty())
-        assertNull(vm.state.value.selectionSummary)
+        assertEquals(setOf(2L), vm.state.value.selection.keys)
+        assertEquals(UiText.plural(R.plurals.results_selected, 1, "1", formatBytes(100)), vm.state.value.selectionSummary)
     }
 }

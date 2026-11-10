@@ -1,14 +1,18 @@
 package com.vipuljha.dupedigger.presentation.results
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,10 +28,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
@@ -44,21 +47,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -67,17 +70,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import coil3.compose.AsyncImage
 import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
-import com.vipuljha.dupedigger.core.designsystem.AppMotion
+import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
 import com.vipuljha.dupedigger.core.designsystem.Dimens
@@ -87,13 +92,16 @@ import com.vipuljha.dupedigger.core.designsystem.StateAlpha
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
 import com.vipuljha.dupedigger.core.designsystem.TierTag
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
+import com.vipuljha.dupedigger.core.designsystem.listPlacementSpec
 import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
+import com.vipuljha.dupedigger.core.designsystem.stateChangeSpec
 import com.vipuljha.dupedigger.core.designsystem.shimmer
 import com.vipuljha.dupedigger.core.ui.asString
+import com.vipuljha.dupedigger.core.ui.formatBytes
+import com.vipuljha.dupedigger.core.ui.formatCount
 import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.launch
 
 @Composable
 fun ResultsScreen(
@@ -110,12 +118,12 @@ fun ResultsScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_results)) } },
-        bottomBar = { state.selectionSummary?.let { SelectionBar(it.asString(), state.deleting, onIntent) } },
+        bottomBar = { SelectionBar(state, onIntent) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            if (state.kindChips.size > 1) KindChips(state, onIntent)
-            if (state.tierChips.size > 2) TierChips(state, onIntent)
+            if (state.showKindChips) KindChips(state, onIntent)
+            if (state.showTierChips) TierChips(state, onIntent)
             GroupList(state, groups, onIntent, openGroup, onOpenGroup, Modifier.weight(1f))
         }
     }
@@ -159,11 +167,26 @@ private fun DeleteDialog(confirm: DeleteConfirmUi, onIntent: (ResultsIntent) -> 
         onDismissRequest = { onIntent(ResultsIntent.DeleteDismissed) },
         onEnter = { onIntent(ResultsIntent.DeleteConfirmed) },
         title = { Text(confirm.title.asString()) },
-        text = { Text(confirm.body.asString()) },
+        text = {
+            Column(
+                Modifier.heightIn(max = DialogTextMaxHeight).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+            ) {
+                Text(confirm.body.asString())
+                confirm.freeAfter?.let {
+                    Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                confirm.similarWarning?.let {
+                    Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary)
+                }
+            }
+        },
         confirmButton = { AppButton(stringResource(R.string.action_delete), { onIntent(ResultsIntent.DeleteConfirmed) }, kind = ButtonKind.Destructive) },
         dismissButton = { AppButton(stringResource(R.string.action_cancel), { onIntent(ResultsIntent.DeleteDismissed) }, kind = ButtonKind.Text) },
     )
 }
+
+private val DialogTextMaxHeight = 320.dp
 
 @Composable
 private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
@@ -176,7 +199,8 @@ private fun KindChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
             FilterChip(
                 selected = chip.kind == state.kind,
                 onClick = { onIntent(ResultsIntent.KindSelected(chip.kind)) },
-                label = { Text(chip.label.asString()) },
+                label = { Text(chip.label.asString(), maxLines = 1) },
+                modifier = Modifier.animateItem(placementSpec = listPlacementSpec()),
             )
         }
     }
@@ -193,7 +217,7 @@ private fun KeepChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit, mo
     )
     LazyRow(
         modifier = modifier,
-        contentPadding = PaddingValues(start = gutter),
+        contentPadding = PaddingValues(horizontal = gutter),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
     ) {
         items(chips, key = { it.second }, contentType = { "keep" }) { (rule, label) ->
@@ -201,7 +225,7 @@ private fun KeepChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit, mo
                 selected = state.keepRule == rule,
                 onClick = { onIntent(ResultsIntent.KeepRuleSelected(rule)) },
                 enabled = !state.selecting,
-                label = { Text(stringResource(label)) },
+                label = { Text(stringResource(label), maxLines = 1) },
             )
         }
         item(key = "keep-folder", contentType = "keep") {
@@ -209,7 +233,7 @@ private fun KeepChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit, mo
                 selected = state.keepRule is KeepRule.InFolder,
                 onClick = { onIntent(ResultsIntent.KeepFromFolderClicked) },
                 enabled = !state.selecting,
-                label = { Text(stringResource(R.string.results_keep_folder)) },
+                label = { Text(stringResource(R.string.results_keep_folder), maxLines = 1) },
             )
         }
     }
@@ -227,7 +251,8 @@ private fun TierChips(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
             FilterChip(
                 selected = chip.tier == state.tier,
                 onClick = { onIntent(ResultsIntent.TierSelected(chip.tier)) },
-                label = { Text(chip.label.asString()) },
+                label = { Text(chip.label.asString(), maxLines = 1) },
+                modifier = Modifier.animateItem(placementSpec = listPlacementSpec()),
             )
         }
     }
@@ -244,7 +269,7 @@ private fun GroupList(
     modifier: Modifier,
 ) {
     val refresh = groups.loadState.refresh
-    var lastError by remember(state.kind) { mutableStateOf<LoadState.Error?>(null) }
+    var lastError by remember(state.kind, state.tier) { mutableStateOf<LoadState.Error?>(null) }
     LaunchedEffect(refresh) {
         if (refresh is LoadState.Error) lastError = refresh
         if (refresh is LoadState.NotLoading) lastError = null
@@ -256,7 +281,7 @@ private fun GroupList(
         refresh is LoadState.Loading -> Phase.Loading
         else -> Phase.Empty
     }
-    Crossfade(phase, modifier, animationSpec = tween(AppMotion.StateFadeMillis, easing = FastOutSlowInEasing), label = "results") { p ->
+    Crossfade(phase, modifier, animationSpec = stateChangeSpec(), label = "results") { p ->
         when (p) {
             Phase.Loading -> ResultsSkeleton()
             Phase.Error -> StateMessage(
@@ -288,35 +313,6 @@ private fun GroupList(
 
 private enum class Phase { Loading, Error, Empty, Content }
 
-/** A sideways swipe toggles the row's selection and the row springs back; it never deletes. The checkbox stays the pointer and keyboard path. */
-@Composable
-private fun SwipeToSelect(selected: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val state = rememberSwipeToDismissBoxState()
-    val scope = rememberCoroutineScope()
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        backgroundContent = {
-            Box(
-                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.secondaryContainer).padding(horizontal = Dimens.spaceXl),
-                contentAlignment = if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
-            ) {
-                Icon(
-                    if (selected) Icons.Filled.CheckBoxOutlineBlank else Icons.Filled.CheckBox,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        },
-        onDismiss = {
-            onToggle()
-            scope.launch { state.reset() }
-        },
-    ) {
-        Box(Modifier.background(MaterialTheme.colorScheme.surface)) { content() }
-    }
-}
-
 @Composable
 private fun GroupRows(
     state: ResultsState,
@@ -325,34 +321,20 @@ private fun GroupRows(
     openGroup: String?,
     onOpenGroup: (String) -> Unit,
 ) {
-    val gutter = LocalPaneMetrics.current.gutter
     LazyColumn(contentPadding = PaddingValues(bottom = Dimens.listEndSpace)) {
-        item(key = "actions", contentType = "actions") {
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = Dimens.spaceSm),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                KeepChips(state, onIntent, Modifier.weight(1f))
-                AppButton(
-                    modifier = Modifier.padding(end = gutter),
-                    label = stringResource(R.string.results_action_select_duplicates),
-                    onClick = { onIntent(ResultsIntent.SelectAllButKeepers) },
-                    kind = ButtonKind.Tonal,
-                    loading = state.selecting,
-                )
-            }
+        item(key = "select-all", contentType = "select-all") { SelectAllRow(state, onIntent) }
+        item(key = "keep-rules", contentType = "keep-rules") {
+            KeepChips(state, onIntent, Modifier.padding(bottom = Dimens.spaceSm))
         }
         items(count = groups.itemCount, key = groups.itemKey { it.groupId }, contentType = groups.itemContentType { "group" }) { index ->
             groups[index]?.let { row ->
-                SwipeToSelect(row.selected, onToggle = { onIntent(ResultsIntent.GroupToggled(row)) }, modifier = Modifier.animateItem()) {
-                    GroupRow(
-                        row,
-                        open = row.fingerprint == openGroup,
-                        onOpen = { onOpenGroup(row.fingerprint) },
-                        onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
-                    )
-                }
+                GroupRow(
+                    row,
+                    open = row.fingerprint == openGroup,
+                    onOpen = { onOpenGroup(row.fingerprint) },
+                    onToggle = { onIntent(ResultsIntent.GroupToggled(row)) },
+                    modifier = Modifier.animateItem(placementSpec = listPlacementSpec()),
+                )
             }
         }
         when (groups.loadState.append) {
@@ -360,16 +342,69 @@ private fun GroupRows(
                 Box(Modifier.fillMaxWidth().padding(Dimens.spaceLg).animateItem(), contentAlignment = Alignment.Center) { AppLoadingIndicator() }
             }
             is LoadState.Error -> item(key = "appendError", contentType = "appendError") {
-                Row(
+                val gutter = LocalPaneMetrics.current.gutter
+                FlowRow(
                     Modifier.fillMaxWidth().padding(horizontal = gutter, vertical = Dimens.spaceSm).animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(stringResource(R.string.results_error_more), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     AppButton(stringResource(R.string.action_retry), groups::retry, kind = ButtonKind.Text)
                 }
             }
             is LoadState.NotLoading -> Unit
+        }
+    }
+}
+
+/**
+ * The one control that selects or clears every copy the filter shows.
+ * Its box is half-checked while part of them are picked, and its line says what the whole lot would free.
+ */
+@Composable
+private fun SelectAllRow(state: ResultsState, onIntent: (ResultsIntent) -> Unit, modifier: Modifier = Modifier) {
+    val gutter = LocalPaneMetrics.current.gutter
+    val label = stringResource(R.string.results_action_select_all)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = Dimens.touchTarget)
+            .toggleable(
+                value = state.allSelected,
+                enabled = !state.selecting && (state.selectable.files > 0 || state.hasSelection),
+                role = Role.Checkbox,
+                onValueChange = { onIntent(ResultsIntent.SelectAllToggled) },
+            )
+            .padding(horizontal = gutter, vertical = Dimens.spaceXs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TriStateCheckbox(
+            state = when {
+                state.allSelected -> ToggleableState.On
+                state.hasSelection -> ToggleableState.Indeterminate
+                else -> ToggleableState.Off
+            },
+            onClick = null,
+            enabled = !state.selecting && (state.selectable.files > 0 || state.hasSelection),
+        )
+        Spacer(Modifier.width(Dimens.spaceMd))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(
+                    R.string.results_select_all_detail,
+                    formatCount(state.selectable.files),
+                    formatBytes(state.selectable.bytes).asString(),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (state.selecting) {
+            Spacer(Modifier.width(Dimens.spaceSm))
+            AppLoadingIndicator(Modifier.size(Dimens.iconDense))
         }
     }
 }
@@ -390,8 +425,8 @@ private fun GroupRow(row: GroupRowUi, open: Boolean, onOpen: () -> Unit, onToggl
             .padding(horizontal = gutter, vertical = Dimens.spaceSm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        KindBadge(row.kind)
-        Spacer(Modifier.width(Dimens.spaceLg))
+        GroupThumbnail(row)
+        Spacer(Modifier.width(Dimens.spaceMd))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
                 Text(row.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -407,24 +442,41 @@ private fun GroupRow(row: GroupRowUi, open: Boolean, onOpen: () -> Unit, onToggl
             if (narrow) Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
         }
         if (!narrow) {
-            Spacer(Modifier.width(Dimens.spaceMd))
-            Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.width(Dimens.spaceSm))
+            Text(row.reclaim.asString(), style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
-        Checkbox(
-            checked = row.selected,
-            onCheckedChange = { onToggle() },
-            modifier = Modifier.padding(start = Dimens.spaceXs).semantics { contentDescription = selectLabel },
+        TriStateCheckbox(
+            state = when {
+                row.selected -> ToggleableState.On
+                row.partlySelected -> ToggleableState.Indeterminate
+                else -> ToggleableState.Off
+            },
+            onClick = onToggle,
+            modifier = Modifier.semantics { contentDescription = selectLabel },
         )
     }
 }
 
+/** The keeper's own thumbnail for photos and video, the kind's glyph for everything else. */
 @Composable
-private fun KindBadge(kind: MediaKind) {
-    Box(
-        Modifier.size(KindBadgeSize).background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.medium),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(kind.icon(), contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(Dimens.icon))
+private fun GroupThumbnail(row: GroupRowUi) {
+    val shape = MaterialTheme.shapes.medium
+    if (row.thumbnail != null) {
+        AsyncImage(
+            model = row.thumbnail,
+            contentDescription = null,
+            placeholder = painterResource(R.drawable.art_thumb_placeholder),
+            error = painterResource(R.drawable.art_thumb_broken),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(KindBadgeSize).clip(shape),
+        )
+    } else {
+        Box(
+            Modifier.size(KindBadgeSize).background(MaterialTheme.colorScheme.secondaryContainer, shape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(row.kind.icon(), contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(Dimens.icon))
+        }
     }
 }
 
@@ -436,20 +488,55 @@ private fun MediaKind.icon(): ImageVector = when (this) {
     MediaKind.OTHER -> Icons.Outlined.InsertDriveFile
 }
 
+/**
+ * The bar that appears with the first selection and carries the delete.
+ * Its buttons wrap under the summary when the pane is too narrow to hold them on one line, so nothing is cut off.
+ */
 @Composable
-private fun SelectionBar(summary: String, deleting: Boolean, onIntent: (ResultsIntent) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = LocalPaneMetrics.current.gutter, vertical = Dimens.spaceSm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                summary,
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
-            )
-            AppButton(stringResource(R.string.results_action_clear), { onIntent(ResultsIntent.ClearSelection) }, kind = ButtonKind.Text, enabled = !deleting)
-            AppButton(stringResource(R.string.action_delete), { onIntent(ResultsIntent.DeleteClicked) }, icon = Icons.Filled.Delete, loading = deleting)
+private fun SelectionBar(state: ResultsState, onIntent: (ResultsIntent) -> Unit) {
+    AnimatedVisibility(
+        visible = state.selectionSummary != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        val summary = state.selectionSummary?.asString().orEmpty()
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+            Column {
+                if (state.deleting) {
+                    AppProgressBar(
+                        progress = { state.deleteProgress }.takeIf { state.deleteProgress > 0f },
+                        modifier = Modifier.padding(horizontal = LocalPaneMetrics.current.gutter, vertical = Dimens.spaceXs),
+                    )
+                }
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = LocalPaneMetrics.current.gutter, vertical = Dimens.spaceSm),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+                ) {
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .align(Alignment.CenterVertically)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                    AppButton(
+                        stringResource(R.string.results_action_clear),
+                        { onIntent(ResultsIntent.ClearSelection) },
+                        kind = ButtonKind.Text,
+                        enabled = !state.deleting,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                    AppButton(
+                        stringResource(R.string.action_delete),
+                        { onIntent(ResultsIntent.DeleteClicked) },
+                        icon = Icons.Filled.Delete,
+                        loading = state.deleting,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                }
+            }
         }
     }
 }
@@ -470,7 +557,7 @@ private fun ResultsSkeleton() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(KindBadgeSize).shimmer(shimmer, MaterialTheme.shapes.medium))
-                    Spacer(Modifier.width(Dimens.spaceLg))
+                    Spacer(Modifier.width(Dimens.spaceMd))
                     Column(Modifier.weight(1f)) {
                         Box(
                             Modifier.fillMaxWidth(SkeletonBarFractions[row % SkeletonBarFractions.size])
@@ -492,5 +579,5 @@ private fun ResultsSkeleton() {
 private val GroupRowMinHeight = 72.dp
 
 // Below this (scaled with the font size) the size moves under the name, so the name keeps its room.
-private val NarrowRowWidth = 360.dp
-private val KindBadgeSize = 40.dp
+private val NarrowRowWidth = 400.dp
+private val KindBadgeSize = 48.dp

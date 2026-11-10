@@ -3,8 +3,8 @@
 Status only. Task scope and acceptance criteria are in [PLAN.md](PLAN.md).
 Statuses: `todo` · `in-progress` · `blocked` · `done`
 
-**Current phase:** P7 done; all planned tasks complete
-**Next task:** none (owner review, then the Primebook and Play checks below)
+**Current phase:** P8 (owner fixes) done; all planned tasks complete
+**Next task:** none (owner review on a device, then the Primebook and Play checks below)
 
 ## Status
 
@@ -50,10 +50,30 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P7-04 | Test coverage | done | Domain tests alone: 91.9% of domain lines; lint 0 errors |
 | P7-05 | Release build | done | Full R8, signed, smoke-tested (D-013) |
 | PRM2-10075 | Scan presets, background scans, smart selection | done | 12 steps, 2026-11-02 (D-014) |
+| P8-01 | File kind from the name | done | Extension table; HEIC and friends reach every tier (D-015) |
+| P8-02 | Near-tier recall | done | dHash band 16 (D-016); min size on every tier (D-017) |
+| P8-03 | Filters | done | One (kind, tier) facet query drives both chip rows (D-020) |
+| P8-04 | Selection | done | Swipe gone, tri-state Select all, selection pruned (D-018, D-019) |
+| P8-05 | Scan speed | done | Parallelism by core count; batched writes flushed on stop (D-021) |
+| P8-06 | Storage impact | done | Home meter and delete confirmation; `DeviceStorage` |
+| P8-07 | Small screens and motion | done | Wrapping action rows, theme motion specs; not yet checked on a device |
+| P8-08 | Scan friction | done | First step starts on every type and the widest scope |
 
 ## Log
 
 Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; what's next; blockers.`
+
+- 2026-11-10: P8-01 … P8-08: fixes the owner asked for after using the app.
+  - **Missed duplicates (P8-01).** The deep scan took a file's type from `MimeTypeMap`, which on many devices knows nothing about HEIC, HEIF, AVIF, Matroska, Opus or Markdown, and SAF often answers `application/octet-stream`. Those files were indexed as `OTHER`, so they never reached the image, video, document or audio tiers and were dropped by a scan asking only for photos — a HEIC photo copied twice was never reported. `domain/model/FileTypes.kt` adds an extension table behind `mediaKindOf(mime, name)` and `mimeTypeForName`; the tree walker, MediaStore and SAF enumerators all use it (D-015).
+  - **Near tier (P8-02).** dHash now confirms within 16 of 64 bits instead of the match threshold, because resizing and re-encoding move dHash far more than pHash, so true re-saves were being rejected (D-016). The minimum file size setting reaches the near and AI tiers, which it never did (D-017).
+  - **Filters (P8-03).** The two chip rows were counted by separate queries that each ignored the other filter, so a count could promise groups the list then didn't show. One `observeFacets()` query per (kind, tier) drives both rows and the select-all preview, and the chosen chip stays on the row at zero so a filter can always be left (D-020).
+  - **Selection (P8-04).** Swipe-to-select is gone. A tri-state "Select all duplicates" header covers every tier the filter shows and says what it would free; each group row is tri-state too. The selection is pruned to what can still go instead of being cleared whenever the group tables change (D-018, D-019). `SelectAllButKeepersUseCase` returns the tier with each file, and the delete confirmation names how many are similar rather than identical.
+  - **Speed (P8-05).** `PARALLELISM` follows the core count (4–8). The exact tier writes hashes per batch and flushes what it read in a `finally` under `NonCancellable`, so a cancelled scan re-reads nothing (D-021). Not yet timed on a device: P2-03's and P3-01's numbers still stand as the last measurements.
+  - **Storage impact (P8-06).** A `DeviceStorage` repository over the mounted volumes; Home gains a meter of used, duplicates and free with what a clean-up would leave; the delete confirmation adds the free space after and a warning when the selection holds similar files.
+  - **Small screens and motion (P8-07).** Scan and quarantine action rows wrap, the quarantine card stacks, the group screen's "Not duplicates" is an icon button, the results row carries a thumbnail and reflows below 400 dp, and state changes and list moves use `MaterialTheme.motionScheme` instead of hand-set tweens.
+  - **Friction (P8-08).** The Scan screen's first step now starts a scan on every file type and the widest scope, with "Choose what to scan" beside it; that was three steps.
+  - **Checks.** `assembleDebug`, `testDebugUnitTest` (277 tests) and `lint` pass; `compileDebugAndroidTestKotlin` passes. Two `FileTreeWalkerTest` cases fail on this Windows host and did so before these changes — one needs the symlink privilege, the other matches `/` separators — so both are now `assumeTrue`-guarded.
+  - **Not done:** nothing was run on a device or emulator this session, so the UI changes and the scan timings are unverified in practice. Next: an owner pass on a phone, then re-time a scan.
 
 - 2026-11-02: PRM2-10075 step 12, the final checks.
   - **Accessibility:** `AccessibilityChecksTest` now also checks the scan presets list, with a user preset and an unavailable built-in one, at 100% and 200% font. It checks 48dp targets, labels on every control, and that the preset text shows.

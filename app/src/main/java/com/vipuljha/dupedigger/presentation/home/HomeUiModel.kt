@@ -9,15 +9,24 @@ import com.vipuljha.dupedigger.core.ui.formatRelativeTime
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.ScanRunInfo
 import com.vipuljha.dupedigger.domain.model.ScanStatus
+import com.vipuljha.dupedigger.domain.model.StorageUsage
 import com.vipuljha.dupedigger.presentation.common.label
 import kotlinx.collections.immutable.toImmutableList
 
 /** Kinds with the most to free come first. */
-fun homeUiModel(kinds: List<KindReclaim>, lastRun: ScanRunInfo?, scanning: Boolean, nowMillis: Long): HomeUiModel {
+fun homeUiModel(
+    kinds: List<KindReclaim>,
+    lastRun: ScanRunInfo?,
+    scanning: Boolean,
+    storage: StorageUsage,
+    nowMillis: Long,
+): HomeUiModel {
     val files = kinds.sumOf { it.files }
     val groups = kinds.sumOf { it.groups }
+    val reclaimable = kinds.sumOf { it.bytes }
     return HomeUiModel(
-        reclaimTotal = formatBytes(kinds.sumOf { it.bytes }),
+        storage = storageUi(storage, reclaimable),
+        reclaimTotal = formatBytes(reclaimable),
         reclaimDetail = if (files == 0) null else UiText.res(
             R.string.home_reclaim_detail,
             UiText.plural(R.plurals.home_duplicate_files, files, formatCount(files)),
@@ -26,6 +35,23 @@ fun homeUiModel(kinds: List<KindReclaim>, lastRun: ScanRunInfo?, scanning: Boole
         kinds = kinds.filter { it.files > 0 }.sortedByDescending { it.bytes }.map { it.toRow() }.toImmutableList(),
         lastScan = lastRun?.toUi(nowMillis),
         scanning = scanning,
+    )
+}
+
+/**
+ * The storage card: how full the device is, and what it would look like with the duplicates gone.
+ * Null when no volume could be read, so the card is left out rather than showing zeroes.
+ */
+private fun storageUi(storage: StorageUsage, reclaimableBytes: Long): StorageUi? {
+    if (storage.totalBytes <= 0L) return null
+    return StorageUi(
+        headline = UiText.res(R.string.home_storage_used, formatBytes(storage.usedBytes), formatBytes(storage.totalBytes)),
+        freeNow = UiText.res(R.string.home_storage_free, formatBytes(storage.freeBytes)),
+        usedFraction = storage.usedFraction(),
+        duplicateFraction = storage.fractionOf(reclaimableBytes),
+        afterCleanup = reclaimableBytes
+            .takeIf { it > 0 }
+            ?.let { UiText.res(R.string.home_storage_after, formatBytes(storage.freeBytes + it)) },
     )
 }
 

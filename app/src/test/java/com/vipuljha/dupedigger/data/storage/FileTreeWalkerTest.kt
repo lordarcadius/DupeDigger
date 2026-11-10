@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -32,8 +33,18 @@ class FileTreeWalkerTest {
     private fun File.touch(relative: String, bytes: Int = 1) =
         File(this, relative).apply { parentFile!!.mkdirs(); writeBytes(ByteArray(bytes)) }
 
+    private fun canSymlink(): Boolean = try {
+        val link = File(tmp.newFolder("symlink-probe"), "link")
+        Files.createSymbolicLink(link.toPath(), tmp.root.toPath())
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     @Test
     fun `finds nested files with metadata and honours the filter`() = runBlocking {
+        // ScanFilter matches the `/` separators Android uses; a Windows temp folder has none to match.
+        assumeTrue(File.separatorChar == '/')
         val root = tmp.newFolder("root")
         root.touch("a.jpg", 3)
         root.touch("deep/er/b.txt")
@@ -108,6 +119,8 @@ class FileTreeWalkerTest {
 
     @Test
     fun `symlinks are never followed out of the root`() = runBlocking {
+        // Creating a symlink needs a privilege a normal Windows account does not have.
+        assumeTrue(canSymlink())
         val outside = tmp.newFolder("outside").apply { touch("secret.jpg") }
         val root = tmp.newFolder("root2").apply { touch("own.jpg") }
         Files.createSymbolicLink(File(root, "link").toPath(), outside.toPath())

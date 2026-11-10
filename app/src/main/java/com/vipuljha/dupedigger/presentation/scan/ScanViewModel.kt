@@ -239,7 +239,12 @@ class ScanViewModel @Inject constructor(
         val state = currentState
         val request = when {
             state.phase is ScanPhase.Done -> lastStarted ?: return handleIntent(ScanIntent.ScanAgainClicked)
-            state.step == SetupStep.Presets -> presets.firstOrNull { it.id == state.selectedPresetId }?.let { it.scope to it.kinds }
+            // With no preset the first step can start straight away, on every file type and the default scope.
+            state.step == SetupStep.Presets -> if (state.selectedPresetId == null) {
+                chosen()
+            } else {
+                presets.firstOrNull { it.id == state.selectedPresetId }?.let { it.scope to it.kinds }
+            }
             state.step == SetupStep.Where && state.draft == null -> chosen()
             else -> null
         }

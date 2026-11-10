@@ -2,18 +2,18 @@ package com.vipuljha.dupedigger.domain.repository
 
 import androidx.paging.PagingData
 import com.vipuljha.dupedigger.domain.model.FoundGroup
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.domain.model.KindReclaim
-import com.vipuljha.dupedigger.domain.model.MatchTier
 import kotlinx.coroutines.flow.Flow
 
 interface DuplicateGroupRepository {
     /** Reclaimable space per kind of file, over groups that still have at least two members. */
     fun observeReclaimable(): Flow<List<KindReclaim>>
 
-    /** How many groups of two or more members each tier has; tiers with none are absent. */
-    fun observeTierCounts(): Flow<Map<MatchTier, Int>>
+    /** Group counts and reclaimable bytes per kind and tier, over groups that still have at least two members. */
+    fun observeFacets(): Flow<List<GroupFacet>>
 
     /** Matching groups with at least two members, most space to free first; refreshes when groups or keep choices change. */
     fun pagedGroups(filter: GroupFilter): Flow<PagingData<GroupWithMembers>>
@@ -23,7 +23,10 @@ interface DuplicateGroupRepository {
     /** The saved group with this fingerprint and its keep choice, read in one query; null when there is none. */
     fun observeGroup(fingerprint: String): Flow<GroupWithMembers?>
 
-    /** Emits whenever keep choices or saved groups change. */
+    /**
+     * Emits whenever keep choices or saved groups change, membership included: deleting a file elsewhere cascades
+     * to `group_member`, and a selection holding that file would fail to delete.
+     */
     fun observeDecisionChanges(): Flow<Unit>
 
     suspend fun setKeepChoice(fingerprint: String, sourceUri: String)
@@ -35,6 +38,12 @@ interface DuplicateGroupRepository {
 
     /** Replaces every saved group with [groups] for [scanId], in one transaction. */
     suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>)
+
+    /**
+     * Of [fileIds], those still in a saved group of two or more members and not that group's keep choice: what a
+     * selection may still delete after a rescan, a delete or a new keeper changed the groups.
+     */
+    suspend fun stillRemovable(fileIds: Set<Long>): Set<Long>
 
     /** The member ids of every saved group that contains any of [fileIds]. */
     suspend fun groupsContaining(fileIds: Set<Long>): List<Set<Long>>

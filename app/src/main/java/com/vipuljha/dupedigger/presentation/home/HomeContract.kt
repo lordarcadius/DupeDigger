@@ -22,9 +22,23 @@ data class HomeUiModel(
     val kinds: ImmutableList<KindRowUi>,
     val lastScan: LastScanUi?,
     val scanning: Boolean,
+    val storage: StorageUi? = null,
 ) {
     val isEmpty: Boolean get() = lastScan == null && !scanning
 }
+
+/**
+ * What the device's storage looks like and what clearing the duplicates would change.
+ * [usedFraction] and [duplicateFraction] are shares of the whole volume, for the meter; null when no volume could be read.
+ */
+@Immutable
+data class StorageUi(
+    val headline: UiText,
+    val freeNow: UiText,
+    val usedFraction: Float,
+    val duplicateFraction: Float,
+    val afterCleanup: UiText?,
+)
 
 @Immutable
 data class KindRowUi(val kind: MediaKind, val label: UiText, val size: UiText, val detail: UiText)

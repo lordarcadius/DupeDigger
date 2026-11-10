@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.data.worker.InMemorySemanticStageSkip
 import com.vipuljha.dupedigger.domain.model.BuiltInPreset
 import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.MediaAccess
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanPreset
 import com.vipuljha.dupedigger.domain.model.ScanProgress
@@ -125,6 +126,20 @@ class ScanViewModelTest {
 
         assertEquals(listOf<ScanScope>(ScanScope.MediaOnly), scheduler.started)
         assertEquals(listOf(setOf(MediaKind.VIDEO)), scheduler.startedKinds)
+    }
+
+    @Test
+    fun `with no preset the first step starts straight away, on every file type and the widest scope`() {
+        val vm = viewModel()
+
+        assertEquals(SetupStep.Presets, vm.state.value.step)
+        assertNull(vm.state.value.selectedPresetId)
+        assertEquals(UiText.res(R.string.scope_whole_device), vm.state.value.defaultScopeTitle)
+
+        vm.onIntent(ScanIntent.StartClicked)
+
+        assertEquals(listOf<ScanScope>(ScanScope.WholeDevice), scheduler.started)
+        assertEquals(listOf(AllMediaKinds), scheduler.startedKinds)
     }
 
     @Test

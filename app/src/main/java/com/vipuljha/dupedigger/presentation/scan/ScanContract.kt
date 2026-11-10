@@ -46,6 +46,9 @@ data class ScanState(
     val aiSkipped: Boolean = false,
 ) : UiState {
     val canStartPreset: Boolean get() = presets.firstOrNull { it.id == selectedPresetId }?.enabled == true
+
+    /** What a scan started from the first step with no preset would cover; null while the scopes are still loading. */
+    val defaultScopeTitle: UiText? get() = scopes.firstOrNull { it.kind == selectedScope }?.title
     val canLeaveTypes: Boolean get() = kinds.any { it.selected }
     val canFinish: Boolean
         get() = when (selectedScope) {

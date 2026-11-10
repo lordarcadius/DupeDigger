@@ -48,7 +48,7 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
 ```
 1. Enumerate  ── walk the scope (MediaStore / SAF tree / File walk) → upsert into file_index
                  key: (volume, relativePath+name) or documentId; skip if size+mtime unchanged
-2. Exact      ── group by size (drop unique sizes; drop files < minSize)
+2. Exact      ── group by size (drop unique sizes; drop files < minSize, which every tier applies)
                  → partial hash: first 16 KiB + last 16 KiB + size
                  → full streaming hash (SHA-256, per D-005)
                  → groups of identical full hash  ⇒ MatchTier.EXACT
@@ -56,7 +56,8 @@ A scan is a WorkManager job (`ScanWorker`, a foreground worker with progress). I
                  video:  8 evenly spaced frames via MediaMetadataRetriever → per-frame pHash + duration
                  audio:  duration + title/artist tags (file name when untagged); acoustic matching is an AI-tier concern
                  docs:   extract text (PDF, txt, docx) → 64-bit SimHash
-                 → multi-index hashing (banding, D-012) to find pairs within the Hamming threshold
+                 → multi-index hashing (banding, D-012) to find pairs within the Hamming threshold,
+                   images confirmed on dHash within its own wider band (D-016)
                  → union-find into groups  ⇒ MatchTier.NEAR
 4. Semantic   ── (opt-in, model downloaded) EmbeddingGemma → L2-normalised vector
                  → cosine within each MediaKind bucket via random-hyperplane signatures + multi-index search (brute force measured too slow)
@@ -76,16 +77,17 @@ Rules:
   - Folders is a breadth-first `DocumentsContract` walk of each picked tree.
 
   All three apply the same `ScanFilter`: user exclusions, `Android/data` and `Android/obb` on every volume, and hidden entries when that setting is on.
+  All three take a file's `MediaKind` from its MIME type, falling back to the extension table in `domain/model/FileTypes.kt` when the provider gives none or answers `application/octet-stream` (D-015).
 - Indexing (`IndexFilesUseCase` → `FileIndexRepository`) writes 500 files per transaction:
   - an unchanged file (same size and mtime) keeps its row id and every cached hash and embedding;
   - a changed file is updated in place, and its `file_hash`, `perceptual_hash` and `embedding` rows are deleted;
   - unseen rows are pruned only after a completed enumeration, and only within the scanned scope's `sourceUri` prefixes (`file:`, `content://media/`, or each picked tree), so switching scope keeps the other scopes' cache.
 - Later stages consider only files with `lastSeenScanId` equal to the current scan.
 - The exact stage (`FindExactDuplicatesUseCase` + `ContentHasher`) buckets by size, then by (size, partial hash), then by (size, full hash):
-  - four files hash at once, on `@DefaultDispatcher`;
+  - one file per core (4–8) hashes at once, on `@DefaultDispatcher`;
   - a file of at most 32 KiB is read once and gets both hashes;
   - a file whose length no longer matches the index is skipped, never matched;
-  - partial hashes are saved per 500 files, and each full hash as soon as it is computed.
+  - partial hashes are saved per 500 files and full hashes per 100, and a cancelled stage flushes what it read under `NonCancellable`, so a stopped scan re-reads nothing (D-021).
 - `ScanWorker` is unique work (`scan`, `KEEP`) started through the domain `ScanScheduler`, and calls `RunScanUseCase`:
   - it refuses a scope that is no longer readable, so revoked access never empties the index;
   - each execution gets a new `scan_run`; a run left `RUNNING` by process death is closed as `INTERRUPTED`;

@@ -6,6 +6,7 @@ import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.reloading
 import com.vipuljha.dupedigger.core.ui.toUiText
+import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.repository.ScanScheduler
@@ -35,6 +36,7 @@ class HomeViewModel @Inject constructor(
     private val groups: DuplicateGroupRepository,
     private val scanRuns: ScanRunRepository,
     private val scheduler: ScanScheduler,
+    private val deviceStorage: DeviceStorage,
 ) : MviViewModel<HomeState, HomeIntent, HomeEffect>(HomeState()) {
 
     private var summaryJob: Job? = null
@@ -63,9 +65,14 @@ class HomeViewModel @Inject constructor(
             groups.observeReclaimable(),
             scanRuns.observeLatest(),
             scheduler.observeProgress().map { it != null }.distinctUntilChanged(),
-        ) { kinds, lastRun, scanning ->
-            ContentState.Success(homeUiModel(kinds, lastRun, scanning, System.currentTimeMillis())) as ContentState<HomeUiModel>
-        }
+            ::Triple,
+        )
+            // Space on the volumes is read again on each change, so a delete shows up in the meter at once.
+            .map { (kinds, lastRun, scanning) ->
+                ContentState.Success(
+                    homeUiModel(kinds, lastRun, scanning, deviceStorage.usage(), System.currentTimeMillis()),
+                ) as ContentState<HomeUiModel>
+            }
             .catch { emit(ContentState.Error(DomainError.Unknown.toUiText())) }
             .onEach { setState { copy(content = it) } }
             .launchIn(viewModelScope)

@@ -437,3 +437,52 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 - **Invariants kept:** with no tier chosen, only exact groups are picked. A file that keeps any matching group is never selected, so deleting a selection can't empty a group.
 - **Results screen:** "Keep newest", "Keep oldest", "Keep largest" and "Keep from folder…" chips sit next to "Select duplicates" (which is `Best`). Each selects in one tap. The chip of the rule behind the current selection stays on until the selection is changed.
   - "Keep from folder…" lists the folders holding the matching groups' files, most files first (`GetDuplicateFoldersUseCase`). Tapping one selects at once.
+
+---
+
+## D-015: File kind from the name when the platform can't say (accepted, P8-01)
+**Problem:** the deep scan asks `MimeTypeMap` for a file's MIME type. On many devices it knows nothing about HEIC, HEIF, AVIF, Matroska, Opus or Markdown, and SAF often answers `application/octet-stream`. Those files were indexed as `MediaKind.OTHER`, which left them out of the image, video, document and audio tiers altogether, and out of a scan that asked only for photos. A HEIC photo copied twice was never reported as a duplicate.
+
+**Decision:** `mediaKindOf(mimeType, fileName)` falls back to an extension table (`domain/model/FileTypes.kt`) whenever the MIME type is missing or resolves to `OTHER`, and `mimeTypeForName` fills in a usable MIME type for the extensions a later stage needs. Both are plain Kotlin and live in the domain, so every enumerator shares them.
+
+**Why a table and not the platform:** `MimeTypeMap` is backed by a per-device mapping, so what it knows varies by OEM and API level. A table in the app makes the scan behave the same everywhere, which matters because a missed kind silently changes what a scan finds.
+
+**Trade-off:** the table needs maintaining as formats appear. It only ever adds kinds; a MIME type the platform does supply always wins.
+
+## D-016: dHash confirms a match on a wider band than pHash (accepted, P8-02)
+**Decision:** `groupNearImages` still takes candidate pairs from pHash within the threshold setting, but confirms them on dHash within `DHASH_CONFIRM_BITS` (16 of 64), not within the same threshold.
+
+**Why:** dHash compares neighbouring pixels, so resizing and re-encoding move it much further than pHash, which compares low DCT frequencies. Holding both to 10 bits rejected genuine re-saves — the case the near tier exists for. Two unrelated 64-bit hashes land within 16 bits about once in 100,000, so the confirmation still does its job of cutting pHash's false positives on flat or low-detail images.
+
+**Supersedes** the matching rule in D-012; its hashes, candidate search and caching are unchanged.
+
+## D-017: The minimum file size applies to every tier (accepted, P8-02)
+**Decision:** `FindNearDuplicatesUseCase` and `FindSemanticDuplicatesUseCase` take `minSizeBytes` and skip files under it, as the exact tier already did.
+
+**Why:** the setting read as a scan-wide filter but only reached the exact tier, so raising it still decoded and embedded every thumbnail on the device. Skipping them makes the setting mean what it says and takes the junk out of the near tier, where tiny images match each other easily.
+
+## D-018: "Select all" covers every tier the filter shows (accepted, P8-04)
+**Decision:** `SelectAllButKeepersUseCase` no longer forces the EXACT tier when no tier chip is chosen. It selects in every group the current filter shows, each picked file carries the tier it came from, and the delete confirmation says how many of them are similar rather than byte-identical.
+
+**Why:** the old rule was a silent narrowing — under "All" the control selected only exact copies, so similar groups looked like they weren't duplicates at all. Hiding the breadth made the app feel broken; naming it in the confirmation keeps the caution without the surprise.
+
+**Safety unchanged:** each group still keeps the member `KeepRule` picks, a file that keeps any matching group is never selected, and `DeleteDuplicatesUseCase` still refuses a request that would empty a group.
+
+**Supersedes** the "with no tier chosen, only exact groups are picked" invariant in D-014.
+
+## D-019: A selection is pruned, not dropped (accepted, P8-04)
+**Decision:** when the saved groups change, Results keeps the selection and drops only the files that can no longer go, through `DuplicateGroupRepository.stillRemovable`. Only a new scan clears it outright.
+
+**Why:** the screen used to clear the whole selection on any change to the group tables. A delete made elsewhere, a keep choice, or a scan writing its results threw away a selection of thousands. One SQL query returns the ids still in a group of two or more members that aren’t that group’s keep choice, which is exactly what a delete may take.
+
+**What it watches:** `keep_choice`, `duplicate_group` and `group_member`. Membership matters because deleting a file from the Group or Compare screen cascades from `file_index` to `group_member` and touches neither of the other two. `file_index` itself is deliberately not watched: it changes on every batch of a running scan.
+
+## D-020: Counts come from one (kind, tier) query (accepted, P8-03)
+**Decision:** `observeFacets()` returns a group count and reclaimable bytes per kind and tier. The kind chips are counted under the chosen tier, the tier chips under the chosen kind, and "Select all" reads its preview from the same rows. A chip at zero stays on the row while it is the chosen one.
+
+**Why:** the two chip rows were counted by separate queries that each ignored the other filter, so "Images · 12" with the Similar tier chosen could open an empty list. One query makes a count a promise about the list the user will actually see, and keeping the chosen chip visible means a filter can always be undone.
+
+## D-021: Hashing flushes what it read when a scan stops (accepted, P8-05)
+**Decision:** the exact tier writes hashes in batches (500 partial, 100 full) rather than one row per file, and both loops flush what has completed in a `finally` under `NonCancellable`.
+
+**Why:** per-file writes cost a transaction each. Batching alone would have lost everything read since the last batch when a scan was cancelled, so the next run would read those files again — the opposite of what the batching was for.

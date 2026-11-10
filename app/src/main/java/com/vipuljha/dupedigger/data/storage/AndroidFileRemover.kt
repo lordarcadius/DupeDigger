@@ -45,13 +45,16 @@ class AndroidFileRemover @Inject constructor(
 
     private val resolver: ContentResolver get() = context.contentResolver
 
-    override suspend fun remove(files: List<StoredFile>): RemovalResult = withContext(ioDispatcher) {
+    override suspend fun remove(
+        files: List<StoredFile>,
+        onProgress: suspend (done: Int, total: Int) -> Unit,
+    ): RemovalResult = withContext(ioDispatcher) {
         val removed = mutableListOf<Long>()
         val trashed = mutableListOf<String>()
         val quarantined = mutableListOf<Long>()
         val failed = mutableListOf<Long>()
         val needsConsent = mutableListOf<Pair<Long, Uri>>()
-        for (file in files) {
+        for ((index, file) in files.withIndex()) {
             ensureActive()
             val mediaUri = if (file.mediaKind in MEDIA_KINDS) resolver.mediaCollectionUri(file.sourceUri, file.path) else null
             if (mediaUri != null) {
@@ -70,6 +73,7 @@ class AndroidFileRemover @Inject constructor(
                     failed += file.id
                 }
             }
+            onProgress(index + 1, files.size)
         }
         RemovalResult(
             removedIds = removed.toImmutableList(),

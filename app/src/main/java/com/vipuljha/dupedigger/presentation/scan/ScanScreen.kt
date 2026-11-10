@@ -1,14 +1,13 @@
 package com.vipuljha.dupedigger.presentation.scan
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,7 +54,6 @@ import com.vipuljha.dupedigger.R
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
-import com.vipuljha.dupedigger.core.designsystem.AppMotion
 import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
 import com.vipuljha.dupedigger.core.designsystem.ButtonKind
@@ -63,6 +61,7 @@ import com.vipuljha.dupedigger.core.designsystem.Dimens
 import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
 import com.vipuljha.dupedigger.core.designsystem.SectionHeader
+import com.vipuljha.dupedigger.core.designsystem.stateChangeSpec
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
 import com.vipuljha.dupedigger.core.designsystem.TooltipIconButton
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
@@ -95,7 +94,7 @@ fun ScanScreen(
         Crossfade(
             targetState = state.phase,
             modifier = Modifier.fillMaxSize().padding(padding),
-            animationSpec = tween(AppMotion.StateFadeMillis, easing = FastOutSlowInEasing),
+            animationSpec = stateChangeSpec(),
             label = "scanPhase",
         ) { phase ->
             when (phase) {
@@ -144,6 +143,8 @@ private fun LazyListScope.presetsStep(state: ScanState, onIntent: (ScanIntent) -
         ChoiceRow(
             title = stringResource(R.string.scan_preset_none),
             body = stringResource(R.string.scan_preset_none_body),
+            // Says what Start would do right here, so the common case needs no trip through the other two steps.
+            hint = state.defaultScopeTitle?.asString(),
             selected = state.selectedPresetId == null,
             modifier = Modifier.animateItem(),
         ) { onIntent(ScanIntent.PresetSelected(null)) }
@@ -151,20 +152,19 @@ private fun LazyListScope.presetsStep(state: ScanState, onIntent: (ScanIntent) -
     items(state.presets, key = { "preset-${it.id}" }, contentType = { "preset" }) { preset ->
         PresetRow(preset, selected = preset.id == state.selectedPresetId, onIntent = onIntent, modifier = Modifier.animateItem())
     }
-    if (state.selectedPresetId != null) tiers(state, onIntent)
+    tiers(state, onIntent)
     item(key = "presets-actions", contentType = "actions") {
         ActionRow(Modifier.animateItem()) {
             AppButton(stringResource(R.string.scan_action_new_preset), { onIntent(ScanIntent.NewPresetClicked) }, kind = ButtonKind.Text)
             if (state.selectedPresetId == null) {
-                AppButton(stringResource(R.string.scan_action_next), { onIntent(ScanIntent.NextClicked) })
-            } else {
-                AppButton(
-                    stringResource(R.string.scan_action_start),
-                    { onIntent(ScanIntent.StartClicked) },
-                    loading = state.starting,
-                    enabled = state.canStartPreset,
-                )
+                AppButton(stringResource(R.string.scan_action_customise), { onIntent(ScanIntent.NextClicked) }, kind = ButtonKind.Outlined)
             }
+            AppButton(
+                stringResource(R.string.scan_action_start),
+                { onIntent(ScanIntent.StartClicked) },
+                loading = state.starting,
+                enabled = if (state.selectedPresetId == null) state.canFinish else state.canStartPreset,
+            )
         }
     }
 }
@@ -255,12 +255,13 @@ private fun LazyListScope.tiers(state: ScanState, onIntent: (ScanIntent) -> Unit
     }
 }
 
+/** Buttons wrap to a second line instead of being cut off when the pane or the font leaves no room. */
 @Composable
-private fun ActionRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
-    Row(
+private fun ActionRow(modifier: Modifier = Modifier, content: @Composable FlowRowScope.() -> Unit) {
+    FlowRow(
         modifier = modifier.fillMaxWidth().padding(top = Dimens.spaceXl),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
         content = content,
     )
 }
@@ -364,7 +365,10 @@ private fun RunningPanel(progress: () -> ScanProgressUi?, cancelling: Boolean, a
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(Dimens.spaceLg))
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+            ) {
                 if (aiStage) {
                     AppButton(
                         stringResource(R.string.scan_action_skip_ai),
@@ -419,7 +423,10 @@ private fun DonePanel(result: ScanResultUi, onIntent: (ScanIntent) -> Unit) {
         subtitle = result.body.asString(),
         isError = result.isError,
         action = {
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm), verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+            ) {
                 when {
                     result.isError -> AppButton(stringResource(R.string.action_retry), { onIntent(ScanIntent.StartClicked) })
                     result.hasResults -> {

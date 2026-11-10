@@ -75,7 +75,7 @@ data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files:
 
 data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val score: Float, val mediaKind: String, val keepChoice: String?)
 
-data class TierCountRow(val tier: String, val groupCount: Int)
+data class GroupFacetRow(val mediaKind: String, val tier: String, val groupCount: Int, val files: Int, val bytes: Long)
 
 data class GroupDetailRow(
     val groupId: Long,
@@ -228,16 +228,22 @@ interface DuplicateGroupDao {
     )
     fun observeReclaimable(): Flow<List<KindReclaimRow>>
 
-    /** Groups with two or more members, counted per tier. */
+    /**
+     * Groups with two or more members, counted per kind and tier, with what each cell could free.
+     * Both filter chips read these, so the count on one chip always matches what the other filter leaves.
+     */
     @Query(
         """
-        SELECT tier, COUNT(*) AS groupCount FROM (
-            SELECT g.tier AS tier FROM duplicate_group g JOIN group_member m ON m.groupId = g.groupId
-            GROUP BY g.groupId HAVING COUNT(*) >= 2
-        ) GROUP BY tier
+        SELECT mediaKind, tier, COUNT(*) AS groupCount, SUM(members - 1) AS files, SUM(total - largest) AS bytes FROM (
+            SELECT MIN(f.mediaKind) AS mediaKind, MIN(g.tier) AS tier, COUNT(*) AS members, SUM(f.size) AS total, MAX(f.size) AS largest
+            FROM group_member m
+            JOIN duplicate_group g ON g.groupId = m.groupId
+            JOIN file_index f ON f.id = m.fileId
+            GROUP BY m.groupId HAVING COUNT(*) >= 2
+        ) GROUP BY mediaKind, tier
         """,
     )
-    fun observeTierCounts(): Flow<List<TierCountRow>>
+    fun observeFacets(): Flow<List<GroupFacetRow>>
 
     /** Groups with two or more members, most space to free first; a [limit] of -1 returns them all. */
     @Query(
@@ -298,6 +304,20 @@ interface DuplicateGroupDao {
 
     @Query("SELECT * FROM group_member WHERE groupId = :groupId")
     suspend fun membersOf(groupId: Long): List<GroupMemberEntity>
+
+    /** Of [fileIds], the ones still in a group of two or more members whose keep choice is some other file. */
+    @Query(
+        """
+        SELECT m.fileId FROM group_member m
+        JOIN duplicate_group g ON g.groupId = m.groupId
+        JOIN file_index f ON f.id = m.fileId
+        LEFT JOIN keep_choice kc ON kc.fingerprint = g.fingerprint
+        WHERE m.fileId IN (:fileIds)
+            AND (kc.keeperSourceUri IS NULL OR kc.keeperSourceUri != f.sourceUri)
+            AND (SELECT COUNT(*) FROM group_member m2 WHERE m2.groupId = m.groupId) >= 2
+        """,
+    )
+    suspend fun stillRemovable(fileIds: List<Long>): List<Long>
 
     @Query("SELECT * FROM group_member WHERE groupId IN (SELECT groupId FROM group_member WHERE fileId IN (:fileIds))")
     suspend fun membersOfGroupsContaining(fileIds: List<Long>): List<GroupMemberEntity>

@@ -7,9 +7,13 @@ import androidx.paging.map
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.mvi.MviViewModel
 import com.vipuljha.dupedigger.core.ui.toUiText
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.KeepRule
+import com.vipuljha.dupedigger.domain.model.MatchTier
+import com.vipuljha.dupedigger.domain.model.StorageUsage
 import com.vipuljha.dupedigger.domain.model.TrashConsent
+import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import com.vipuljha.dupedigger.domain.usecase.ConfirmTrashUseCase
@@ -36,17 +40,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Results: saved groups by kind, most space to free first, with selection of the files that could go.
- * - Selection is cleared when the filter changes, a new scan starts, or a keep choice or group changes, so it never
- *   holds files the user can't see, that a rescan regrouped, or that are now a group's keeper.
- * - "Select all but keepers" covers every matching group, not only the loaded pages; under "All" tiers it takes exact
- *   copies only, similar files only when that tier is chosen.
- * - Delete runs after a confirmation; media the app may not trash directly wait for the system prompt, and
- *   Undo puts back what was trashed directly or quarantined.
+ * Results: saved groups by kind and tier, most space to free first, with selection of the files that could go.
+ * - Both chip rows are counted from the same facets, so a count always matches what the other chip leaves.
+ * - A selection outlives list refreshes: when the saved groups change it is pruned to the files that can still go,
+ *   instead of being dropped, and only a new scan clears it outright.
+ * - "Select all" covers every matching group, not only the loaded pages, and every tier the filter shows.
+ * - Delete runs after a confirmation that names the space it frees; media the app may not trash directly wait for the
+ *   system prompt, and Undo puts back what was trashed directly or quarantined.
  */
 @HiltViewModel
 class ResultsViewModel @Inject constructor(
-    groupRepository: DuplicateGroupRepository,
+    private val groupRepository: DuplicateGroupRepository,
     scanRuns: ScanRunRepository,
     getGroups: GetDuplicateGroupsUseCase,
     private val selectAllButKeepers: SelectAllButKeepersUseCase,
@@ -54,9 +58,12 @@ class ResultsViewModel @Inject constructor(
     private val deleteDuplicates: DeleteDuplicatesUseCase,
     private val confirmTrash: ConfirmTrashUseCase,
     private val undoRemoval: UndoRemovalUseCase,
+    private val deviceStorage: DeviceStorage,
 ) : MviViewModel<ResultsState, ResultsIntent, ResultsEffect>(ResultsState()) {
 
     private var pendingConsent: Pair<TrashConsent, Long>? = null
+    private var facets: List<GroupFacet> = emptyList()
+    private var storage: StorageUsage? = null
 
     private val filter: Flow<GroupFilter> = state.map { GroupFilter(kind = it.kind, tier = it.tier) }.distinctUntilChanged()
 
@@ -66,15 +73,15 @@ class ResultsViewModel @Inject constructor(
         .map { page -> page.map { it.toRow() } }
         .cachedIn(viewModelScope)
         .combine(state.map { it.selection.keys }.distinctUntilChanged()) { page, selected ->
-            page.map { row -> row.copy(selected = row.removable.keys.all { it in selected }) }
+            page.map { row ->
+                val picked = row.removable.keys.count { it in selected }
+                row.copy(selected = picked == row.removable.size, partlySelected = picked in 1 until row.removable.size)
+            }
         }
 
     init {
-        groupRepository.observeReclaimable()
-            .onEach { kinds -> setState { copy(kindChips = kindChips(kinds)) } }
-            .launchIn(viewModelScope)
-        groupRepository.observeTierCounts()
-            .onEach { counts -> setState { copy(tierChips = tierChips(counts)) } }
+        groupRepository.observeFacets()
+            .onEach { facets = it; refreshFacets() }
             .launchIn(viewModelScope)
         scanRuns.observeLatest()
             .map { it?.id }
@@ -82,37 +89,46 @@ class ResultsViewModel @Inject constructor(
             .drop(1)
             .onEach { select(emptyMap()) }
             .launchIn(viewModelScope)
-        // A file deleted from Group or Compare leaves its groups; a selection still holding it would fail to delete.
-        groupRepository.observeReclaimable()
-            .distinctUntilChanged()
-            .drop(1)
-            .onEach { select(emptyMap()) }
-            .launchIn(viewModelScope)
-        // A new keeper or a "not duplicates" may touch selected files; delete must never take a chosen keeper.
+        // Deletes, keep choices and "not duplicates" all change which files can still go; a stale id fails to delete.
         groupRepository.observeDecisionChanges()
-            .onEach { select(emptyMap()) }
+            .onEach { pruneSelection() }
             .launchIn(viewModelScope)
+        viewModelScope.launch { readStorage() }
     }
 
     override fun handleIntent(intent: ResultsIntent) {
         when (intent) {
             is ResultsIntent.KindSelected -> if (intent.kind != currentState.kind) {
                 setState { copy(kind = intent.kind) }
+                refreshFacets()
                 select(emptyMap())
             }
             is ResultsIntent.GroupToggled -> {
                 val row = intent.row
-                select(if (row.selected) currentState.selection - row.removable.keys else currentState.selection + row.removable)
+                val selection = currentState.selection
+                select(
+                    if (row.selected) {
+                        selection - row.removable.keys
+                    } else {
+                        selection + row.removable.mapValues { (_, size) -> SelectedUi(size, row.tier) }
+                    },
+                )
             }
             is ResultsIntent.TierSelected -> if (intent.tier != currentState.tier) {
                 setState { copy(tier = intent.tier) }
+                refreshFacets()
                 select(emptyMap())
             }
             ResultsIntent.ShowAllClicked -> {
                 setState { copy(kind = null, tier = null) }
+                refreshFacets()
                 select(emptyMap())
             }
-            ResultsIntent.SelectAllButKeepers -> selectAll(GroupFilter(currentState.kind, currentState.tier), KeepRule.Best)
+            ResultsIntent.SelectAllToggled -> if (currentState.allSelected) {
+                select(emptyMap())
+            } else {
+                selectAll(GroupFilter(currentState.kind, currentState.tier), currentState.keepRule ?: KeepRule.Best)
+            }
             is ResultsIntent.KeepRuleSelected -> {
                 setState { copy(folderChoices = null) }
                 selectAll(GroupFilter(currentState.kind, currentState.tier), intent.rule)
@@ -124,8 +140,8 @@ class ResultsViewModel @Inject constructor(
             ResultsIntent.FolderPickerDismissed -> setState { copy(folderChoices = null) }
             ResultsIntent.ClearSelection -> select(emptyMap())
             ResultsIntent.StartScanClicked -> sendEffect(ResultsEffect.OpenScan)
-            ResultsIntent.DeleteClicked -> if (currentState.selection.isNotEmpty() && !currentState.deleting) {
-                setState { copy(confirmDelete = deleteConfirm(selection)) }
+            ResultsIntent.DeleteClicked -> if (currentState.hasSelection && !currentState.deleting) {
+                setState { copy(confirmDelete = deleteConfirm(selection, selection.values.count { it.tier != MatchTier.EXACT }, storage)) }
             }
             ResultsIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             ResultsIntent.DeleteConfirmed -> delete()
@@ -137,24 +153,28 @@ class ResultsViewModel @Inject constructor(
     private fun delete() {
         if (currentState.deleting) return
         val selection = currentState.selection
-        setState { copy(confirmDelete = null, deleting = true) }
+        setState { copy(confirmDelete = null, deleting = true, deleteProgress = 0f) }
         viewModelScope.launch {
-            when (val outcome = deleteDuplicates(selection.keys)) {
+            val outcome = deleteDuplicates(selection.keys) { done, total ->
+                setState { copy(deleteProgress = if (total == 0) 1f else done.toFloat() / total) }
+            }
+            when (outcome) {
                 is Outcome.Failure -> sendEffect(ResultsEffect.ShowMessage(outcome.error.toUiText()))
                 is Outcome.Success -> {
                     val result = outcome.data
                     select(emptyMap())
-                    removedMessage(result.removedIds.size, result.removedIds.sumOf { selection[it] ?: 0L })?.let {
+                    removedMessage(result.removedIds.size, result.removedIds.sumOf { selection[it]?.size ?: 0L })?.let {
                         sendEffect(ResultsEffect.ShowMessage(it, UndoUi(result.trashedUris, result.quarantineIds).takeIf { undo -> undo.count > 0 }))
                     }
                     failedMessage(result.failedIds.size)?.let { sendEffect(ResultsEffect.ShowMessage(it)) }
                     result.consent?.let { consent ->
-                        pendingConsent = consent to consent.fileIds.sumOf { selection[it] ?: 0L }
+                        pendingConsent = consent to consent.fileIds.sumOf { selection[it]?.size ?: 0L }
                         sendEffect(ResultsEffect.LaunchTrash(consent.platformRequest))
                     }
                 }
             }
-            setState { copy(deleting = false) }
+            setState { copy(deleting = false, deleteProgress = 0f) }
+            readStorage()
         }
     }
 
@@ -165,6 +185,7 @@ class ResultsViewModel @Inject constructor(
         viewModelScope.launch {
             confirmTrash(consent)
             removedMessage(consent.fileIds.size, bytes)?.let { sendEffect(ResultsEffect.ShowMessage(it)) }
+            readStorage()
         }
     }
 
@@ -172,6 +193,7 @@ class ResultsViewModel @Inject constructor(
         viewModelScope.launch {
             val failed = undoRemoval(undo.trashedUris, undo.quarantineIds)
             sendEffect(ResultsEffect.ShowMessage(restoreMessage(undo.count - failed, failed)))
+            readStorage()
         }
     }
 
@@ -181,15 +203,40 @@ class ResultsViewModel @Inject constructor(
         viewModelScope.launch {
             val files = selectAllButKeepers(filter, rule)
             setState { copy(selecting = false) }
-            if (GroupFilter(currentState.kind, currentState.tier) == filter) select(files.associate { it.fileId to it.size }, rule)
+            if (GroupFilter(currentState.kind, currentState.tier) == filter) {
+                select(files.associate { it.fileId to SelectedUi(it.size, it.tier) }, rule, everything = true)
+            }
         }
     }
 
-    private fun select(selection: Map<Long, Long>, rule: KeepRule? = null) = setState {
+    /** Drops files that have left the saved groups or became a keeper, so a delete never asks for one it mustn't take. */
+    private fun pruneSelection() {
+        if (currentState.selection.isEmpty()) return
+        viewModelScope.launch {
+            val removable = groupRepository.stillRemovable(currentState.selection.keys)
+            val kept = currentState.selection.filterKeys { it in removable }
+            if (kept.size != currentState.selection.size) select(kept, currentState.keepRule, currentState.selectedEverything)
+        }
+    }
+
+    private fun refreshFacets() = setState {
+        copy(
+            kindChips = kindChips(facets, tier, kind),
+            tierChips = tierChips(facets, kind, tier),
+            selectable = selectableUi(facets, kind, tier),
+        )
+    }
+
+    private suspend fun readStorage() {
+        storage = deviceStorage.usage()
+    }
+
+    private fun select(selection: Map<Long, SelectedUi>, rule: KeepRule? = null, everything: Boolean = false) = setState {
         copy(
             selection = if (selection.isEmpty()) persistentMapOf() else selection.toImmutableMap(),
             selectionSummary = selectionSummary(selection),
             keepRule = rule,
+            selectedEverything = everything && selection.isNotEmpty(),
         )
     }
 }

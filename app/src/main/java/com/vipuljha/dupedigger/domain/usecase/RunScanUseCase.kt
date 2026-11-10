@@ -81,7 +81,7 @@ class RunScanUseCase @Inject constructor(
                 }
                 val near = if (appSettings.nearDuplicatesEnabled) {
                     onProgress(ScanProgress(ScanStage.NEAR, 0, null))
-                    findNear(scanId, appSettings.nearHammingThreshold, exact.groups, kinds) { done, total ->
+                    findNear(scanId, appSettings.nearHammingThreshold, appSettings.minFileSizeBytes, exact.groups, kinds) { done, total ->
                         onProgress(ScanProgress(ScanStage.NEAR, done, total))
                     }
                 } else {
@@ -91,7 +91,7 @@ class RunScanUseCase @Inject constructor(
                 val semantic = if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
                     onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
                     unlessSkipped {
-                        findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
+                        findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, appSettings.minFileSizeBytes, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
                             onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
                         }
                     }

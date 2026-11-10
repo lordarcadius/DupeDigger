@@ -9,6 +9,9 @@ import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.repository.ContentHasher
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
@@ -16,7 +19,8 @@ import javax.inject.Inject
  * Finds byte-identical files among those of the chosen kinds seen in a scan, reading as little as possible.
  * - Files under the minimum size, or with a size no other file has, are never opened.
  * - A partial hash, then a full hash, each only within buckets keyed by size and hash that still hold two or more files.
- * - Cached hashes are reused; new partials are saved per batch and each full hash as soon as it is computed.
+ * - Cached hashes are reused; new ones are written a batch at a time, and a cancelled stage still flushes what it read,
+ *   so a scan stopped part-way never repeats a read on the next run.
  * - A file that can't be read is skipped and counted, never failing the scan.
  */
 class FindExactDuplicatesUseCase @Inject constructor(
@@ -35,26 +39,40 @@ class FindExactDuplicatesUseCase @Inject constructor(
         val (withPartial, needPartial) = sameSize.partition { it.partialHash != null }
         val partials = withPartial.toMutableList()
         var partialHashed = 0
-        for ((i, batch) in needPartial.chunked(PARTIAL_BATCH).withIndex()) {
-            val hashed = batch.mapConcurrently { file ->
-                hasher.partialHash(file.sourceUri, file.size).getOrNull()
-                    ?.let { file.copy(partialHash = it.partial, fullHash = it.full) }
+        val unsaved = ConcurrentLinkedQueue<IndexedFile>()
+        try {
+            for ((i, batch) in needPartial.chunked(PARTIAL_BATCH).withIndex()) {
+                val hashed = batch.mapConcurrently { file ->
+                    hasher.partialHash(file.sourceUri, file.size).getOrNull()
+                        ?.let { file.copy(partialHash = it.partial, fullHash = it.full) }
+                        ?.also(unsaved::add)
+                }
+                flush(unsaved)
+                partials += hashed
+                partialHashed += hashed.size
+                onProgress(minOf((i + 1) * PARTIAL_BATCH, needPartial.size), needPartial.size)
             }
-            fileIndex.saveHashes(hashed)
-            partials += hashed
-            partialHashed += hashed.size
-            onProgress(minOf((i + 1) * PARTIAL_BATCH, needPartial.size), needPartial.size)
+        } finally {
+            withContext(NonCancellable) { flush(unsaved) }
         }
 
         val samePartial = partials.inSharedBuckets { it.size to it.partialHash }
         val (withFull, needFull) = samePartial.partition { it.fullHash != null }
         val total = needPartial.size + needFull.size
         val attempted = AtomicInteger(needPartial.size)
-        val fullyHashed = needFull.mapConcurrently { file ->
-            hasher.fullHash(file.sourceUri, file.size).getOrNull()
-                ?.let { file.copy(fullHash = it) }
-                ?.also { fileIndex.saveHashes(listOf(it)) }
-                .also { onProgress(attempted.incrementAndGet(), total) }
+        val fullyHashed = ArrayList<IndexedFile>(needFull.size)
+        try {
+            for (batch in needFull.chunked(FULL_BATCH)) {
+                fullyHashed += batch.mapConcurrently { file ->
+                    hasher.fullHash(file.sourceUri, file.size).getOrNull()
+                        ?.let { file.copy(fullHash = it) }
+                        ?.also(unsaved::add)
+                        .also { onProgress(attempted.incrementAndGet(), total) }
+                }
+                flush(unsaved)
+            }
+        } finally {
+            withContext(NonCancellable) { flush(unsaved) }
         }
 
         val groups = (withFull + fullyHashed)
@@ -70,10 +88,19 @@ class FindExactDuplicatesUseCase @Inject constructor(
         )
     }
 
+    /** Writes every hash computed since the last call, in one go; a cancelled stage flushes what it already read. */
+    private suspend fun flush(hashed: ConcurrentLinkedQueue<IndexedFile>) {
+        val batch = generateSequence { hashed.poll() }.toList()
+        if (batch.isNotEmpty()) fileIndex.saveHashes(batch)
+    }
+
     private fun <K> List<IndexedFile>.inSharedBuckets(key: (IndexedFile) -> K): List<IndexedFile> =
         groupBy(key).values.filter { it.size > 1 }.flatten()
 
     internal companion object {
         const val PARTIAL_BATCH = 500
+
+        /** Full hashes cost a whole read each, so they are saved in smaller batches than partials. */
+        const val FULL_BATCH = 100
     }
 }

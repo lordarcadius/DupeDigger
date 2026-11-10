@@ -26,6 +26,7 @@ import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.core.designsystem.StateAlpha
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.UiText
+import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.presentation.group.GroupDetailUi
 import com.vipuljha.dupedigger.presentation.group.GroupScreen
@@ -187,6 +188,8 @@ class AccessibilityChecksTest {
             groupId = i.toLong(),
             fingerprint = "fp$i",
             kind = if (i == 2) MediaKind.DOCUMENT else MediaKind.IMAGE,
+            tier = if (i == 1) MatchTier.NEAR else MatchTier.EXACT,
+            thumbnail = null,
             title = "IMG_2026102$i.jpg",
             detail = UiText.Raw("2 copies · 2.1 MB · Exact"),
             reclaim = UiText.Raw("Frees 2.1 MB"),

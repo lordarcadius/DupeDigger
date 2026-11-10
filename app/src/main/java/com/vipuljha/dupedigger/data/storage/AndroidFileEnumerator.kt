@@ -14,6 +14,7 @@ import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.domain.model.mediaKindOf
+import com.vipuljha.dupedigger.domain.model.mimeTypeForName
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -87,14 +88,14 @@ class AndroidFileEnumerator @Inject constructor(
                 val name = c.getString(2) ?: path?.substringAfterLast('/') ?: continue
                 if (filter.skips(path, name)) continue
                 val volume = c.getString(6) ?: MediaStore.VOLUME_EXTERNAL_PRIMARY
-                val mime = c.getString(3)
+                val mime = c.getString(3) ?: mimeTypeForName(name)
                 emit(
                     DiscoveredFile(
                         sourceUri = ContentUris.withAppendedId(MediaStore.Files.getContentUri(volume), c.getLong(0)).toString(),
                         path = path,
                         name = name,
                         mimeType = mime,
-                        mediaKind = mediaKindOf(mime),
+                        mediaKind = mediaKindOf(mime, name),
                         size = c.getLong(4),
                         mtime = c.getLong(5) * 1000,
                         volume = volume,
@@ -126,18 +127,20 @@ class AndroidFileEnumerator @Inject constructor(
                     val name = c.getString(1) ?: docId.substringAfterLast('/')
                     val path = if (onLocalStorage) externalStorageDocIdToPath(docId) else null
                     if (filter.skips(path, name)) continue
-                    val mime = c.getString(2)
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    val reported = c.getString(2)
+                    if (reported == DocumentsContract.Document.MIME_TYPE_DIR) {
                         pending.addLast(docId)
                         continue
                     }
+                    // SAF often answers application/octet-stream for formats it does not know, so the name decides the kind.
+                    val mime = reported.takeUnless { it == null || it == GENERIC_MIME } ?: mimeTypeForName(name) ?: reported
                     emit(
                         DiscoveredFile(
                             sourceUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId).toString(),
                             path = path,
                             name = name,
                             mimeType = mime,
-                            mediaKind = mediaKindOf(mime),
+                            mediaKind = mediaKindOf(mime, name),
                             size = if (c.isNull(3)) 0L else c.getLong(3),
                             mtime = if (c.isNull(4)) 0L else c.getLong(4),
                             volume = treeUri.authority,

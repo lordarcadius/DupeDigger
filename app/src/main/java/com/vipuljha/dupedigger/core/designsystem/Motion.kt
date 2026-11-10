@@ -2,16 +2,19 @@ package com.vipuljha.dupedigger.core.designsystem
 
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
 object AppMotion {
-    const val StateFadeMillis = 300
     const val ImageFadeMillis = 250
     const val ShimmerSweepMillis = 1200
     const val ColorChangeMillis = 250
@@ -63,3 +66,17 @@ object TintStrength {
     const val HeroWash = 0.24f
     const val MediaBackdropMax = 0.40f
 }
+
+/**
+ * The expressive motion scheme's own specs, so animations follow the theme rather than hand-picked numbers.
+ * - [listPlacementSpec] moves a list item to a new slot; spatial specs carry the scheme's gentle overshoot.
+ * - [stateChangeSpec] fades content in and out; effects specs never overshoot, which colour and alpha shouldn't.
+ */
+@Composable
+fun listPlacementSpec(): FiniteAnimationSpec<IntOffset> = MaterialTheme.motionScheme.defaultSpatialSpec()
+
+@Composable
+fun stateChangeSpec(): FiniteAnimationSpec<Float> = MaterialTheme.motionScheme.defaultEffectsSpec()
+
+@Composable
+fun fastSpatialSpec(): FiniteAnimationSpec<Float> = MaterialTheme.motionScheme.fastSpatialSpec()

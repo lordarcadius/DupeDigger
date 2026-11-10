@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.presentation.quarantine
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -113,30 +114,32 @@ private fun Items(items: ImmutableList<QuarantineItemUi>, busy: ImmutableSet<Lon
 @Composable
 private fun ItemCard(item: QuarantineItemUi, busy: Boolean, onIntent: (QuarantineIntent) -> Unit, modifier: Modifier = Modifier) {
     Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Row(Modifier.padding(Dimens.spaceLg), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)) {
-                Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    item.folder.asString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(item.details.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                AppButton(
-                    stringResource(R.string.quarantine_action_restore),
-                    { onIntent(QuarantineIntent.RestoreClicked(item.id)) },
-                    kind = ButtonKind.Tonal,
-                    loading = busy,
-                )
+        // The actions sit under the name rather than beside it, so a narrow screen never squeezes the file's details.
+        Column(Modifier.padding(Dimens.spaceLg), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)) {
+            Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                item.folder.asString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(item.details.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = Dimens.spaceSm),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.End),
+            ) {
                 AppButton(
                     stringResource(R.string.quarantine_action_delete),
                     { onIntent(QuarantineIntent.DeleteClicked(item)) },
                     kind = ButtonKind.Text,
                     enabled = !busy,
+                )
+                AppButton(
+                    stringResource(R.string.quarantine_action_restore),
+                    { onIntent(QuarantineIntent.RestoreClicked(item.id)) },
+                    kind = ButtonKind.Tonal,
+                    loading = busy,
                 )
             }
         }

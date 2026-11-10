@@ -48,6 +48,7 @@ import com.vipuljha.dupedigger.core.designsystem.SectionHeader
 import com.vipuljha.dupedigger.core.designsystem.Shimmer
 import com.vipuljha.dupedigger.core.designsystem.SkeletonBarFractions
 import com.vipuljha.dupedigger.core.designsystem.StateMessage
+import com.vipuljha.dupedigger.core.designsystem.StorageMeter
 import com.vipuljha.dupedigger.core.designsystem.TopBarTitle
 import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
 import com.vipuljha.dupedigger.core.designsystem.shimmer
@@ -109,6 +110,9 @@ private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onI
             contentPadding = PaddingValues(start = gutter, end = gutter, bottom = Dimens.listEndSpace),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
         ) {
+            model.storage?.let { storage ->
+                item(key = "storage", contentType = "storage") { StorageCard(storage, Modifier.animateItem()) }
+            }
             item(key = "summary", contentType = "summary") { SummaryCard(model, Modifier.animateItem()) }
             item(key = "last-scan", contentType = "last-scan") {
                 LastScanCard(model, progress, onViewProgress = { onIntent(HomeIntent.OpenScanClicked) }, modifier = Modifier.animateItem())
@@ -136,6 +140,24 @@ private fun HomeCard(modifier: Modifier = Modifier, content: @Composable () -> U
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(Modifier.padding(Dimens.spaceLg), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs)) { content() }
+    }
+}
+
+/** How full the device is, with the duplicates picked out of the used part and what freeing them would leave. */
+@Composable
+private fun StorageCard(storage: StorageUi, modifier: Modifier = Modifier) {
+    HomeCard(modifier) {
+        Text(stringResource(R.string.home_storage_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(storage.headline.asString(), style = MaterialTheme.typography.headlineSmallEmphasized)
+        StorageMeter(
+            usedFraction = storage.usedFraction,
+            duplicateFraction = storage.duplicateFraction,
+            modifier = Modifier.padding(vertical = Dimens.spaceSm),
+        )
+        Text(storage.freeNow.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        storage.afterCleanup?.let {
+            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary)
+        }
     }
 }
 

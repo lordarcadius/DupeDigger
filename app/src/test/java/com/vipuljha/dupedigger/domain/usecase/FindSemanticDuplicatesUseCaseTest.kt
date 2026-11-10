@@ -90,7 +90,7 @@ class FindSemanticDuplicatesUseCaseTest {
         image(3, scene = 1, jitter = 3)
         image(4, scene = 2)
 
-        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())!!
+        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
 
         assertEquals(listOf(listOf(1L, 2L, 3L)), result.groups.map { it.fileIds })
         assertTrue(result.groups.single().fingerprint.startsWith("${MatchTier.SEMANTIC}:"))
@@ -101,13 +101,13 @@ class FindSemanticDuplicatesUseCaseTest {
     fun `stored vectors are reused, and another model's vectors are kept but not used`() = runTest {
         image(1, scene = 1)
         image(2, scene = 1)
-        find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())
+        find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
         val first = embedded.size
 
-        find(2, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())
+        find(2, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
         assertEquals(first, embedded.size)
 
-        find(3, all, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())
+        find(3, all, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
         assertEquals(first * 2, embedded.size)
         assertEquals(4, stored.size)
     }
@@ -119,7 +119,7 @@ class FindSemanticDuplicatesUseCaseTest {
         texts["file:/d/a.txt"] = (1..30).joinToString("  ") { "word$it" }
         texts["file:/d/b.txt"] = "too short"
 
-        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())!!
+        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
 
         val text = embedded.filterIsInstance<EmbeddingInput.Text>().single().text
         assertTrue(text.startsWith(SIMILARITY_PROMPT + "word1 word2"))
@@ -132,7 +132,7 @@ class FindSemanticDuplicatesUseCaseTest {
         image(2, scene = 1)
         val near = NearGroup("NEAR:x", persistentListOf(1, 2), 0.98f)
 
-        assertTrue(find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), listOf(near))!!.groups.isEmpty())
+        assertTrue(find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = listOf(near))!!.groups.isEmpty())
     }
 
     @Test
@@ -141,7 +141,7 @@ class FindSemanticDuplicatesUseCaseTest {
         image(2, scene = 1)
         image(3, scene = -1)
 
-        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList())!!
+        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
 
         assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
         assertEquals(1, result.unreadable)
@@ -151,6 +151,6 @@ class FindSemanticDuplicatesUseCaseTest {
     fun `without the model the tier is skipped`() = runTest {
         image(1, scene = 1)
         available = false
-        assertNull(find(1, vision, EmbeddingBackend.CPU, 0.9f, emptyList(), emptyList()))
+        assertNull(find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList()))
     }
 }

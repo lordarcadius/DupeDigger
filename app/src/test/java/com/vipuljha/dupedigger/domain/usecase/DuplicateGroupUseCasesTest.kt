@@ -1,6 +1,7 @@
 package com.vipuljha.dupedigger.domain.usecase
 
 import androidx.paging.PagingData
+import com.vipuljha.dupedigger.domain.model.GroupFacet
 import com.vipuljha.dupedigger.domain.model.GroupFilter
 import com.vipuljha.dupedigger.domain.model.GroupWithMembers
 import com.vipuljha.dupedigger.domain.model.ExactGroup
@@ -34,7 +35,8 @@ class DuplicateGroupUseCasesTest {
         override suspend fun keepChoice(fingerprint: String) = keepChoices[fingerprint]
         override suspend fun groupsContaining(fileIds: Set<Long>) = emptyList<Set<Long>>()
         override fun observeReclaimable() = emptyFlow<List<KindReclaim>>()
-        override fun observeTierCounts() = emptyFlow<Map<MatchTier, Int>>()
+        override fun observeFacets() = emptyFlow<List<GroupFacet>>()
+        override suspend fun stillRemovable(fileIds: Set<Long>) = fileIds
         override fun pagedGroups(filter: GroupFilter) = emptyFlow<PagingData<GroupWithMembers>>()
         override suspend fun allGroups(filter: GroupFilter) = emptyList<GroupWithMembers>()
         override fun observeGroup(fingerprint: String) = emptyFlow<GroupWithMembers?>()
