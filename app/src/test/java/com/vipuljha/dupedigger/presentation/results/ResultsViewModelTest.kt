@@ -308,7 +308,8 @@ class ResultsViewModelTest {
         vm.onIntent(ResultsIntent.TierSelected(MatchTier.EXACT))
         assertEquals(listOf(null, MediaKind.IMAGE, MediaKind.VIDEO), vm.state.value.kindChips.map { it.kind })
         assertEquals("0", (vm.state.value.kindChips.last().label as UiText.Resource).args[1])
-        assertEquals(SelectableUi(), vm.state.value.selectable)
+        assertEquals(0, vm.state.value.selectable.files)
+        assertEquals(UiText.plural(R.plurals.results_select_all_detail, 0, "0", formatBytes(0)), vm.state.value.selectable.detail)
     }
 
     @Test
@@ -331,7 +332,9 @@ class ResultsViewModelTest {
 
         assertEquals(listOf(null, MediaKind.IMAGE, MediaKind.DOCUMENT), state.kindChips.map { it.kind })
         assertEquals(UiText.res(R.string.results_chip_count, UiText.res(R.string.results_chip_all), "5"), state.kindChips.first().label)
-        assertEquals(SelectableUi(files = 6, bytes = 30), state.selectable)
+        assertEquals(6, state.selectable.files)
+        assertEquals(30L, state.selectable.bytes)
+        assertEquals(UiText.plural(R.plurals.results_select_all_detail, 6, "6", formatBytes(30)), state.selectable.detail)
     }
 
     @Test

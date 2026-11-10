@@ -92,7 +92,10 @@
         <item quantity="other">%1$s files selected · %2$s</item>
     </plurals>
     <string name="results_action_select_all">Select all duplicates</string>
-    <string name="results_select_all_detail">%1$s copies · frees %2$s</string>
+    <plurals name="results_select_all_detail">
+        <item quantity="one">%1$s copy · frees %2$s</item>
+        <item quantity="other">%1$s copies · frees %2$s</item>
+    </plurals>
     <string name="results_open_group">Open group</string>
     <string name="results_select_group">Select %1$s</string>
     <string name="results_action_clear">Clear</string>

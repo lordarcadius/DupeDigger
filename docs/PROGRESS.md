@@ -76,6 +76,17 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
   - **Two `FileTreeWalkerTest` cases fail on a Windows host** and did so before these changes, because they are JVM unit tests run on the host: `Files.createSymbolicLink` needs a privilege a normal Windows account lacks, and `ScanFilter` matches the `/` separators Android uses, which a `C:…` path never has. Both are now `assumeTrue`-guarded, and `EnumeratorDeviceTest` gained device-side equivalents that pass on the emulator — which is where those two behaviours are meaningful.
   - **Scan throughput (P8-05), Pixel 10 Pro XL emulator, debuggable build, `ScanThroughputTest` (5,000 files of 32 KiB, 1,000 duplicated), one run each.** Exact stage, first scan: 2,813 ms (1,777 files/s) before, 2,340 ms (2,136 files/s) after — about 17% faster. Rescan exact: 115 ms before, 105 ms after. Index: 2,683 ms before, 2,891 ms after, which is noise; indexing was not touched.
     - **What this does not measure:** every file in the benchmark is exactly 32 KiB, so it takes the single-read path where the full hash comes with the partial. `needFull` is empty, so the batched full-hash writes (`FULL_BATCH`) and the cancel flush are never exercised. The measured gain is from parallelism alone. A benchmark with files over 32 KiB would be needed to see the rest.
+  - **End-to-end walkthrough on the Pixel 10 Pro XL emulator (API 37), driven through the real UI.** 12 seeded files: three byte-identical copies of one photo across DCIM, Pictures and a WhatsApp-style name; an exact pair of a second photo; an exact pair of `.heic` files; an exact pair of `.txt`; plus a quality-0.45 re-encode and a 600x400 resize of the first photo, and two unique files.
+    - Scan found 7 duplicate files and 295 kB, which matches the seed exactly.
+    - **P8-01:** the `.heic` pair is counted under Images, not Other, and is reported as an exact duplicate.
+    - **P8-02:** the re-encode and the resize group with the original as `Similar - 99%`, the case the dHash band was rejecting.
+    - **P8-03:** chips read `All 5 / Images 4 / Documents 1` and `All 5 / Exact 4 / Similar 1`; filtering to Documents narrows the select-all preview to 1 and hides the tier row, which would filter nothing.
+    - **P8-04:** Select all took 7 files across both tiers; under the old exact-only rule it would have taken 5.
+    - **P8-06:** the confirmation said `You would have 8.0 GB free of 11 GB` and `2 of these are similar rather than identical`; Home drew the storage meter.
+    - **P8-07:** the Scan action row wrapped to two lines, and the quarantine cards stacked their actions below the details.
+    - **P8-08:** `No preset` showed the `Whole device` hint and started the scan from the first step.
+    - **Safety:** exactly one copy of every group survived, and the keeper ranking kept the DCIM originals over the Download and WhatsApp copies. Delete to quarantine to restore was verified end to end.
+  - **Bug found and fixed in that run:** the select-all line read `1 copies`. The string was a plain string formatted inside the composable, against the rule that composables do not format; it is now a plural built in the UI model as `UiText`, and the device shows `1 copy`.
   - **Not done:** no human pass over the UI on a device, so the layout and motion changes are checked only by the instrumented tests. Next: an owner pass on a phone.
 
 - 2026-11-02: PRM2-10075 step 12, the final checks.

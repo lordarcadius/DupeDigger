@@ -55,9 +55,9 @@ data class ResultsState(
 @Immutable
 data class SelectedUi(val size: Long, val tier: MatchTier)
 
-/** How many copies the current filter offers and what they take, for the "Select all" row. */
+/** How many copies the current filter offers and what they take, with [detail] ready to draw on the "Select all" row. */
 @Immutable
-data class SelectableUi(val files: Int = 0, val bytes: Long = 0L)
+data class SelectableUi(val files: Int = 0, val bytes: Long = 0L, val detail: UiText? = null)
 
 /**
  * The delete confirmation: how many files, how much it frees, what free space that leaves, and a warning when

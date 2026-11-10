@@ -97,8 +97,6 @@ import com.vipuljha.dupedigger.core.designsystem.rememberShimmer
 import com.vipuljha.dupedigger.core.designsystem.stateChangeSpec
 import com.vipuljha.dupedigger.core.designsystem.shimmer
 import com.vipuljha.dupedigger.core.ui.asString
-import com.vipuljha.dupedigger.core.ui.formatBytes
-import com.vipuljha.dupedigger.core.ui.formatCount
 import com.vipuljha.dupedigger.domain.model.KeepRule
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import kotlinx.collections.immutable.ImmutableList
@@ -390,17 +388,15 @@ private fun SelectAllRow(state: ResultsState, onIntent: (ResultsIntent) -> Unit,
         Spacer(Modifier.width(Dimens.spaceMd))
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(
-                    R.string.results_select_all_detail,
-                    formatCount(state.selectable.files),
-                    formatBytes(state.selectable.bytes).asString(),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            state.selectable.detail?.let {
+                Text(
+                    it.asString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (state.selecting) {
             Spacer(Modifier.width(Dimens.spaceSm))

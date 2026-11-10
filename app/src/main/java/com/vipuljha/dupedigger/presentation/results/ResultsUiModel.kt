@@ -70,7 +70,9 @@ fun kindChips(facets: List<GroupFacet>, tier: MatchTier?, selected: MediaKind?):
 /** Everything "Select all" would pick under the current filter, counted from the same facets as the chips. */
 fun selectableUi(facets: List<GroupFacet>, kind: MediaKind?, tier: MatchTier?): SelectableUi {
     val matching = facets.matching(kind, tier)
-    return SelectableUi(files = matching.sumOf { it.files }, bytes = matching.sumOf { it.bytes })
+    val files = matching.sumOf { it.files }
+    val bytes = matching.sumOf { it.bytes }
+    return SelectableUi(files, bytes, UiText.plural(R.plurals.results_select_all_detail, files, formatCount(files), formatBytes(bytes)))
 }
 
 fun selectionSummary(selection: Map<Long, SelectedUi>): UiText? =
