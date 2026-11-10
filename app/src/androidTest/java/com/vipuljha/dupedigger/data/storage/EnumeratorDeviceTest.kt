@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.count
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -18,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import timber.log.Timber
 import java.io.File
+import java.nio.file.Files
 
 /** P2-03 on a real device: 50k files without memory growth, and cancellation within a second. */
 @RunWith(AndroidJUnit4::class)
@@ -72,6 +74,52 @@ class EnumeratorDeviceTest {
 
         assertTrue("stopped after $stopMillis ms", stopMillis < 1_000)
         assertTrue("walk was cut short at $seen files", seen in 1 until 50_000)
+    }
+
+    /**
+     * Symlinks and path exclusions can only be checked where paths are POSIX and links can be made, which rules out
+     * a Windows host: there `Files.createSymbolicLink` needs a privilege a normal account lacks, and `File.path`
+     * returns `\` separators that [ScanFilter]'s `/` matching never sees. Both hold on a device.
+     */
+    @Test
+    fun symlinksAreNeverFollowedOutOfTheRootOrInCircles() = runBlocking {
+        val tree = File(context.cacheDir, "symlink-test").apply { deleteRecursively(); mkdirs() }
+        val outside = File(context.cacheDir, "symlink-outside").apply { deleteRecursively(); mkdirs() }
+        try {
+            File(outside, "secret.jpg").createNewFile()
+            File(tree, "own.jpg").createNewFile()
+            Files.createSymbolicLink(File(tree, "link").toPath(), outside.toPath())
+            Files.createSymbolicLink(File(tree, "loop").toPath(), tree.toPath())
+
+            val names = walker.walk(listOf(tree), keepAll).toList().map { it.name }
+
+            assertEquals(listOf("own.jpg"), names)
+        } finally {
+            tree.deleteRecursively()
+            outside.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun excludedFoldersAndHiddenEntriesAreSkipped() = runBlocking {
+        val tree = File(context.cacheDir, "filter-test").apply { deleteRecursively(); mkdirs() }
+        try {
+            File(tree, "a.jpg").apply { writeBytes(ByteArray(3)) }
+            File(tree, "deep/er").mkdirs()
+            File(tree, "deep/er/b.txt").createNewFile()
+            File(tree, "Private").mkdirs()
+            File(tree, "Private/c.jpg").createNewFile()
+            File(tree, ".hidden").mkdirs()
+            File(tree, ".hidden/d.jpg").createNewFile()
+
+            val filter = ScanFilter(listOf(File(tree, "Private").path), skipHidden = true)
+            val files = walker.walk(listOf(tree), filter).toList()
+
+            assertEquals(setOf("a.jpg", "b.txt"), files.map { it.name }.toSet())
+            assertEquals(3L, files.single { it.name == "a.jpg" }.size)
+        } finally {
+            tree.deleteRecursively()
+        }
     }
 
     @Test

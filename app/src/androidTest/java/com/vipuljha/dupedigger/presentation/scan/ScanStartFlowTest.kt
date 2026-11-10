@@ -21,6 +21,7 @@ import com.vipuljha.dupedigger.core.designsystem.DupeDiggerTheme
 import com.vipuljha.dupedigger.data.worker.InMemorySemanticStageSkip
 import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.domain.model.MediaAccess
+import com.vipuljha.dupedigger.domain.model.AllMediaKinds
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanPreset
@@ -133,7 +134,7 @@ class ScanStartFlowTest {
         rule.onNodeWithText(text(R.string.scan_preset_none)).assertExists()
         rule.onNodeWithTag(ScanTestTags.setupList).performScrollToNode(hasText(text(R.string.preset_whatsapp)))
 
-        click(text(R.string.scan_action_next))
+        click(text(R.string.scan_action_customise))
         rule.onNodeWithText(text(R.string.scan_types_title)).assertExists()
         click(text(R.string.kind_videos))
         click(text(R.string.scan_action_next))
@@ -144,6 +145,17 @@ class ScanStartFlowTest {
 
         rule.waitUntil { started.isNotEmpty() }
         assertEquals(ScanScope.MediaOnly to setOf(MediaKind.IMAGE, MediaKind.AUDIO, MediaKind.DOCUMENT, MediaKind.OTHER), started.single())
+    }
+
+    /** The common case is one tap: no preset, every file type, the widest scope the device allows. */
+    @Test
+    fun withNoPresetStartScansEverythingFromTheFirstStep() {
+        rule.onNodeWithText(text(R.string.scan_preset_none)).assertExists()
+
+        click(text(R.string.scan_action_start))
+
+        rule.waitUntil { started.isNotEmpty() }
+        assertEquals(ScanScope.WholeDevice to AllMediaKinds, started.single())
     }
 
     @Test

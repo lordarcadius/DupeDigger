@@ -56,7 +56,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P8-04 | Selection | done | Swipe gone, tri-state Select all, selection pruned (D-018, D-019) |
 | P8-05 | Scan speed | done | Parallelism by core count; batched writes flushed on stop (D-021) |
 | P8-06 | Storage impact | done | Home meter and delete confirmation; `DeviceStorage` |
-| P8-07 | Small screens and motion | done | Wrapping action rows, theme motion specs; not yet checked on a device |
+| P8-07 | Small screens and motion | done | Wrapping action rows, theme motion specs; no human pass on a device yet |
 | P8-08 | Scan friction | done | First step starts on every type and the widest scope |
 
 ## Log
@@ -72,8 +72,11 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
   - **Storage impact (P8-06).** A `DeviceStorage` repository over the mounted volumes; Home gains a meter of used, duplicates and free with what a clean-up would leave; the delete confirmation adds the free space after and a warning when the selection holds similar files.
   - **Small screens and motion (P8-07).** Scan and quarantine action rows wrap, the quarantine card stacks, the group screen's "Not duplicates" is an icon button, the results row carries a thumbnail and reflows below 400 dp, and state changes and list moves use `MaterialTheme.motionScheme` instead of hand-set tweens.
   - **Friction (P8-08).** The Scan screen's first step now starts a scan on every file type and the widest scope, with "Choose what to scan" beside it; that was three steps.
-  - **Checks.** `assembleDebug`, `testDebugUnitTest` (277 tests) and `lint` pass; `compileDebugAndroidTestKotlin` passes. Two `FileTreeWalkerTest` cases fail on this Windows host and did so before these changes — one needs the symlink privilege, the other matches `/` separators — so both are now `assumeTrue`-guarded.
-  - **Not done:** nothing was run on a device or emulator this session, so the UI changes and the scan timings are unverified in practice. Next: an owner pass on a phone, then re-time a scan.
+  - **Checks.** `assembleDebug`, `testDebugUnitTest` (277 tests) and `lint` pass. `connectedDebugAndroidTest` on a Pixel 10 Pro XL emulator (API 37): 73 tests, 0 failures, 8 skipped (the AI, benchmark and model-download tests, all opt-in through instrumentation arguments).
+  - **Two `FileTreeWalkerTest` cases fail on a Windows host** and did so before these changes, because they are JVM unit tests run on the host: `Files.createSymbolicLink` needs a privilege a normal Windows account lacks, and `ScanFilter` matches the `/` separators Android uses, which a `C:…` path never has. Both are now `assumeTrue`-guarded, and `EnumeratorDeviceTest` gained device-side equivalents that pass on the emulator — which is where those two behaviours are meaningful.
+  - **Scan throughput (P8-05), Pixel 10 Pro XL emulator, debuggable build, `ScanThroughputTest` (5,000 files of 32 KiB, 1,000 duplicated), one run each.** Exact stage, first scan: 2,813 ms (1,777 files/s) before, 2,340 ms (2,136 files/s) after — about 17% faster. Rescan exact: 115 ms before, 105 ms after. Index: 2,683 ms before, 2,891 ms after, which is noise; indexing was not touched.
+    - **What this does not measure:** every file in the benchmark is exactly 32 KiB, so it takes the single-read path where the full hash comes with the partial. `needFull` is empty, so the batched full-hash writes (`FULL_BATCH`) and the cancel flush are never exercised. The measured gain is from parallelism alone. A benchmark with files over 32 KiB would be needed to see the rest.
+  - **Not done:** no human pass over the UI on a device, so the layout and motion changes are checked only by the instrumented tests. Next: an owner pass on a phone.
 
 - 2026-11-02: PRM2-10075 step 12, the final checks.
   - **Accessibility:** `AccessibilityChecksTest` now also checks the scan presets list, with a user preset and an unavailable built-in one, at 100% and 200% font. It checks 48dp targets, labels on every control, and that the preset text shows.
