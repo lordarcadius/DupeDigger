@@ -558,3 +558,14 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **Why:** in `material-icons-extended`, `Icons.Filled.ContentCopy` is still line art, so the selected destination never looked filled and the one signal M3 relies on was invisible on that tab. M3's own fallback for this case is to increase the icon's weight instead, which an `ImageVector` cannot do. `FileCopy` has a genuinely solid filled form, checked on a device, and "copies of a file" is the better name for a duplicate finder's results anyway.
 
 **Worth knowing:** not every Material icon has a distinct filled variant. Any future navigation icon has to be checked on screen, not assumed from the name.
+
+## D-029: What the floating bar broke, and how each is fixed (accepted, P9-07)
+A bar that overlays the pane bottom changes what else can live there. Three things it broke, found by using the app.
+
+**Snackbars were behind it.** Each screen's `Scaffold` hosts its snackbar at the pane's bottom edge, which the bar now covers, so every "removed · Undo" message appeared underneath it and Undo was unreachable. `AppSnackbarHost` applies `PaneMetrics.bottomOverlay` as bottom padding and every screen uses it. The padding is zero at expanded widths, where the rail replaces the bar.
+
+**The Results selection bar** had the same problem and is lifted the same way.
+
+**Dialog headlines read ragged.** `AppDialog` wrapped the title in a `Box` to make room for PrimeOS's close button. That inset is zero on every other device, but the wrapper still left-aligned the headline. M3 aligns a dialog to its centre when it has an icon and to the start when it doesn't; Compose centres the title's *box* but leaves the text start-aligned, so a headline long enough to wrap still looked ragged under a centred icon. `AppDialog` now sets `TextAlign` on both headline and body from whether an icon is present.
+
+**The AI entry's chevron** was centred against its body line because the heading sat outside the row. The heading moved inside, so the chevron centres against the whole entry.

@@ -53,6 +53,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppConnectedButtonGroup
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
@@ -93,7 +94,7 @@ fun CompareScreen(
                 },
             ) { TopBarTitle(stringResource(R.string.compare_title)) }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
             state = state.content,

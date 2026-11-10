@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
@@ -55,7 +56,7 @@ fun QuarantineScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_quarantine)) } },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
             state = state.content,

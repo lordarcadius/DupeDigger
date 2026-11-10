@@ -151,3 +151,4 @@ guidance rather than taste; each task cites the rule it follows. Decisions in D-
 | P9-04 | **Floating container.** The bar keeps M3 items but gets a rounded, inset, lifted container, as Google Clock has. | The bar reads as a floating pill on phone and tablet widths, with all four destinations. |
 | P9-05 | **Glass bar.** Icons only, bigger icons, a near-square active indicator, and a live backdrop blur. | The bar matches the owner's reference, and content blurs as it scrolls under it. |
 | P9-06 | **Bar polish.** Concentric indicator, no shadow or outline, a highlight that follows a drag, and an icon that actually fills. | The bar matches the owner's references and the selected destination is unmistakable. |
+| P9-07 | **What the floating bar broke.** Snackbars and the selection bar hidden behind it; dialog headline alignment; a chevron centred on the wrong thing. | Undo is reachable, dialogs read as M3 intends, and the settings chevron centres on its entry. |

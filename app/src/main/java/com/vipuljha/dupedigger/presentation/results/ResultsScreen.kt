@@ -79,6 +79,7 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
@@ -117,7 +118,7 @@ fun ResultsScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_results)) } },
         bottomBar = { SelectionBar(state, onIntent) },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.showKindChips) KindChips(state, onIntent)

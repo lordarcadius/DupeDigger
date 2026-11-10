@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppDialog
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
@@ -90,7 +91,7 @@ fun ScanScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar(onBack = onBack) { TopBarTitle(stringResource(title)) } },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         Crossfade(
             targetState = state.phase,

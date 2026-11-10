@@ -64,6 +64,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P9-04 | Floating nav container | done | M3 items, rounded inset container; a deviation, see D-025 |
 | P9-05 | Icons-only glass bar | done | Custom item, 28dp icons, live backdrop blur (D-026) |
 | P9-06 | Bar polish | done | Concentric indicator, no shadow/outline, sliding highlight, FileCopy (D-027, D-028) |
+| P9-07 | What the bar broke | done | Snackbars lifted, dialog alignment, chevron centring (D-029) |
 
 ## Log
 

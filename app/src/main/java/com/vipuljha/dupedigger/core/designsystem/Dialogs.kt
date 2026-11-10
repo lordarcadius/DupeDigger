@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -66,8 +68,16 @@ fun AppDialog(
         modifier = modifier.width(dialogWidth(Dimens.dialogWidth)),
         dismissButton = dismissButton,
         icon = icon,
-        title = title?.let { t -> { Box(Modifier.padding(end = PrimeOsBlur.closeInset)) { t() } } },
-        text = text,
+        // M3 centres a dialog that has an icon and starts one that doesn't. Compose centres the title's box but
+        // leaves the text itself start-aligned, so a headline long enough to wrap still reads ragged; set it here.
+        title = title?.let { t ->
+            {
+                Centred(icon != null) {
+                    if (PrimeOsBlur.closeInset > 0.dp) Box(Modifier.padding(end = PrimeOsBlur.closeInset)) { t() } else t()
+                }
+            }
+        },
+        text = text?.let { body -> { Centred(icon != null) { body() } } },
         containerColor = PrimeOsBlur.container(AlertDialogDefaults.containerColor),
         properties = DialogProperties(usePlatformDefaultWidth = false),
     )
@@ -166,4 +176,11 @@ object PrimeOsBlur {
         } catch (e: LinkageError) {
             fallback
         }
+}
+
+/** Aligns dialog text to its container: centred when the dialog has an icon, start-aligned when it doesn't. */
+@Composable
+private fun Centred(centred: Boolean, content: @Composable () -> Unit) {
+    val align = if (centred) TextAlign.Center else TextAlign.Start
+    CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(textAlign = align), content = content)
 }

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
@@ -86,7 +87,7 @@ fun GroupScreen(
                 },
             ) { TopBarTitle(stringResource(R.string.group_title)) }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
             state = state.content,

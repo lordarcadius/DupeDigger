@@ -3,6 +3,7 @@ package com.vipuljha.dupedigger.core.designsystem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -10,6 +11,8 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.WavyProgressIndicatorDefaults
@@ -92,4 +95,10 @@ fun <T> AppConnectedButtonGroup(
             }
         }
     }
+}
+
+/** Snackbars, lifted clear of the floating navigation bar that overlays the bottom of the pane. */
+@Composable
+fun AppSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
+    SnackbarHost(hostState, modifier.padding(bottom = LocalPaneMetrics.current.bottomOverlay))
 }

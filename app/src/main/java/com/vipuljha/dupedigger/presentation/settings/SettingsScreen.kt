@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -43,6 +45,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppLoadingIndicator
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
@@ -71,7 +74,7 @@ fun SettingsScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_settings)) } },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         if (state.isLoading) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { AppLoadingIndicator() }
@@ -113,15 +116,21 @@ fun SettingsScreen(
 
 @Composable
 private fun AiEntry(onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        SectionHeader(stringResource(R.string.ai_title))
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = Dimens.rowComfortableMin).clickable(onClick = onOpen).padding(vertical = Dimens.spaceSm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(stringResource(R.string.settings_ai_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+    // The heading sits inside the row, so the chevron centres against the whole entry and not just its body line.
+    Row(
+        modifier.fillMaxWidth().heightIn(min = Dimens.rowComfortableMin).clickable(onClick = onOpen).padding(vertical = Dimens.spaceSm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            SectionHeader(stringResource(R.string.ai_title))
+            Text(
+                stringResource(R.string.settings_ai_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+        Spacer(Modifier.width(Dimens.spaceMd))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
     }
 }
 

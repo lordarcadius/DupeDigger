@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import com.vipuljha.dupedigger.R
+import com.vipuljha.dupedigger.core.designsystem.AppSnackbarHost
 import com.vipuljha.dupedigger.core.designsystem.AppButton
 import com.vipuljha.dupedigger.core.designsystem.AppProgressBar
 import com.vipuljha.dupedigger.core.designsystem.AppTopBar
@@ -74,7 +75,7 @@ fun HomeScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_home)) } },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
             state = state.content,
