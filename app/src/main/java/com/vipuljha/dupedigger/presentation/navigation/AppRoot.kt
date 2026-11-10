@@ -26,9 +26,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.vipuljha.dupedigger.core.designsystem.AppShell
 import com.vipuljha.dupedigger.core.designsystem.LocalContentBounds
+import kotlinx.collections.immutable.toImmutableList
 import com.vipuljha.dupedigger.core.designsystem.LocalPaneMetrics
-import com.vipuljha.dupedigger.core.designsystem.NavPanelColumn
-import com.vipuljha.dupedigger.core.designsystem.NavRow
+import com.vipuljha.dupedigger.core.designsystem.AppNavItem
 import com.vipuljha.dupedigger.core.designsystem.WindowBreakpoints
 import com.vipuljha.dupedigger.core.designsystem.fadeThrough
 import com.vipuljha.dupedigger.core.designsystem.popTransition
@@ -46,7 +46,7 @@ import com.vipuljha.dupedigger.presentation.scan.ScanRoute
 import com.vipuljha.dupedigger.presentation.settings.SettingsRoute
 import kotlinx.coroutines.launch
 
-val LocalMenuClick = compositionLocalOf<(() -> Unit)?> { null }
+
 
 /**
  * Hosts the shell and one back stack per top-level tab.
@@ -58,15 +58,12 @@ val LocalMenuClick = compositionLocalOf<(() -> Unit)?> { null }
 @Composable
 fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
     var currentTab by rememberSaveable { mutableStateOf(TopLevelTab.Home) }
-    var savedPanelWidthDp by rememberSaveable { mutableStateOf<Float?>(null) }
     val backStacks = TopLevelTab.entries.associateWith { rememberNavBackStack(it.root) }
     val back: () -> Unit = { if (!backStacks.getValue(currentTab).back()) currentTab = TopLevelTab.Home }
     val selectTab: (TopLevelTab) -> Unit = { tab ->
         if (tab == currentTab) backStacks.getValue(tab).backTo(tab.root)
         currentTab = tab
     }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     /** Sets the tab directly: reselecting Home would pop the Scan screen it is about to show. */
     val openScan: () -> Unit = {
         val home = backStacks.getValue(TopLevelTab.Home)
@@ -75,11 +72,7 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
     }
     val onShortcut by rememberUpdatedState<(AppShortcut) -> Unit> { shortcut ->
         when {
-            shortcut == AppShortcut.OpenScan -> {
-                scope.launch { drawerState.close() }
-                openScan()
-            }
-            shortcut != AppShortcut.Home && drawerState.isOpen -> scope.launch { drawerState.close() }
+            shortcut == AppShortcut.OpenScan -> openScan()
             shortcut == AppShortcut.Home -> selectTab(TopLevelTab.Home)
             shortcut == AppShortcut.Back -> back()
             else -> backStacks.getValue(currentTab).back()
@@ -103,7 +96,7 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
     val provider = entryProvider<NavKey> {
         entry<Destination.Home>(metadata = topLevel) {
             HomeRoute(
-                onMenuClick = LocalMenuClick.current,
+                
                 onOpenScan = { backStacks.getValue(TopLevelTab.Home).open(Destination.Scan) },
             )
         }
@@ -112,7 +105,7 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
         }
         entry<Destination.Results>(metadata = topLevel + paneRole(PaneRole.List)) {
             ResultsRoute(
-                onMenuClick = LocalMenuClick.current,
+                
                 openGroup = (backStacks.getValue(TopLevelTab.Results).lastOrNull() as? Destination.Group)?.fingerprint,
                 onOpenGroup = openGroup,
                 onStartScan = openScan,
@@ -129,11 +122,11 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
             CompareRoute(onBack = back, viewModel = compareViewModel(key.fingerprint, key.leftId, key.rightId))
         }
         entry<Destination.Quarantine>(metadata = topLevel) {
-            QuarantineRoute(onMenuClick = LocalMenuClick.current)
+            QuarantineRoute()
         }
         entry<Destination.Settings>(metadata = topLevel) {
             SettingsRoute(
-                onMenuClick = LocalMenuClick.current,
+                
                 onOpenAi = { backStacks.getValue(TopLevelTab.Settings).open(Destination.AiSettings) },
             )
         }
@@ -154,36 +147,29 @@ fun AppRoot(shortcuts: AppShortcuts, modifier: Modifier = Modifier) {
     val start = entriesByTab.getValue(TopLevelTab.Home)
     val entries = if (currentTab == TopLevelTab.Home) start else start + entriesByTab.getValue(currentTab)
 
+    val navItems = TopLevelTab.entries.map { tab ->
+        AppNavItem(
+            icon = tab.icon,
+            selectedIcon = tab.selectedIcon,
+            label = stringResource(tab.label),
+            selected = tab == currentTab,
+            onClick = { selectTab(tab) },
+        )
+    }.toImmutableList()
+
     CompositionLocalProvider(LocalContentBounds provides remember { mutableStateOf(IntRect.Zero) }) {
-        AppShell(
-            savedPanelWidth = savedPanelWidthDp?.dp,
-            onPanelWidthSaved = { savedPanelWidthDp = it.value },
-            drawerState = drawerState,
-            drawerGesturesEnabled = backStacks.getValue(currentTab).size == 1,
-            navPanel = { showLabels, onNavigated ->
-                NavPanelColumn {
-                    TopLevelTab.entries.forEach { tab ->
-                        NavRow(tab.icon, stringResource(tab.label), selected = tab == currentTab, showLabel = showLabels) {
-                            selectTab(tab)
-                            onNavigated()
-                        }
-                    }
-                }
-            },
-        ) { onMenuClick ->
+        AppShell(navItems) {
             val twoPane = LocalPaneMetrics.current.width >= WindowBreakpoints.Medium
             val sceneStrategy = remember(twoPane) { ListDetailSceneStrategy<NavKey>(twoPane) { GroupPlaceholder() } }
-            CompositionLocalProvider(LocalMenuClick provides onMenuClick) {
-                NavDisplay(
-                    entries = entries,
-                    sceneStrategies = listOf(sceneStrategy),
-                    onBack = back,
-                    modifier = modifier,
-                    transitionSpec = { pushTransition() },
-                    popTransitionSpec = { popTransition() },
-                    predictivePopTransitionSpec = { popTransition() },
-                )
-            }
+            NavDisplay(
+                entries = entries,
+                sceneStrategies = listOf(sceneStrategy),
+                onBack = back,
+                modifier = modifier,
+                transitionSpec = { pushTransition() },
+                popTransitionSpec = { popTransition() },
+                predictivePopTransitionSpec = { popTransition() },
+            )
         }
     }
 }

@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -101,7 +101,7 @@ private fun DesignSystemGallery() {
                     onClick = { picked = it },
                     label = { it },
                 )
-                AppExtendedFab(text = "Scan", icon = Icons.Filled.Search, onClick = {})
+                AppExtendedFab(text = "Scan", icon = Icons.Outlined.Search, onClick = {})
             }
         }
     }

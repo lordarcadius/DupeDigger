@@ -82,12 +82,15 @@ class ExactEngineDeviceTest {
     fun hashesAMediaStoreFileThroughItsContentUri() = runBlocking {
         val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
         InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(context.packageName, permission)
+        // A row still being written has no size yet, and hashing one is meant to fail: ask only for finished rows.
         val media = context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.SIZE),
-            null, null, null,
+            "${MediaStore.Images.Media.SIZE} > 0",
+            null,
+            null,
         )?.use { c -> if (c.moveToFirst()) ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, c.getLong(0)) to c.getLong(1) else null }
-        assumeTrue("no images on the device", media != null)
+        assumeTrue("no readable images on the device", media != null)
         val (uri, size) = media!!
 
         val partial = hasher.partialHash(uri.toString(), size)

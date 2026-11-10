@@ -10,7 +10,6 @@ import com.vipuljha.dupedigger.core.mvi.ObserveAsEvents
 
 @Composable
 fun HomeRoute(
-    onMenuClick: (() -> Unit)?,
     onOpenScan: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -29,6 +28,5 @@ fun HomeRoute(
         progress = { progress.value },
         onIntent = viewModel::onIntent,
         snackbarHostState = snackbarHostState,
-        onMenuClick = onMenuClick,
     )
 }

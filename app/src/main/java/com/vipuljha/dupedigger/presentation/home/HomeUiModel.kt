@@ -49,8 +49,9 @@ private fun storageUi(storage: StorageUsage, reclaimableBytes: Long): StorageUi?
         freeNow = UiText.res(R.string.home_storage_free, formatBytes(storage.freeBytes)),
         usedFraction = storage.usedFraction(),
         duplicateFraction = storage.fractionOf(reclaimableBytes),
+        // Left out when the gain rounds away at the volume's scale, where it would just repeat "free now".
         afterCleanup = reclaimableBytes
-            .takeIf { it > 0 }
+            .takeIf { it > 0 && formatBytes(storage.freeBytes + it) != formatBytes(storage.freeBytes) }
             ?.let { UiText.res(R.string.home_storage_after, formatBytes(storage.freeBytes + it)) },
     )
 }

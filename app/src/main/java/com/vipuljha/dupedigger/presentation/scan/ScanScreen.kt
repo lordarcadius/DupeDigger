@@ -22,9 +22,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Checkbox
@@ -217,7 +217,7 @@ private fun LazyListScope.whereStep(state: ScanState, onIntent: (ScanIntent) -> 
                 stringResource(R.string.scan_action_add_folder),
                 { onIntent(ScanIntent.AddFolderClicked) },
                 kind = ButtonKind.Text,
-                icon = Icons.Filled.CreateNewFolder,
+                icon = Icons.Outlined.CreateNewFolder,
                 modifier = Modifier.padding(start = Dimens.spaceLg).animateItem(),
             )
         }
@@ -277,8 +277,8 @@ private fun PresetRow(preset: PresetUi, selected: Boolean, onIntent: (ScanIntent
             modifier = Modifier.weight(1f),
         ) { onIntent(ScanIntent.PresetSelected(preset.id)) }
         if (preset.editable) {
-            TooltipIconButton(Icons.Filled.Edit, stringResource(R.string.scan_action_edit_preset), { onIntent(ScanIntent.EditPresetClicked(preset.id)) })
-            TooltipIconButton(Icons.Filled.Delete, stringResource(R.string.scan_action_delete_preset), { onIntent(ScanIntent.DeletePresetClicked(preset.id)) })
+            TooltipIconButton(Icons.Outlined.Edit, stringResource(R.string.scan_action_edit_preset), { onIntent(ScanIntent.EditPresetClicked(preset.id)) })
+            TooltipIconButton(Icons.Outlined.Delete, stringResource(R.string.scan_action_delete_preset), { onIntent(ScanIntent.DeletePresetClicked(preset.id)) })
         }
     }
 }

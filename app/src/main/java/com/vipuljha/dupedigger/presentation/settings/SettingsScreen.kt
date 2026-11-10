@@ -17,8 +17,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.Icon
@@ -63,14 +63,13 @@ fun SettingsScreen(
     state: SettingsState,
     onIntent: (SettingsIntent) -> Unit,
     snackbarHostState: SnackbarHostState,
-    onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     onOpenAi: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_settings)) } },
+        topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_settings)) } },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         if (state.isLoading) {
@@ -180,7 +179,7 @@ private fun LazyListScope.folderSection(
             label = stringResource(addLabel),
             onClick = { onIntent(SettingsIntent.AddFolderClicked(purpose)) },
             kind = ButtonKind.Tonal,
-            icon = Icons.Filled.Add,
+            icon = Icons.Outlined.Add,
             modifier = Modifier.animateItem(),
         )
     }
@@ -211,7 +210,7 @@ private fun FolderRow(row: FolderUiModel, icon: ImageVector, onRemove: () -> Uni
                     )
                 }
             }
-            TooltipIconButton(Icons.Filled.Close, stringResource(R.string.settings_remove), onRemove)
+            TooltipIconButton(Icons.Outlined.Close, stringResource(R.string.settings_remove), onRemove)
         }
     }
 }
@@ -228,7 +227,6 @@ private fun SettingsScreenPreview() {
             ),
             onIntent = {},
             snackbarHostState = remember { SnackbarHostState() },
-            onMenuClick = null,
         )
     }
 }

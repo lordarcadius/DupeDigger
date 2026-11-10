@@ -486,3 +486,29 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **Decision:** the exact tier writes hashes in batches (500 partial, 100 full) rather than one row per file, and both loops flush what has completed in a `finally` under `NonCancellable`.
 
 **Why:** per-file writes cost a transaction each. Batching alone would have lost everything read since the last batch when a scan was cancelled, so the next run would read those files again — the opposite of what the batching was for.
+
+## D-022: M3 Expressive navigation — bar at the bottom, rail when wide, no drawer (accepted, P9-01)
+**Supersedes the navigation shape chosen in P1-04** (drawer under 600dp, icon rail to 839dp, resizable labelled panel above that).
+
+**Decision**, following the four M3 navigation pages:
+- **Compact (under 600dp):** flexible navigation bar at the bottom, items stacked icon over label (`ShortNavigationBar`).
+- **Medium (600–839dp):** the same bar, centred, icon beside label (`ShortNavigationBarArrangement.Centered` + `NavigationItemIconPosition.Start`).
+- **Expanded (840dp and up):** `WideNavigationRail`, items centred as a group, which M3 asks for on tablets so they stay in reach.
+
+**Why:** M3 Expressive says the navigation drawer is **no longer recommended** and names the expanded navigation rail as its replacement; it also says compact windows use a navigation bar and that a bar is for compact and medium windows only. The app had a drawer at exactly the size M3 says to use a bar, so the most common screen hid its own navigation behind a hamburger. Four destinations sits inside the bar's 3–5 rule.
+
+**Not a floating bar.** M3's navigation bar spans the full window width at the bottom; the floating, fully-rounded container is the **floating toolbar**, which is for contextual actions and which M3 says not to show at the same time as a navigation bar. Top-level navigation here is the bar.
+
+**What went with it:** the modal drawer, the resizable panel and its saved width, the hamburger in the top bar, and `LocalMenuClick`. `PaneMetrics.drawerMode` is gone; nothing read it.
+
+## D-023: Fill marks the selected destination, nothing else (accepted, P9-02)
+**Decision:** every top-level destination carries both icon forms. The active one is filled, the rest outlined. Every other icon in the app is outlined.
+
+**Why:** M3 treats fill as a state signal — "use a filled icon for the active destination", "don't use outlined icons on selected items", and fill "conveys state transition". The app used `Icons.Filled` for all four destinations at once and for ordinary actions, so fill meant nothing. Reserving it makes the selected destination readable at a glance and leaves the rest of the app in one consistent outlined style.
+
+## D-024: The headline number carries the accent (accepted, P9-03)
+**Decision:** Home's "Space you can free" card is filled `primary container`; the storage and last-scan cards stay `surface container low`. Hierarchy inside the accent card comes from the type scale, since a container role has exactly one paired text colour.
+
+**Why:** two of M3 Expressive's tactics are "apply rich and nuanced colors — without contrast, everything blends" and "contain content for emphasis — give the most important content the brightest surface". Every card was the same neutral tone, so the one number the app exists to show read no louder than the scan timestamp.
+
+**Checked and left alone:** the corner scale already matches M3's ten steps including the Expressive additions (20/32/48dp); the top app bar is `surface`, which is what M3 specifies until it scrolls; the body/navigation split is `surface` / `surface container`, which `ShortNavigationBar` and `WideNavigationRail` apply by default.

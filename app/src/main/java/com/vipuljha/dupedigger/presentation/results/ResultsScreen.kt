@@ -31,7 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Audiotrack
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -109,13 +109,12 @@ fun ResultsScreen(
     openGroup: String?,
     onOpenGroup: (fingerprint: String) -> Unit,
     snackbarHostState: SnackbarHostState,
-    onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_results)) } },
+        topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_results)) } },
         bottomBar = { SelectionBar(state, onIntent) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -527,7 +526,7 @@ private fun SelectionBar(state: ResultsState, onIntent: (ResultsIntent) -> Unit)
                     AppButton(
                         stringResource(R.string.action_delete),
                         { onIntent(ResultsIntent.DeleteClicked) },
-                        icon = Icons.Filled.Delete,
+                        icon = Icons.Outlined.Delete,
                         loading = state.deleting,
                         modifier = Modifier.align(Alignment.CenterVertically),
                     )

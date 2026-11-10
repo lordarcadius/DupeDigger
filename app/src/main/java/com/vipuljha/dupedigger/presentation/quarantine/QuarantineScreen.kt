@@ -48,13 +48,12 @@ fun QuarantineScreen(
     state: QuarantineState,
     onIntent: (QuarantineIntent) -> Unit,
     snackbarHostState: SnackbarHostState,
-    onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_quarantine)) } },
+        topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_quarantine)) } },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(

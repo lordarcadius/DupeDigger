@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,12 +19,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import com.vipuljha.dupedigger.R
 
-/** Top bar inside the pane; the leading slot is Back on pushed screens, else the hamburger in drawer mode. */
+/** Top bar inside the pane; the leading slot holds Back on pushed screens and is empty on a top-level one. */
 @Composable
 fun AppTopBar(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    onMenuClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     middle: @Composable RowScope.() -> Unit,
 ) {
@@ -39,11 +36,10 @@ fun AppTopBar(
             .heightIn(min = Dimens.topBarMin)
             .padding(start = gutter, end = gutter, top = Dimens.spaceXl, bottom = Dimens.spaceSm),
     ) {
-        when {
-            onBack != null -> BackButton(onBack)
-            onMenuClick != null -> TooltipIconButton(Icons.Filled.Menu, stringResource(R.string.open_navigation), onMenuClick)
+        if (onBack != null) {
+            BackButton(onBack)
+            Spacer(Modifier.width(Dimens.spaceMd))
         }
-        if (onBack != null || onMenuClick != null) Spacer(Modifier.width(Dimens.spaceMd))
         middle()
         actions()
     }

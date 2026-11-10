@@ -119,7 +119,6 @@ class AccessibilityChecksTest {
                 openGroup = rows.first().fingerprint,
                 onOpenGroup = {},
                 snackbarHostState = remember { SnackbarHostState() },
-                onMenuClick = {},
             )
         }
         assertControlsAccessible()

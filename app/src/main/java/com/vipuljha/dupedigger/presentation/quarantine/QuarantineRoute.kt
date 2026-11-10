@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun QuarantineRoute(
-    onMenuClick: (() -> Unit)?,
     viewModel: QuarantineViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -28,5 +27,5 @@ fun QuarantineRoute(
         }
     }
 
-    QuarantineScreen(state = state, onIntent = viewModel::onIntent, snackbarHostState = snackbarHostState, onMenuClick = onMenuClick)
+    QuarantineScreen(state = state, onIntent = viewModel::onIntent, snackbarHostState = snackbarHostState)
 }

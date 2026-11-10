@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CenterFocusStrong
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.outlined.CenterFocusStrong
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.ZoomIn
+import androidx.compose.material.icons.outlined.ZoomOut
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material3.MaterialTheme
@@ -88,7 +88,7 @@ fun CompareScreen(
                 onBack = onBack,
                 actions = {
                     if (showing) {
-                        TooltipIconButton(Icons.Filled.Delete, stringResource(R.string.compare_action_delete), { onIntent(CompareIntent.DeleteClicked) })
+                        TooltipIconButton(Icons.Outlined.Delete, stringResource(R.string.compare_action_delete), { onIntent(CompareIntent.DeleteClicked) })
                     }
                 },
             ) { TopBarTitle(stringResource(R.string.compare_title)) }
@@ -145,9 +145,9 @@ private fun Comparison(compare: CompareUi) {
                 label = { stringResource(if (it == CompareMode.SideBySide) R.string.compare_mode_side else R.string.compare_mode_slider) },
                 modifier = Modifier.weight(1f).widthIn(max = ModeGroupMaxWidth),
             )
-            TooltipIconButton(Icons.Filled.ZoomOut, stringResource(R.string.compare_zoom_out), { zoom.zoomBy(1 / ZOOM_STEP) }, enabled = zoom.scale > 1f)
-            TooltipIconButton(Icons.Filled.ZoomIn, stringResource(R.string.compare_zoom_in), { zoom.zoomBy(ZOOM_STEP) }, enabled = zoom.scale < MAX_SCALE)
-            TooltipIconButton(Icons.Filled.CenterFocusStrong, stringResource(R.string.compare_zoom_reset), zoom::reset, enabled = zoom.scale > 1f)
+            TooltipIconButton(Icons.Outlined.ZoomOut, stringResource(R.string.compare_zoom_out), { zoom.zoomBy(1 / ZOOM_STEP) }, enabled = zoom.scale > 1f)
+            TooltipIconButton(Icons.Outlined.ZoomIn, stringResource(R.string.compare_zoom_in), { zoom.zoomBy(ZOOM_STEP) }, enabled = zoom.scale < MAX_SCALE)
+            TooltipIconButton(Icons.Outlined.CenterFocusStrong, stringResource(R.string.compare_zoom_reset), zoom::reset, enabled = zoom.scale > 1f)
         }
     }
 }

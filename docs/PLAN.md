@@ -135,3 +135,16 @@ a selection that kept clearing, no select-all, a delete gesture nobody wanted, c
 | P8-06 | **Storage impact.** `DeviceStorage`; a Home meter showing used, duplicates and free, and what a clean-up would leave; the delete confirmation names the space and the free space after. | Home and the confirmation both say what deleting would change. |
 | P8-07 | **Small screens and motion.** Action rows wrap; the quarantine and group cards stack; state changes and list moves use the theme's expressive specs. | Every screen works at 320 dp and 200% font scale with nothing cut off. |
 | P8-08 | **Scan friction.** The first step starts a scan on every file type and the widest scope, with "Choose what to scan" beside it. | Scanning everything takes one tap from the Scan screen. |
+
+---
+
+## P9: Material 3 Expressive pass
+
+Raised by the owner: "the UI doesn't feel like Material 3 Expressive." Checked against the published
+guidance rather than taste; each task cites the rule it follows. Decisions in D-022 to D-024.
+
+| ID | Task | Done when |
+|---|---|---|
+| P9-01 | **Navigation.** Flexible navigation bar at compact and medium, wide rail when expanded, drawer gone. | The hamburger is gone and the bar is visible on a phone; all three widths work on a device. |
+| P9-02 | **Icons.** Fill marks the selected destination only; every other icon outlined. | No screen shows a filled icon except the active tab. |
+| P9-03 | **Colour.** The headline number gets `primary container`; neutral cards keep `surface container low`. | Home has one clear focal point rather than one flat tone. |

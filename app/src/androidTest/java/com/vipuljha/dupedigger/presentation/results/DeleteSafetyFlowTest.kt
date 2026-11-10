@@ -92,7 +92,7 @@ class DeleteSafetyFlowTest {
             AndroidDeviceStorage(Dispatchers.IO, StorageVolumes(context)),
         )
         rule.setContent {
-            DupeDiggerTheme { ResultsRoute(onMenuClick = null, openGroup = null, onOpenGroup = {}, onStartScan = {}, viewModel = viewModel) }
+            DupeDiggerTheme { ResultsRoute(openGroup = null, onOpenGroup = {}, onStartScan = {}, viewModel = viewModel) }
         }
     }
 

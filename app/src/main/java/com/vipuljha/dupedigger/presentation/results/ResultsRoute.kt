@@ -24,7 +24,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ResultsRoute(
-    onMenuClick: (() -> Unit)?,
     openGroup: String?,
     onOpenGroup: (fingerprint: String) -> Unit,
     onStartScan: () -> Unit,
@@ -59,6 +58,5 @@ fun ResultsRoute(
         openGroup = openGroup,
         onOpenGroup = onOpenGroup,
         snackbarHostState = snackbarHostState,
-        onMenuClick = onMenuClick,
     )
 }

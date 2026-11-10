@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FindInPage
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -66,13 +67,12 @@ fun HomeScreen(
     progress: () -> ScanProgressUi?,
     onIntent: (HomeIntent) -> Unit,
     snackbarHostState: SnackbarHostState,
-    onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
-        topBar = { AppTopBar(onMenuClick = onMenuClick) { TopBarTitle(stringResource(R.string.tab_home)) } },
+        topBar = { AppTopBar() { TopBarTitle(stringResource(R.string.tab_home)) } },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         StateSwitch(
@@ -124,7 +124,7 @@ private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onI
                 AppButton(
                     label = stringResource(R.string.home_action_start_scan),
                     onClick = { onIntent(HomeIntent.OpenScanClicked) },
-                    icon = Icons.Filled.Search,
+                    icon = Icons.Outlined.Search,
                     modifier = Modifier.fillMaxWidth().animateItem(),
                 )
             }
@@ -132,13 +132,17 @@ private fun HomeContent(model: HomeUiModel, progress: () -> ScanProgressUi?, onI
     }
 }
 
+/**
+ * [color] is `surface container low`, M3's default for a card, except on the one card that carries the
+ * screen's headline number. `Surface` pairs the matching `on *` content colour, so text inside inherits it.
+ */
 @Composable
-private fun HomeCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
+private fun HomeCard(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    content: @Composable () -> Unit,
+) {
+    Surface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = color) {
         Column(Modifier.padding(Dimens.spaceLg), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs)) { content() }
     }
 }
@@ -161,15 +165,19 @@ private fun StorageCard(storage: StorageUi, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * The screen's headline number, so it carries the accent: M3's expressive tactics put the most important
+ * content on the brightest surface and use an accent role to stop everything blending into one tone.
+ * Hierarchy inside the card comes from the type scale, since a container role has one paired text colour.
+ */
 @Composable
 private fun SummaryCard(model: HomeUiModel, modifier: Modifier = Modifier) {
-    HomeCard(modifier) {
-        Text(stringResource(R.string.home_reclaim_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    HomeCard(modifier, color = MaterialTheme.colorScheme.primaryContainer) {
+        Text(stringResource(R.string.home_reclaim_title), style = MaterialTheme.typography.titleMedium)
         Text(model.reclaimTotal.asString(), style = MaterialTheme.typography.displaySmallEmphasized)
         Text(
             (model.reclaimDetail ?: UiText.res(R.string.home_reclaim_none)).asString(),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         model.kinds.forEach { row ->
             Row(
@@ -178,7 +186,7 @@ private fun SummaryCard(model: HomeUiModel, modifier: Modifier = Modifier) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(row.label.asString(), style = MaterialTheme.typography.bodyLarge)
-                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(row.detail.asString(), style = MaterialTheme.typography.bodySmall)
                 }
                 Text(row.size.asString(), style = MaterialTheme.typography.titleSmall)
             }
@@ -276,7 +284,6 @@ private fun HomeScreenPreview() {
             ),
             onIntent = {},
             snackbarHostState = remember { SnackbarHostState() },
-            onMenuClick = {},
         )
     }
 }
