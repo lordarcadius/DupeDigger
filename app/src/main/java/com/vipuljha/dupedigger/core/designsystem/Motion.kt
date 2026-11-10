@@ -80,3 +80,7 @@ fun stateChangeSpec(): FiniteAnimationSpec<Float> = MaterialTheme.motionScheme.d
 
 @Composable
 fun fastSpatialSpec(): FiniteAnimationSpec<Float> = MaterialTheme.motionScheme.fastSpatialSpec()
+
+/** The expressive spatial spec for a value that slides, such as the navigation indicator. */
+@Composable
+fun listSlideSpec(): FiniteAnimationSpec<Dp> = MaterialTheme.motionScheme.defaultSpatialSpec()

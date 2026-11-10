@@ -1,8 +1,14 @@
 package com.vipuljha.dupedigger.core.designsystem
 
 import androidx.compose.foundation.background
+
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +27,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectable
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -47,7 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
+
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
@@ -58,7 +64,13 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.toIntSize
@@ -183,14 +195,19 @@ private fun AppNavBar(
     val glass = rememberGraphicsLayer().apply { renderEffect = BlurEffect(blurRadius, blurRadius, TileMode.Clamp) }
     var origin by remember { mutableStateOf(Offset.Zero) }
     val tint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = GlassTintAlpha)
+    val indicator = MaterialTheme.colorScheme.onSurface.copy(alpha = IndicatorAlpha)
+    val selected = items.indexOfFirst { it.selected }.coerceAtLeast(0)
+    // While a finger is down the highlight follows it, so a drag across the bar previews each destination.
+    var pressed by remember { mutableStateOf<Int?>(null) }
+    val highlighted = pressed ?: selected
 
-    Row(
-        modifier = modifier
+    BoxWithConstraints(
+        modifier
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(FloatingBarInset)
             .fillMaxWidth()
             .height(FloatingBarHeight)
-            .shadow(FloatingBarElevation, CircleShape, clip = true)
+            .clip(CircleShape)
             .onGloballyPositioned { origin = it.positionInRoot() }
             .drawBehind {
                 // Re-blur the content recorded behind the bar each frame, so it tracks scrolling live.
@@ -199,34 +216,65 @@ private fun AppNavBar(
                 }
                 drawLayer(glass)
                 drawRect(tint)
+            }
+            .pointerInput(items) {
+                val cell = size.width.toFloat() / items.size
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    pressed = (down.position.x / cell).toInt().coerceIn(items.indices)
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        pressed = (change.position.x / cell).toInt().coerceIn(items.indices)
+                    }
+                    pressed?.let { items[it].onClick() }
+                    pressed = null
+                }
             },
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        items.forEach { item -> NavIcon(item, Modifier.weight(1f).fillMaxHeight()) }
+        val cell = maxWidth / items.size
+        val slide by animateDpAsState(cell * highlighted, listSlideSpec(), label = "navIndicator")
+        Box(
+            Modifier
+                .offset(x = slide)
+                .width(cell)
+                .fillMaxHeight()
+                .padding(IndicatorInset)
+                .clip(CircleShape)
+                .background(indicator),
+        )
+        Row(Modifier.fillMaxSize()) {
+            items.forEachIndexed { index, item ->
+                NavIcon(item, highlighted == index, Modifier.weight(1f).fillMaxHeight())
+            }
+        }
     }
 }
 
-/** One destination: a big icon centred in an indicator that fills its share of the bar when selected. */
+/**
+ * One destination. The indicator is large — the reference fills about 93% of the bar's height with it —
+ * and deliberately low-contrast: it is a tint of `on surface`, not an accent fill. That is what lets a
+ * shape this big sit quietly behind the icon. The selected state is carried by the filled icon and its
+ * stronger tint, so it survives the quiet indicator.
+ */
 @Composable
-private fun NavIcon(item: AppNavItem, modifier: Modifier = Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = IndicatorMaxWidth)
-                .height(IndicatorHeight)
-                .clip(IndicatorShape)
-                .background(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                .selectable(selected = item.selected, role = Role.Tab, onClick = item.onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (item.selected) item.selectedIcon else item.icon,
-                contentDescription = item.label,
-                tint = if (item.selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavIconSize),
-            )
-        }
+private fun NavIcon(item: AppNavItem, highlighted: Boolean, modifier: Modifier = Modifier) {
+    // The bar owns the pointer input so a drag can cross items, so each one carries only its semantics.
+    Box(
+        modifier.semantics(mergeDescendants = true) {
+            role = Role.Tab
+            selected = item.selected
+            contentDescription = item.label
+            onClick { item.onClick(); true }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (highlighted) item.selectedIcon else item.icon,
+            contentDescription = null,
+            tint = if (highlighted) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(NavIconSize),
+        )
     }
 }
 
@@ -252,10 +300,10 @@ private val RailWidth = 96.dp
 private val FloatingBarInset = 16.dp
 private val FloatingBarHeight = 72.dp
 private val NavIconSize = 28.dp
-private val IndicatorHeight = 56.dp
-private val IndicatorMaxWidth = 80.dp
-private val IndicatorShape = RoundedCornerShape(20.dp)
+// Proportions taken from the reference: the indicator is 0.83x the bar's height and a little wider than tall.
+// Uniform on all four sides, so at the ends the indicator's curve nests inside the container's own.
+private val IndicatorInset = 4.dp
+private const val IndicatorAlpha = 0.10f
 private val FloatingBarBlur = 24.dp
-private const val GlassTintAlpha = 0.72f
-private val FloatingBarElevation = 3.dp
+private const val GlassTintAlpha = 0.55f
 private val ActionsLabelMinWidth = 600.dp

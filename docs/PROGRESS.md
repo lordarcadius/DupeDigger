@@ -63,6 +63,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P9-03 | M3E colour | done | Accent on the headline number (D-024) |
 | P9-04 | Floating nav container | done | M3 items, rounded inset container; a deviation, see D-025 |
 | P9-05 | Icons-only glass bar | done | Custom item, 28dp icons, live backdrop blur (D-026) |
+| P9-06 | Bar polish | done | Concentric indicator, no shadow/outline, sliding highlight, FileCopy (D-027, D-028) |
 
 ## Log
 

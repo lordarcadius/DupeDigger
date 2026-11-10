@@ -539,3 +539,22 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **What this costs, stated plainly.** M3 says a navigation item's label is required and "don't remove the labels from navigation items"; a label is also how M3 expects the destination to be announced. The icons therefore carry their destination name as `contentDescription`, and each keeps `Role.Tab` and a 56×80dp target, so assistive tech and touch targets still hold. It remains a documented deviation.
 
 **Blur cost:** recording the pane into a layer every frame is extra GPU work on every screen, and the blur only exists while the bar is on screen. `GraphicsLayer` and `BlurEffect` are platform APIs available from API 31, and this app's minSdk is 31, so no fallback path is needed. Not measured on a low-end device.
+
+## D-027: The floating bar is a sliding-highlight glass bar (accepted, P9-06)
+**Replaces the item treatment in D-026** after the owner compared it against reference screenshots.
+
+**Shape.** The indicator fills its share of the bar with a **uniform 4dp inset on all four sides**, fully rounded. The uniform inset is the point: the container's corner radius is half the bar's height, so an indicator inset equally on every side has a concentric curve at the ends and no crescent-shaped gap. A fixed-width indicator centred in a wider cell left exactly that gap.
+
+**No shadow, no outline.** The container is the blurred glass and its tint, nothing else.
+
+**Sliding highlight.** The bar owns the pointer input rather than each item being `selectable`, so a drag can cross item boundaries: the highlight follows the finger and commits to whatever destination it is over on release, like iOS's tab bar. The slide uses the theme's expressive spatial spring.
+- **Cost:** no per-item ripple, since the items are no longer individually clickable. The moving highlight is the feedback. Each item keeps `Role.Tab`, its selected state, its name and a click action, so assistive tech and keyboard still work.
+
+**Transparency** is a `surface container` tint at 55% over the blur. Lower reads as better glass but leans on whatever is behind it; M3 wants 3:1 between a navigation icon and its container, which cannot be guaranteed over arbitrary content. 55% was the owner's pick after seeing 42% and 65%.
+
+## D-028: Results uses FileCopy, because ContentCopy has no filled form (accepted, P9-06)
+**Decision:** the Results destination's icon pair is `FileCopy`, not `ContentCopy`.
+
+**Why:** in `material-icons-extended`, `Icons.Filled.ContentCopy` is still line art, so the selected destination never looked filled and the one signal M3 relies on was invisible on that tab. M3's own fallback for this case is to increase the icon's weight instead, which an `ImageVector` cannot do. `FileCopy` has a genuinely solid filled form, checked on a device, and "copies of a file" is the better name for a duplicate finder's results anyway.
+
+**Worth knowing:** not every Material icon has a distinct filled variant. Any future navigation icon has to be checked on screen, not assumed from the name.
