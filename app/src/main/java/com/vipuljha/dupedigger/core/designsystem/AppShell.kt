@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -104,13 +108,29 @@ private fun Pane(metrics: PaneMetrics, modifier: Modifier = Modifier, content: @
 }
 
 /**
- * The flexible navigation bar. The active item is the filled icon with the pill indicator behind it;
- * every other item keeps its outlined icon, which is how M3 signals which destination is open.
+ * The navigation bar, in a floating container: fully rounded, inset from the window and lifted off the
+ * content, the way Google's own apps (Clock, for one) present their destinations.
+ *
+ * **From M3:** the items are the flexible navigation bar's — the active one is the filled icon with the
+ * pill indicator behind it, every other one stays outlined, all of them keep their label. Elevation is
+ * level 2 (3dp), M3's resting level for a toolbar. The fill is `surface container`, M3's navigation role.
+ *
+ * **My design decision (not in M3):** the floating container itself. M3's navigation bar spans the full
+ * window width with square corners, and M3 documents this rounded floating shape as the *floating
+ * toolbar*, a component for actions. Carrying top-level navigation in it is a deliberate departure, taken
+ * because the owner asked for this shape (D-025). The inset and the corner are mine; M3 publishes neither
+ * for this use.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppNavBar(items: ImmutableList<AppNavItem>, horizontalItems: Boolean) {
     ShortNavigationBar(
+        modifier = Modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(FloatingBarInset)
+            .shadow(FloatingBarElevation, CircleShape, clip = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        windowInsets = WindowInsets(0, 0, 0, 0),
         arrangement = if (horizontalItems) ShortNavigationBarArrangement.Centered else ShortNavigationBarArrangement.EqualWeight,
     ) {
         items.forEach { item ->
@@ -142,4 +162,8 @@ private fun AppNavRail(items: ImmutableList<AppNavItem>) {
 }
 
 private val RailWidth = 96.dp
+
+// Not published by M3 for this use: the gap the floating bar keeps from the window, and its resting lift.
+private val FloatingBarInset = 16.dp
+private val FloatingBarElevation = 3.dp
 private val ActionsLabelMinWidth = 600.dp

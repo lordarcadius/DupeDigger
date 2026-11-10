@@ -61,6 +61,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P9-01 | M3E navigation | done | Bar at compact/medium, wide rail expanded, drawer gone (D-022) |
 | P9-02 | M3E icons | done | Fill reserved for the selected destination (D-023) |
 | P9-03 | M3E colour | done | Accent on the headline number (D-024) |
+| P9-04 | Floating nav container | done | M3 items, rounded inset container; a deviation, see D-025 |
 
 ## Log
 
@@ -73,6 +74,8 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
   - **Colour (P9-03).** Every Home card was the same neutral tone, so the one number the app exists to show read no louder than the scan timestamp. The reclaim card is now `primary container` per the tactics on contrast and containment; the rest stay `surface container low` (D-024).
     - **Checked and deliberately left alone:** the corner scale already matches M3's ten steps including the Expressive 20/32/48dp additions; the top app bar is `surface`, which M3 specifies until it scrolls; the body/navigation split is already `surface` / `surface container`. Colours come from dynamic colour on device, which is why they are blue on the emulator and not the brand brown.
   - **Fixed while verifying:** Home showed "8.0 GB free after clearing the duplicates" next to "8.0 GB free now" whenever the gain rounded away at the volume's scale; that line is now left out when it would just repeat.
+  - **Floating container (P9-04).** The owner asked for the floating bar twice and pointed at Google Clock, which ships a rounded inset pill for its four destinations. I had said M3 has no floating navigation bar; M3's own anatomy image does show a square, full-width container, but I was wrong to leave it there, because Google ships the other shape. The bar now keeps M3's items — filled active icon, pill indicator, labels, state layers — in a fully rounded container inset 16dp and lifted 3dp. The items and the elevation are M3's; the container is a deliberate deviation, written up in D-025.
+    - First attempt wrapped `ShortNavigationBar` in a `Surface`, which collapsed the bar to a single item. Applying the shape to the bar's own modifier with `Modifier.shadow(..., CircleShape, clip = true)` and its `containerColor` fixed it; caught on the device, not by a test.
   - **Checks.** `assembleDebug`, `testDebugUnitTest`, `lint`, and `connectedDebugAndroidTest` on the Pixel 10 Pro XL emulator (73 tests, 0 failures, 7 skipped). Walked all four tabs on the device, and checked the layout at 448dp, 700dp and 900dp.
     - `ExactEngineDeviceTest.hashesAMediaStoreFileThroughItsContentUri` failed once here. It had always been skipped for want of images; seeding the device made it run, and it picked a MediaStore row that was still pending, whose `_size` is NULL and so reads as 0 — hashing that is *meant* to fail. The test now asks for finished rows only. Not a product bug: the default minimum file size is 1 byte, so a zero-sized row never reaches the exact tier anyway.
 

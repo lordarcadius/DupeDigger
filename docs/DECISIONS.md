@@ -497,7 +497,7 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 
 **Why:** M3 Expressive says the navigation drawer is **no longer recommended** and names the expanded navigation rail as its replacement; it also says compact windows use a navigation bar and that a bar is for compact and medium windows only. The app had a drawer at exactly the size M3 says to use a bar, so the most common screen hid its own navigation behind a hamburger. Four destinations sits inside the bar's 3–5 rule.
 
-**Not a floating bar.** M3's navigation bar spans the full window width at the bottom; the floating, fully-rounded container is the **floating toolbar**, which is for contextual actions and which M3 says not to show at the same time as a navigation bar. Top-level navigation here is the bar.
+**Superseded in part by D-025:** this entry first shipped the bar with M3's own square, full-width container. The owner asked for the floating shape Google's Clock app uses, and D-025 records that change. Everything else here — the breakpoints, the components, the drawer's removal — still holds.
 
 **What went with it:** the modal drawer, the resizable panel and its saved width, the hamburger in the top bar, and `LocalMenuClick`. `PaneMetrics.drawerMode` is gone; nothing read it.
 
@@ -512,3 +512,16 @@ Both are cached in `perceptual_hash` (`DHASH`, `PHASH`, frame 0) and dropped wit
 **Why:** two of M3 Expressive's tactics are "apply rich and nuanced colors — without contrast, everything blends" and "contain content for emphasis — give the most important content the brightest surface". Every card was the same neutral tone, so the one number the app exists to show read no louder than the scan timestamp.
 
 **Checked and left alone:** the corner scale already matches M3's ten steps including the Expressive additions (20/32/48dp); the top app bar is `surface`, which is what M3 specifies until it scrolls; the body/navigation split is `surface` / `surface container`, which `ShortNavigationBar` and `WideNavigationRail` apply by default.
+
+## D-025: The navigation bar sits in a floating container (accepted, P9-04)
+**Amends D-022,** which shipped M3's own container for the navigation bar.
+
+**Decision:** the navigation bar keeps M3's flexible navigation bar *items* — `ShortNavigationBarItem`, so the active one is filled with the pill indicator, the rest stay outlined, every one keeps its label, and the state layers and accessibility come along — but its container is fully rounded, inset 16dp from the window, and lifted 3dp off the content.
+
+**What is M3's and what is mine.**
+- **From M3:** the items and their behaviour; elevation level 2 (3dp), M3's resting level for a toolbar; `surface container`, M3's navigation-region fill; the corner is the scale's "full" step.
+- **My design decision (not in M3):** the floating container for *navigation*. M3's navigation bar is square-cornered and spans the full window width — its own anatomy image shows exactly that — and M3 documents this rounded floating shape as the **floating toolbar**, a component for contextual actions, which it says not to show alongside a navigation bar. The 16dp inset is mine; M3 publishes no margin for this.
+
+**Why anyway:** the owner asked for it twice and pointed at Google's Clock app, which ships this shape for its four top-level destinations. It is a look Google itself uses even though the published navigation-bar spec doesn't describe it. Taking M3's items and changing only the container keeps every behavioural rule that matters — one active destination, fill for selected, labels always present, 3:1 contrast — and departs only on shape and placement.
+
+**What it costs:** the bar no longer spans the window, so it is a documented deviation a future M3 audit will flag. It does not overlay content; it sits below it in the shell's column, so nothing is hidden behind it and no screen needed extra bottom padding.

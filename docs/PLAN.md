@@ -148,3 +148,4 @@ guidance rather than taste; each task cites the rule it follows. Decisions in D-
 | P9-01 | **Navigation.** Flexible navigation bar at compact and medium, wide rail when expanded, drawer gone. | The hamburger is gone and the bar is visible on a phone; all three widths work on a device. |
 | P9-02 | **Icons.** Fill marks the selected destination only; every other icon outlined. | No screen shows a filled icon except the active tab. |
 | P9-03 | **Colour.** The headline number gets `primary container`; neutral cards keep `surface container low`. | Home has one clear focal point rather than one flat tone. |
+| P9-04 | **Floating container.** The bar keeps M3 items but gets a rounded, inset, lifted container, as Google Clock has. | The bar reads as a floating pill on phone and tablet widths, with all four destinations. |
