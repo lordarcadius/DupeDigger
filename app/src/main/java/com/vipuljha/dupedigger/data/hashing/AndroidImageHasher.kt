@@ -60,7 +60,8 @@ class AndroidImageHasher @Inject constructor(
 
     private fun hashOf(bitmap: Bitmap): ImageHashes {
         val (width, height) = bitmap.width to bitmap.height
-        val pixels = IntArray(width * height).also { bitmap.getPixels(it, 0, width, 0, 0, width, height) }
+        val pixels =
+            IntArray(width * height).also { bitmap.getPixels(it, 0, width, 0, 0, width, height) }
         val luma = FloatArray(pixels.size) { i ->
             val p = pixels[i]
             val alpha = Color.alpha(p) / 255f

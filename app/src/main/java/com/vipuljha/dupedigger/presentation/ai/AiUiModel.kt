@@ -17,7 +17,8 @@ fun aiUi(
     npu: Pair<ModelVariant, ModelDownloadState>? = null,
 ): AiUi {
     val all = models + listOfNotNull(npu)
-    val inFlight = all.any { (_, state) -> state is ModelDownloadState.Queued || state is ModelDownloadState.Downloading }
+    val inFlight =
+        all.any { (_, state) -> state is ModelDownloadState.Queued || state is ModelDownloadState.Downloading }
     return AiUi(
         enabled = settings.semanticEnabled && settings.aiModelId != null,
         canEnable = settings.aiModelId != null,
@@ -25,7 +26,8 @@ fun aiUi(
         threshold = settings.semanticThreshold.coerceIn(AppSettings.SemanticChoices),
         wifiOnly = settings.modelDownloadWifiOnly,
         chargingOnly = settings.aiOnlyWhileCharging,
-        models = models.map { (variant, state) -> variant.toRow(state, settings, inFlight) }.toImmutableList(),
+        models = models.map { (variant, state) -> variant.toRow(state, settings, inFlight) }
+            .toImmutableList(),
         npuChip = npu?.first?.socTarget?.replace('_', ' '),
         npuBuild = npu?.let { (variant, state) ->
             variant.toRow(state, settings, inFlight).copy(
@@ -37,7 +39,11 @@ fun aiUi(
     )
 }
 
-private fun ModelVariant.toRow(state: ModelDownloadState, settings: AppSettings, inFlight: Boolean) = ModelRowUi(
+private fun ModelVariant.toRow(
+    state: ModelDownloadState,
+    settings: AppSettings,
+    inFlight: Boolean
+) = ModelRowUi(
     id = id,
     title = UiText.res(
         when {
@@ -56,15 +62,21 @@ private fun ModelVariant.toRow(state: ModelDownloadState, settings: AppSettings,
     details = UiText.res(
         R.string.ai_model_details,
         formatBytes(sizeBytes),
-        peakRamMb?.let { UiText.res(R.string.ai_model_memory, formatBytes(it * 1_000_000L)) } ?: UiText.res(R.string.ai_model_memory_unknown),
+        peakRamMb?.let { UiText.res(R.string.ai_model_memory, formatBytes(it * 1_000_000L)) }
+            ?: UiText.res(R.string.ai_model_memory_unknown),
     ),
     status = when (state) {
         ModelDownloadState.NotDownloaded -> ModelStatusUi.NotDownloaded
         ModelDownloadState.Queued -> ModelStatusUi.Queued(UiText.res(if (settings.modelDownloadWifiOnly) R.string.ai_waiting_wifi else R.string.ai_waiting))
         is ModelDownloadState.Downloading -> ModelStatusUi.Downloading(
             fraction = if (state.totalBytes > 0) state.downloadedBytes.toFloat() / state.totalBytes else 0f,
-            label = UiText.res(R.string.ai_downloading, formatBytes(state.downloadedBytes), formatBytes(state.totalBytes)),
+            label = UiText.res(
+                R.string.ai_downloading,
+                formatBytes(state.downloadedBytes),
+                formatBytes(state.totalBytes)
+            ),
         )
+
         ModelDownloadState.Downloaded -> ModelStatusUi.Downloaded
         is ModelDownloadState.Failed -> ModelStatusUi.Failed(UiText.res(state.reason.message()))
     },

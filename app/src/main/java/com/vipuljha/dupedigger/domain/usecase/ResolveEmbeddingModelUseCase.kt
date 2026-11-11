@@ -23,8 +23,9 @@ class ResolveEmbeddingModelUseCase @Inject constructor(
 ) {
     operator fun invoke(variant: ModelVariant, backend: EmbeddingBackend): EmbeddingTarget {
         if (backend != EmbeddingBackend.NPU) return EmbeddingTarget(variant, backend)
-        val build = npuBuild(variant)?.takeIf { downloads.installedPath(it) != null && soc.hasNpuRuntime() }
-            ?: return EmbeddingTarget(variant, EmbeddingBackend.GPU)
+        val build =
+            npuBuild(variant)?.takeIf { downloads.installedPath(it) != null && soc.hasNpuRuntime() }
+                ?: return EmbeddingTarget(variant, EmbeddingBackend.GPU)
         return EmbeddingTarget(build, EmbeddingBackend.NPU)
     }
 

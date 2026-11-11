@@ -63,7 +63,14 @@ class LiteRtModelLoader @Inject constructor(
         }
         return object : LoadedModel {
             override fun embed(input: EmbeddingInput, dim: Int): FloatArray =
-                engine.computeEmbedding(input.toInputData(), EmbeddingOptions(normalize = true, outputSize = dim, visionTokensPerImage = VISION_TOKENS)).embedding
+                engine.computeEmbedding(
+                    input.toInputData(),
+                    EmbeddingOptions(
+                        normalize = true,
+                        outputSize = dim,
+                        visionTokensPerImage = VISION_TOKENS
+                    )
+                ).embedding
 
             override fun close() {
                 if (engine.isInitialized()) engine.close()

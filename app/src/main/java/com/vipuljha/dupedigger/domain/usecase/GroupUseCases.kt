@@ -13,12 +13,14 @@ import javax.inject.Inject
 /** The group with this fingerprint, split into keeper and removable files; null once it has fewer than two members. */
 class ObserveGroupUseCase @Inject constructor(private val groups: DuplicateGroupRepository) {
     operator fun invoke(fingerprint: String): Flow<DuplicateGroupItem?> =
-        groups.observeGroup(fingerprint).map { group -> group?.takeIf { it.members.size >= 2 }?.toItem() }
+        groups.observeGroup(fingerprint)
+            .map { group -> group?.takeIf { it.members.size >= 2 }?.toItem() }
 }
 
 /** Saves the file to keep for this content; it holds across rescans because it is keyed by fingerprint. */
 class ChooseKeeperUseCase @Inject constructor(private val groups: DuplicateGroupRepository) {
-    suspend operator fun invoke(fingerprint: String, member: GroupMember) = groups.setKeepChoice(fingerprint, member.sourceUri)
+    suspend operator fun invoke(fingerprint: String, member: GroupMember) =
+        groups.setKeepChoice(fingerprint, member.sourceUri)
 }
 
 /** Remembers that this content isn't a duplicate and removes its saved group, in one transaction. */
@@ -27,7 +29,8 @@ class MarkNotDuplicatesUseCase @Inject constructor(private val groups: Duplicate
 }
 
 class ReadMediaInfoUseCase @Inject constructor(private val inspector: FileInspector) {
-    suspend operator fun invoke(member: GroupMember, kind: MediaKind) = inspector.mediaInfo(member, kind)
+    suspend operator fun invoke(member: GroupMember, kind: MediaKind) =
+        inspector.mediaInfo(member, kind)
 }
 
 class GetViewTargetUseCase @Inject constructor(private val inspector: FileInspector) {

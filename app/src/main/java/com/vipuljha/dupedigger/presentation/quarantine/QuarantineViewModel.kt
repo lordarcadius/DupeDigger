@@ -37,12 +37,22 @@ class QuarantineViewModel @Inject constructor(
                 setState {
                     val kept = selection.filterTo(mutableSetOf()) { it in here }
                     copy(
-                        content = ContentState.Success(files.map { it.toUi(now, it.id in kept) }.toImmutableList()),
+                        content = ContentState.Success(files.map { it.toUi(now, it.id in kept) }
+                            .toImmutableList()),
                         selection = kept.toImmutableSet(),
                     )
                 }
             }
-            .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
+            .catch {
+                setState {
+                    copy(
+                        content = ContentState.Error(
+                            DomainError.Unknown.toUiText(),
+                            retryable = false
+                        )
+                    )
+                }
+            }
             .launchIn(viewModelScope)
     }
 
@@ -51,29 +61,50 @@ class QuarantineViewModel @Inject constructor(
             is QuarantineIntent.ItemToggled -> select(
                 if (intent.id in currentState.selection) currentState.selection - intent.id else currentState.selection + intent.id,
             )
+
             QuarantineIntent.SelectAllToggled ->
                 select(if (allSelected()) emptySet() else items().map { it.id }.toSet())
+
             QuarantineIntent.RestoreClicked -> work { picked ->
                 val failed = restore(picked)
-                sendEffect(QuarantineEffect.ShowMessage(restoreMessage(restored = picked.size - failed, failed = failed)))
+                sendEffect(
+                    QuarantineEffect.ShowMessage(
+                        restoreMessage(
+                            restored = picked.size - failed,
+                            failed = failed
+                        )
+                    )
+                )
             }
-            QuarantineIntent.DeleteClicked -> currentState.selection.size.takeIf { it > 0 }?.let { count ->
-                setState { copy(confirmDelete = count) }
-            }
+
+            QuarantineIntent.DeleteClicked -> currentState.selection.size.takeIf { it > 0 }
+                ?.let { count ->
+                    setState { copy(confirmDelete = count) }
+                }
+
             QuarantineIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             QuarantineIntent.DeleteConfirmed -> {
                 setState { copy(confirmDelete = null) }
                 work { picked ->
                     val failed = deleteAll(picked)
-                    sendEffect(QuarantineEffect.ShowMessage(deletedMessage(deleted = picked.size - failed, failed = failed)))
+                    sendEffect(
+                        QuarantineEffect.ShowMessage(
+                            deletedMessage(
+                                deleted = picked.size - failed,
+                                failed = failed
+                            )
+                        )
+                    )
                 }
             }
         }
     }
 
-    private fun items(): List<QuarantineItemUi> = (currentState.content as? ContentState.Success)?.data.orEmpty()
+    private fun items(): List<QuarantineItemUi> =
+        (currentState.content as? ContentState.Success)?.data.orEmpty()
 
-    private fun allSelected(): Boolean = items().isNotEmpty() && currentState.selection.size >= items().size
+    private fun allSelected(): Boolean =
+        items().isNotEmpty() && currentState.selection.size >= items().size
 
     /** Runs [block] over the current selection; a second tap while one runs is ignored. */
     private fun work(block: suspend (picked: List<Long>) -> Unit) {
@@ -90,7 +121,10 @@ class QuarantineViewModel @Inject constructor(
         copy(
             selection = if (ids.isEmpty()) persistentSetOf() else ids.toImmutableSet(),
             content = (content as? ContentState.Success)
-                ?.let { ContentState.Success(it.data.map { item -> item.copy(selected = item.id in ids) }.toImmutableList()) }
+                ?.let {
+                    ContentState.Success(it.data.map { item -> item.copy(selected = item.id in ids) }
+                        .toImmutableList())
+                }
                 ?: content,
         )
     }

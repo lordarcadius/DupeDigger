@@ -36,17 +36,37 @@ class CompareViewModel @AssistedInject constructor(
         observeGroup(fingerprint)
             .onEach { item ->
                 group = item
-                setState { copy(content = ContentState.Success(item?.toCompareUi(leftId, rightId))) }
+                setState {
+                    copy(
+                        content = ContentState.Success(
+                            item?.toCompareUi(
+                                leftId,
+                                rightId
+                            )
+                        )
+                    )
+                }
             }
-            .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
+            .catch {
+                setState {
+                    copy(
+                        content = ContentState.Error(
+                            DomainError.Unknown.toUiText(),
+                            retryable = false
+                        )
+                    )
+                }
+            }
             .launchIn(viewModelScope)
     }
 
     override fun handleIntent(intent: CompareIntent) {
         when (intent) {
-            CompareIntent.DeleteClicked -> group?.removable?.firstOrNull { it.fileId == rightId }?.let { copy ->
-                report { removal.delete(mapOf(copy.fileId to copy.size)) }
-            }
+            CompareIntent.DeleteClicked -> group?.removable?.firstOrNull { it.fileId == rightId }
+                ?.let { copy ->
+                    report { removal.delete(mapOf(copy.fileId to copy.size)) }
+                }
+
             is CompareIntent.TrashAnswered -> report { removal.trashAnswered(intent.accepted) }
             is CompareIntent.UndoClicked -> report { removal.undo(intent.undo) }
         }
@@ -58,6 +78,10 @@ class CompareViewModel @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(fingerprint: String, @Assisted("left") leftId: Long, @Assisted("right") rightId: Long): CompareViewModel
+        fun create(
+            fingerprint: String,
+            @Assisted("left") leftId: Long,
+            @Assisted("right") rightId: Long
+        ): CompareViewModel
     }
 }

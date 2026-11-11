@@ -26,11 +26,12 @@ class ExcludedPathRepositoryImpl @Inject constructor(
 
     override suspend fun excludeTree(treeUri: String): Outcome<Unit> {
         val uri = Uri.parse(treeUri)
-        val path = if (uri.authority == EXTERNAL_STORAGE_AUTHORITY && DocumentsContract.isTreeUri(uri)) {
-            externalStorageDocIdToPath(DocumentsContract.getTreeDocumentId(uri))
-        } else {
-            null
-        } ?: return Outcome.Failure(DomainError.NotFound)
+        val path =
+            if (uri.authority == EXTERNAL_STORAGE_AUTHORITY && DocumentsContract.isTreeUri(uri)) {
+                externalStorageDocIdToPath(DocumentsContract.getTreeDocumentId(uri))
+            } else {
+                null
+            } ?: return Outcome.Failure(DomainError.NotFound)
         dao.upsert(ExcludedPathEntity(path, addedAt = System.currentTimeMillis()))
         return Outcome.Success(Unit)
     }

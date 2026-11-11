@@ -7,7 +7,19 @@ import kotlin.math.max
 const val MIN_AUDIO_MS = 30_000L
 
 /** Words that make a title too generic to identify a song ("Track 03", "Recording 12", "Untitled"). */
-private val genericTitleWords = setOf("track", "audio", "recording", "rec", "untitled", "unknown", "voice", "song", "ptt", "aud", "new")
+private val genericTitleWords = setOf(
+    "track",
+    "audio",
+    "recording",
+    "rec",
+    "untitled",
+    "unknown",
+    "voice",
+    "song",
+    "ptt",
+    "aud",
+    "new"
+)
 
 /**
  * A key for a song title, from a tag or a file name, so both compare alike.
@@ -20,7 +32,8 @@ fun audioTitleKey(title: String): Long? {
     return stableHash(words.joinToString(" "))
 }
 
-fun audioArtistKey(artist: String): Long? = normalizeWords(artist).takeIf { it.isNotEmpty() }?.let { stableHash(it.joinToString(" ")) }
+fun audioArtistKey(artist: String): Long? =
+    normalizeWords(artist).takeIf { it.isNotEmpty() }?.let { stableHash(it.joinToString(" ")) }
 
 /** What audio matching compares: duration, the title key and, when known, the artist key. */
 data class AudioCandidate(val durationMs: Long, val titleKey: Long, val artistKey: Long?)
@@ -34,7 +47,8 @@ fun audioDurationsMatch(a: Long, b: Long): Boolean = abs(a - b) <= max(2_000L, m
  * Returns groups of two or more ids, each sorted, largest group first.
  */
 fun groupNearAudio(items: List<Pair<Long, AudioCandidate>>): List<List<Long>> {
-    val eligible = items.filter { it.second.durationMs >= MIN_AUDIO_MS }.sortedBy { it.second.durationMs }
+    val eligible =
+        items.filter { it.second.durationMs >= MIN_AUDIO_MS }.sortedBy { it.second.durationMs }
     val sets = UnionFind(eligible.size)
     for ((_, indices) in eligible.indices.groupBy { eligible[it].second.titleKey }) {
         for ((n, i) in indices.withIndex()) {
@@ -42,7 +56,10 @@ fun groupNearAudio(items: List<Pair<Long, AudioCandidate>>): List<List<Long>> {
             for (j in indices.drop(n + 1)) {
                 val b = eligible[j].second
                 if (!audioDurationsMatch(a.durationMs, b.durationMs)) break
-                if (a.artistKey == null || b.artistKey == null || a.artistKey == b.artistKey) sets.union(i, j)
+                if (a.artistKey == null || b.artistKey == null || a.artistKey == b.artistKey) sets.union(
+                    i,
+                    j
+                )
             }
         }
     }

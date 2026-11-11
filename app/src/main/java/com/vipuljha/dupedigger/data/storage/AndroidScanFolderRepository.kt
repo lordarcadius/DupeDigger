@@ -50,8 +50,18 @@ class AndroidScanFolderRepository @Inject constructor(
 
     override suspend fun remove(treeUri: String) {
         withContext(ioDispatcher) {
-            runSuspendCatching { resolver.releasePersistableUriPermission(Uri.parse(treeUri), READ_WRITE) }
-                .recoverCatching { resolver.releasePersistableUriPermission(Uri.parse(treeUri), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            runSuspendCatching {
+                resolver.releasePersistableUriPermission(
+                    Uri.parse(treeUri),
+                    READ_WRITE
+                )
+            }
+                .recoverCatching {
+                    resolver.releasePersistableUriPermission(
+                        Uri.parse(treeUri),
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
                 .onFailure { Timber.w(it, "Couldn't release a folder grant") }
         }
         changes.update { it + 1 }
@@ -76,7 +86,8 @@ class AndroidScanFolderRepository @Inject constructor(
         val docId = DocumentsContract.getTreeDocumentId(this)
         return ScanFolder(
             uri = toString(),
-            name = displayName(docId) ?: docId.substringAfterLast(':').substringAfterLast('/').ifEmpty { docId },
+            name = displayName(docId) ?: docId.substringAfterLast(':').substringAfterLast('/')
+                .ifEmpty { docId },
             path = if (authority == EXTERNAL_STORAGE_AUTHORITY) externalStorageDocIdToPath(docId) else null,
         )
     }
@@ -84,12 +95,19 @@ class AndroidScanFolderRepository @Inject constructor(
     private fun Uri.displayName(docId: String): String? {
         val document = DocumentsContract.buildDocumentUriUsingTree(this, docId)
         return runCatching {
-            resolver.query(document, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)
+            resolver.query(
+                document,
+                arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                null,
+                null,
+                null
+            )
                 ?.use { if (it.moveToFirst()) it.getString(0) else null }
         }.getOrNull()
     }
 
     private companion object {
-        const val READ_WRITE = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        const val READ_WRITE =
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     }
 }

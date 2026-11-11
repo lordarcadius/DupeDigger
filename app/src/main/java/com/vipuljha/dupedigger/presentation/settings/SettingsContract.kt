@@ -1,11 +1,11 @@
 package com.vipuljha.dupedigger.presentation.settings
 
 import androidx.compose.runtime.Immutable
-import com.vipuljha.dupedigger.domain.model.AppSettings
 import com.vipuljha.dupedigger.core.mvi.UiEffect
 import com.vipuljha.dupedigger.core.mvi.UiIntent
 import com.vipuljha.dupedigger.core.mvi.UiState
 import com.vipuljha.dupedigger.core.ui.UiText
+import com.vipuljha.dupedigger.domain.model.AppSettings
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 

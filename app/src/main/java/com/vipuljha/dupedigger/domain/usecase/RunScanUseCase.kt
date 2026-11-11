@@ -77,38 +77,77 @@ class RunScanUseCase @Inject constructor(
         try {
             val result = runSuspendCatching {
                 onProgress(ScanProgress(ScanStage.INDEXING, 0, null))
-                val index = indexFiles(scope, filter, scanId) { onProgress(ScanProgress(ScanStage.INDEXING, it, null)) }
+                val index = indexFiles(scope, filter, scanId) {
+                    onProgress(
+                        ScanProgress(
+                            ScanStage.INDEXING,
+                            it,
+                            null
+                        )
+                    )
+                }
                 onProgress(ScanProgress(ScanStage.EXACT, 0, null))
                 val exact = findExact(scanId, appSettings.minFileSizeBytes, kinds) { done, total ->
                     onProgress(ScanProgress(ScanStage.EXACT, done, total))
                 }
                 val near = if (appSettings.nearDuplicatesEnabled) {
                     onProgress(ScanProgress(ScanStage.NEAR, 0, null))
-                    findNear(scanId, appSettings.nearHammingThreshold, appSettings.minFileSizeBytes, exact.groups, kinds) { done, total ->
+                    findNear(
+                        scanId,
+                        appSettings.nearHammingThreshold,
+                        appSettings.minFileSizeBytes,
+                        exact.groups,
+                        kinds
+                    ) { done, total ->
                         onProgress(ScanProgress(ScanStage.NEAR, done, total))
                     }
                 } else {
                     null
                 }
                 val model = appSettings.aiModelId?.let(ModelCatalog::byId)
-                val semantic = if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
-                    onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
-                    val target = resolveModel(model, appSettings.aiBackend)
-                    unlessSkipped {
-                        findSemantic(scanId, target.variant, target.backend, appSettings.semanticThreshold, appSettings.minFileSizeBytes, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
-                            onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
+                val semantic =
+                    if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
+                        onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
+                        val target = resolveModel(model, appSettings.aiBackend)
+                        unlessSkipped {
+                            findSemantic(
+                                scanId,
+                                target.variant,
+                                target.backend,
+                                appSettings.semanticThreshold,
+                                appSettings.minFileSizeBytes,
+                                exact.groups,
+                                near?.groups.orEmpty(),
+                                kinds
+                            ) { done, total ->
+                                onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
+                            }
                         }
+                    } else {
+                        null
                     }
-                } else {
-                    null
-                }
-                exact.toSummary(index, near, semantic, saveGroups(scanId, exact.groups, near?.groups.orEmpty(), semantic?.groups.orEmpty()))
+                exact.toSummary(
+                    index,
+                    near,
+                    semantic,
+                    saveGroups(
+                        scanId,
+                        exact.groups,
+                        near?.groups.orEmpty(),
+                        semantic?.groups.orEmpty()
+                    )
+                )
             }
             summary = result.getOrNull()
             status = if (summary != null) ScanStatus.COMPLETED else ScanStatus.FAILED
             return result.fold(
                 onSuccess = { Outcome.Success(it) },
-                onFailure = { Outcome.Failure(if (it is SecurityException) DomainError.PermissionDenied else DomainError.Io, it) },
+                onFailure = {
+                    Outcome.Failure(
+                        if (it is SecurityException) DomainError.PermissionDenied else DomainError.Io,
+                        it
+                    )
+                },
             )
         } finally {
             withContext(NonCancellable) { scanRuns.finish(scanId, status, summary) }
@@ -132,7 +171,12 @@ class RunScanUseCase @Inject constructor(
     }
 
     /** Near and semantic groups count like the reclaim query: every copy but the largest. */
-    private fun ExactScanResult.toSummary(index: IndexStats, near: NearScanResult?, semantic: NearScanResult?, kept: SavedGroups): ScanSummary {
+    private fun ExactScanResult.toSummary(
+        index: IndexStats,
+        near: NearScanResult?,
+        semantic: NearScanResult?,
+        kept: SavedGroups
+    ): ScanSummary {
         val sizes = near?.sizes.orEmpty() + semantic?.sizes.orEmpty()
         val similar = kept.near + kept.semantic
         return ScanSummary(
@@ -140,8 +184,11 @@ class RunScanUseCase @Inject constructor(
             exactGroups = kept.exact.size,
             duplicateFiles = kept.exact.sumOf { it.fileIds.size - 1 } + similar.sumOf { it.fileIds.size - 1 },
             reclaimableBytes = kept.exact.sumOf { it.size * (it.fileIds.size - 1) } +
-                similar.sumOf { group -> group.fileIds.map { sizes.getValue(it) }.let { it.sum() - it.max() } },
-            hashesComputed = partialHashed + fullHashed + (near?.hashed ?: 0) + (semantic?.hashed ?: 0),
+                    similar.sumOf { group ->
+                        group.fileIds.map { sizes.getValue(it) }.let { it.sum() - it.max() }
+                    },
+            hashesComputed = partialHashed + fullHashed + (near?.hashed ?: 0) + (semantic?.hashed
+                ?: 0),
             unreadable = unreadable + (near?.unreadable ?: 0) + (semantic?.unreadable ?: 0),
         )
     }

@@ -22,7 +22,8 @@ class GetAvailableScopesUseCase @Inject constructor(
     private val storageAccess: StorageAccess,
     private val scanFolders: ScanFolderRepository,
 ) {
-    suspend operator fun invoke(): ImmutableList<ScanScope> = availableScopes(storageAccess.current(), scanFolders.folders.first())
+    suspend operator fun invoke(): ImmutableList<ScanScope> =
+        availableScopes(storageAccess.current(), scanFolders.folders.first())
 }
 
 /** Queues a background scan of a readable scope for duplicates among [kinds]; a scan already queued or running is left as it is. */
@@ -31,9 +32,16 @@ class StartScanUseCase @Inject constructor(
     private val scanFolders: ScanFolderRepository,
     private val scheduler: ScanScheduler,
 ) {
-    suspend operator fun invoke(scope: ScanScope, kinds: Set<MediaKind> = AllMediaKinds): Outcome<Unit> {
+    suspend operator fun invoke(
+        scope: ScanScope,
+        kinds: Set<MediaKind> = AllMediaKinds
+    ): Outcome<Unit> {
         require(kinds.isNotEmpty()) { "A scan needs at least one file type" }
-        if (!scope.isReachable(storageAccess.current(), scanFolders.folders.first())) return Outcome.Failure(DomainError.PermissionDenied)
+        if (!scope.isReachable(
+                storageAccess.current(),
+                scanFolders.folders.first()
+            )
+        ) return Outcome.Failure(DomainError.PermissionDenied)
         scheduler.start(scope, kinds)
         return Outcome.Success(Unit)
     }
@@ -44,7 +52,8 @@ class CancelScanUseCase @Inject constructor(private val scheduler: ScanScheduler
 }
 
 class SetNearDuplicatesEnabledUseCase @Inject constructor(private val settings: SettingsRepository) {
-    suspend operator fun invoke(enabled: Boolean) = settings.update { it.copy(nearDuplicatesEnabled = enabled) }
+    suspend operator fun invoke(enabled: Boolean) =
+        settings.update { it.copy(nearDuplicatesEnabled = enabled) }
 }
 
 /** How many bits two images or videos may differ by and still be similar, within the offered choices; used from the next scan. */

@@ -79,13 +79,29 @@ fun QuarantineScreen(
         StateSwitch(
             state = state.content,
             isEmpty = { it.isEmpty() },
-            modifier = Modifier.fillMaxSize().padding(padding),
-            loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { AppLoadingIndicator() } },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            loading = {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) { AppLoadingIndicator() }
+            },
             empty = {
-                StateMessage(Icons.Outlined.Inventory2, stringResource(R.string.quarantine_empty_title), stringResource(R.string.quarantine_empty_body))
+                StateMessage(
+                    Icons.Outlined.Inventory2,
+                    stringResource(R.string.quarantine_empty_title),
+                    stringResource(R.string.quarantine_empty_body)
+                )
             },
             error = { error ->
-                StateMessage(Icons.Outlined.ErrorOutline, stringResource(R.string.quarantine_error_title), error.message.asString(), isError = true)
+                StateMessage(
+                    Icons.Outlined.ErrorOutline,
+                    stringResource(R.string.quarantine_error_title),
+                    error.message.asString(),
+                    isError = true
+                )
             },
         ) { items -> Items(items, state, onIntent) }
     }
@@ -94,24 +110,46 @@ fun QuarantineScreen(
             onDismissRequest = { onIntent(QuarantineIntent.DeleteDismissed) },
             onEnter = { onIntent(QuarantineIntent.DeleteConfirmed) },
             icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null) },
-            title = { Text(pluralStringResource(R.plurals.quarantine_delete_all_title, count, formatCount(count))) },
+            title = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.quarantine_delete_all_title,
+                        count,
+                        formatCount(count)
+                    )
+                )
+            },
             text = { Text(stringResource(R.string.quarantine_delete_all_body)) },
             confirmButton = {
-                AppButton(stringResource(R.string.action_delete), { onIntent(QuarantineIntent.DeleteConfirmed) }, kind = ButtonKind.Destructive)
+                AppButton(
+                    stringResource(R.string.action_delete),
+                    { onIntent(QuarantineIntent.DeleteConfirmed) },
+                    kind = ButtonKind.Destructive
+                )
             },
             dismissButton = {
-                AppButton(stringResource(R.string.action_cancel), { onIntent(QuarantineIntent.DeleteDismissed) }, kind = ButtonKind.Text)
+                AppButton(
+                    stringResource(R.string.action_cancel),
+                    { onIntent(QuarantineIntent.DeleteDismissed) },
+                    kind = ButtonKind.Text
+                )
             },
         )
     }
 }
 
 @Composable
-private fun Items(items: ImmutableList<QuarantineItemUi>, state: QuarantineState, onIntent: (QuarantineIntent) -> Unit) {
+private fun Items(
+    items: ImmutableList<QuarantineItemUi>,
+    state: QuarantineState,
+    onIntent: (QuarantineIntent) -> Unit
+) {
     val gutter = LocalPaneMetrics.current.gutter
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            modifier = Modifier.widthIn(max = Dimens.maxWidthDetailHeader).fillMaxWidth(),
+            modifier = Modifier
+                .widthIn(max = Dimens.maxWidthDetailHeader)
+                .fillMaxWidth(),
             contentPadding = PaddingValues(start = gutter, end = gutter, bottom = listEndPadding()),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
         ) {
@@ -123,7 +161,13 @@ private fun Items(items: ImmutableList<QuarantineItemUi>, state: QuarantineState
                     modifier = Modifier.animateItem(),
                 )
             }
-            item(key = "select-all", contentType = "select-all") { SelectAllRow(items.size, state, onIntent) }
+            item(key = "select-all", contentType = "select-all") {
+                SelectAllRow(
+                    items.size,
+                    state,
+                    onIntent
+                )
+            }
             items(items, key = { it.id }, contentType = { "item" }) { item ->
                 ItemCard(item, state.working, onIntent, Modifier.animateItem())
             }
@@ -157,12 +201,20 @@ private fun SelectAllRow(total: Int, state: QuarantineState, onIntent: (Quaranti
             enabled = !state.working,
         )
         Spacer(Modifier.width(Dimens.spaceMd))
-        Text(stringResource(R.string.quarantine_select_all), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(R.string.quarantine_select_all),
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
 @Composable
-private fun ItemCard(item: QuarantineItemUi, working: Boolean, onIntent: (QuarantineIntent) -> Unit, modifier: Modifier = Modifier) {
+private fun ItemCard(
+    item: QuarantineItemUi,
+    working: Boolean,
+    onIntent: (QuarantineIntent) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val label = stringResource(R.string.quarantine_select_file, item.name)
     Surface(
         modifier
@@ -177,8 +229,16 @@ private fun ItemCard(item: QuarantineItemUi, working: Boolean, onIntent: (Quaran
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(Modifier.padding(Dimens.spaceLg), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)) {
-                Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(
+                Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs)
+            ) {
+                Text(
+                    item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     item.folder.asString(),
                     style = MaterialTheme.typography.bodySmall,
@@ -186,7 +246,11 @@ private fun ItemCard(item: QuarantineItemUi, working: Boolean, onIntent: (Quaran
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(item.details.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    item.details.asString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             Spacer(Modifier.width(Dimens.spaceSm))
             Checkbox(
@@ -212,12 +276,21 @@ private fun ActionBar(state: QuarantineState, onIntent: (QuarantineIntent) -> Un
             modifier = Modifier.padding(bottom = LocalPaneMetrics.current.bottomOverlay),
         ) {
             FlowRow(
-                Modifier.fillMaxWidth().padding(horizontal = LocalPaneMetrics.current.gutter, vertical = Dimens.spaceSm),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = LocalPaneMetrics.current.gutter,
+                        vertical = Dimens.spaceSm
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm, Alignment.End),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
             ) {
                 Text(
-                    pluralStringResource(R.plurals.quarantine_selected, state.selection.size, formatCount(state.selection.size)),
+                    pluralStringResource(
+                        R.plurals.quarantine_selected,
+                        state.selection.size,
+                        formatCount(state.selection.size)
+                    ),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier
                         .weight(1f, fill = false)

@@ -23,13 +23,14 @@ import com.vipuljha.dupedigger.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlainTooltipBox(label: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) = TooltipBox(
-    positionProvider = rememberBoundedTooltipPositionProvider(),
-    tooltip = { PlainTooltip(shadowElevation = TooltipShadow) { Text(label) } },
-    state = rememberTooltipState(),
-    modifier = modifier,
-    content = content,
-)
+fun PlainTooltipBox(label: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) =
+    TooltipBox(
+        positionProvider = rememberBoundedTooltipPositionProvider(),
+        tooltip = { PlainTooltip(shadowElevation = TooltipShadow) { Text(label) } },
+        state = rememberTooltipState(),
+        modifier = modifier,
+        content = content,
+    )
 
 @Composable
 fun TooltipIconButton(
@@ -51,6 +52,10 @@ fun TooltipIconButton(
 
 @Composable
 fun BackButton(onBack: () -> Unit) =
-    TooltipIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), onBack)
+    TooltipIconButton(
+        Icons.AutoMirrored.Filled.ArrowBack,
+        stringResource(R.string.action_back),
+        onBack
+    )
 
 private val TooltipShadow = 3.dp

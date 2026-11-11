@@ -20,7 +20,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun groupViewModel(fingerprint: String): GroupViewModel =
-    hiltViewModel<GroupViewModel, GroupViewModel.Factory>(creationCallback = { factory -> factory.create(fingerprint) })
+    hiltViewModel<GroupViewModel, GroupViewModel.Factory>(creationCallback = { factory ->
+        factory.create(
+            fingerprint
+        )
+    })
 
 @Composable
 fun GroupRoute(
@@ -51,12 +55,25 @@ fun GroupRoute(
                     scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.group_open_no_app)) }
                 }
             }
-            is GroupEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
+
+            is GroupEffect.ShowMessage -> scope.launch {
+                snackbarHostState.showSnackbar(
+                    effect.message.asString(
+                        context
+                    )
+                )
+            }
+
             GroupEffect.Close -> onBack()
             is GroupEffect.OpenCompare -> onCompare(effect.keeperId, effect.otherId)
             is GroupEffect.Removal -> onRemoval(effect.event)
         }
     }
 
-    GroupScreen(state = state, onIntent = viewModel::onIntent, snackbarHostState = snackbarHostState, onBack = onBack)
+    GroupScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        snackbarHostState = snackbarHostState,
+        onBack = onBack
+    )
 }

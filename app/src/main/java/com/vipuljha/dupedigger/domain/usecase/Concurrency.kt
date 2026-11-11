@@ -12,15 +12,16 @@ import kotlinx.coroutines.coroutineScope
 internal val PARALLELISM = Runtime.getRuntime().availableProcessors().coerceIn(4, 8)
 
 /** Runs [transform] on at most [PARALLELISM] items at once and keeps the non-null results, in no particular order. */
-internal suspend fun <T, R : Any> List<T>.mapConcurrently(transform: suspend (T) -> R?): List<R> = coroutineScope {
-    val queue = Channel<T>(Channel.UNLIMITED)
-    forEach { queue.trySend(it) }
-    queue.close()
-    List(minOf(PARALLELISM, size)) {
-        async {
-            val results = ArrayList<R>()
-            for (item in queue) transform(item)?.let(results::add)
-            results
-        }
-    }.awaitAll().flatten()
-}
+internal suspend fun <T, R : Any> List<T>.mapConcurrently(transform: suspend (T) -> R?): List<R> =
+    coroutineScope {
+        val queue = Channel<T>(Channel.UNLIMITED)
+        forEach { queue.trySend(it) }
+        queue.close()
+        List(minOf(PARALLELISM, size)) {
+            async {
+                val results = ArrayList<R>()
+                for (item in queue) transform(item)?.let(results::add)
+                results
+            }
+        }.awaitAll().flatten()
+    }

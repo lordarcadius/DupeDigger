@@ -37,8 +37,17 @@ fun AppButton(
 ) {
     val content: @Composable RowScope.() -> Unit = {
         when {
-            loading -> CircularProgressIndicator(Modifier.size(ButtonDefaults.IconSize), LocalContentColor.current, strokeWidth = SpinnerStroke)
-            icon != null -> Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            loading -> CircularProgressIndicator(
+                Modifier.size(ButtonDefaults.IconSize),
+                LocalContentColor.current,
+                strokeWidth = SpinnerStroke
+            )
+
+            icon != null -> Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
         }
         if (loading || icon != null) Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -50,13 +59,29 @@ fun AppButton(
             elevation = ButtonDefaults.buttonElevation(hoveredElevation = 0.dp),
             contentPadding = contentPadding, content = content,
         )
+
         ButtonKind.Tonal -> FilledTonalButton(
             onClick, modifier, active,
             elevation = ButtonDefaults.filledTonalButtonElevation(hoveredElevation = 0.dp),
             contentPadding = contentPadding, content = content,
         )
-        ButtonKind.Outlined -> OutlinedButton(onClick, modifier, active, contentPadding = contentPadding, content = content)
-        ButtonKind.Text -> TextButton(onClick, modifier, active, contentPadding = contentPadding, content = content)
+
+        ButtonKind.Outlined -> OutlinedButton(
+            onClick,
+            modifier,
+            active,
+            contentPadding = contentPadding,
+            content = content
+        )
+
+        ButtonKind.Text -> TextButton(
+            onClick,
+            modifier,
+            active,
+            contentPadding = contentPadding,
+            content = content
+        )
+
         ButtonKind.Destructive -> TextButton(
             onClick, modifier, active,
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

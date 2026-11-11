@@ -10,7 +10,12 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 private val sizeUnits = listOf(
-    R.string.size_b, R.string.size_kb, R.string.size_mb, R.string.size_gb, R.string.size_tb, R.string.size_pb,
+    R.string.size_b,
+    R.string.size_kb,
+    R.string.size_mb,
+    R.string.size_gb,
+    R.string.size_tb,
+    R.string.size_pb,
 )
 
 /** Decimal (base 1000) sizes with the platform's rounding, so a file shows the same size as in system Settings. */
@@ -42,9 +47,17 @@ fun formatRelativeTime(epochMillis: Long, nowMillis: Long): UiText {
     return when {
         age < DateUtils.MINUTE_IN_MILLIS -> UiText.res(R.string.time_just_now)
         age < DateUtils.WEEK_IN_MILLIS ->
-            UiText.Raw(DateUtils.getRelativeTimeSpanString(epochMillis, nowMillis, DateUtils.MINUTE_IN_MILLIS).toString())
+            UiText.Raw(
+                DateUtils.getRelativeTimeSpanString(
+                    epochMillis,
+                    nowMillis,
+                    DateUtils.MINUTE_IN_MILLIS
+                ).toString()
+            )
+
         else -> UiText.Raw(
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())),
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+                .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())),
         )
     }
 }
@@ -55,8 +68,17 @@ fun formatDuration(millis: Long): UiText {
     return when {
         seconds < 1 -> UiText.res(R.string.duration_under_second)
         seconds < 60 -> UiText.res(R.string.duration_seconds, formatCount(seconds))
-        seconds < 3600 -> UiText.res(R.string.duration_minutes, formatCount(seconds / 60), formatCount(seconds % 60))
-        else -> UiText.res(R.string.duration_hours, formatCount(seconds / 3600), formatCount(seconds % 3600 / 60))
+        seconds < 3600 -> UiText.res(
+            R.string.duration_minutes,
+            formatCount(seconds / 60),
+            formatCount(seconds % 60)
+        )
+
+        else -> UiText.res(
+            R.string.duration_hours,
+            formatCount(seconds / 3600),
+            formatCount(seconds % 3600 / 60)
+        )
     }
 }
 

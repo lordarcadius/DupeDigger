@@ -41,12 +41,19 @@ class AndroidVideoHasher @Inject constructor(
                 } else {
                     retriever.setDataSource(context, Uri.parse(sourceUri))
                 }
-                val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-                    ?.takeIf { it > 0 } ?: return@use null
+                val durationMs =
+                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        ?.toLongOrNull()
+                        ?.takeIf { it > 0 } ?: return@use null
                 val frames = (0 until VIDEO_FRAMES).map { i ->
                     ensureActive()
                     val timeUs = durationMs * 1000 * (2 * i + 1) / (2 * VIDEO_FRAMES)
-                    val frame = retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST, FRAME_SIZE, FRAME_SIZE)
+                    val frame = retriever.getScaledFrameAtTime(
+                        timeUs,
+                        MediaMetadataRetriever.OPTION_CLOSEST,
+                        FRAME_SIZE,
+                        FRAME_SIZE
+                    )
                         ?: return@use null
                     try {
                         pHashOf(frame)
@@ -57,7 +64,11 @@ class AndroidVideoHasher @Inject constructor(
                 val dimension = { key: Int -> retriever.extractMetadata(key)?.toLongOrNull() }
                 val width = dimension(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
                 val height = dimension(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                VideoSignature(durationMs, frames.toImmutableList(), if (width != null && height != null) width * height else null)
+                VideoSignature(
+                    durationMs,
+                    frames.toImmutableList(),
+                    if (width != null && height != null) width * height else null
+                )
             }
         } catch (e: CancellationException) {
             throw e
@@ -73,7 +84,8 @@ class AndroidVideoHasher @Inject constructor(
 
     private fun pHashOf(frame: Bitmap): Long {
         val (width, height) = frame.width to frame.height
-        val pixels = IntArray(width * height).also { frame.getPixels(it, 0, width, 0, 0, width, height) }
+        val pixels =
+            IntArray(width * height).also { frame.getPixels(it, 0, width, 0, 0, width, height) }
         val luma = FloatArray(pixels.size) { i ->
             val p = pixels[i]
             0.299f * Color.red(p) + 0.587f * Color.green(p) + 0.114f * Color.blue(p)

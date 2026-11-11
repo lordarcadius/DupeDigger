@@ -13,8 +13,8 @@ import com.vipuljha.dupedigger.domain.model.ScanSummary
 import com.vipuljha.dupedigger.domain.repository.ScanRunRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,7 +41,8 @@ class ScanRunRepositoryImpl @Inject constructor(
     }
 
     override suspend fun finish(scanId: Long, status: ScanStatus, summary: ScanSummary?) {
-        val stats = summary?.let { Json.encodeToString(ScanRunStats.serializer(), it.toStats()) } ?: "{}"
+        val stats =
+            summary?.let { Json.encodeToString(ScanRunStats.serializer(), it.toStats()) } ?: "{}"
         dao.finish(scanId, status.name, System.currentTimeMillis(), stats)
     }
 
@@ -66,7 +67,12 @@ class ScanRunRepositoryImpl @Inject constructor(
     }
 
     private fun ScanRunStats.toSummary() = ScanSummary(
-        index = IndexStats(added = filesAdded, changed = filesChanged, unchanged = filesUnchanged, removed = filesRemoved),
+        index = IndexStats(
+            added = filesAdded,
+            changed = filesChanged,
+            unchanged = filesUnchanged,
+            removed = filesRemoved
+        ),
         exactGroups = exactGroups,
         duplicateFiles = duplicateFiles,
         reclaimableBytes = reclaimableBytes,

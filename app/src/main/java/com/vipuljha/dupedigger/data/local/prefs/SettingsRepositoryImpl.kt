@@ -45,11 +45,14 @@ class SettingsRepositoryImpl @Inject constructor(
                 .coerceIn(AppSettings.HammingRange),
             semanticThreshold = (this[KEY_SEMANTIC_THRESHOLD] ?: defaults.semanticThreshold)
                 .coerceIn(AppSettings.SemanticRange),
-            minFileSizeBytes = (this[KEY_MIN_FILE_SIZE] ?: defaults.minFileSizeBytes).coerceAtLeast(0L),
+            minFileSizeBytes = (this[KEY_MIN_FILE_SIZE] ?: defaults.minFileSizeBytes).coerceAtLeast(
+                0L
+            ),
             skipHiddenFiles = this[KEY_SKIP_HIDDEN] ?: defaults.skipHiddenFiles,
             modelDownloadWifiOnly = this[KEY_MODEL_WIFI_ONLY] ?: defaults.modelDownloadWifiOnly,
             aiModelId = this[KEY_AI_MODEL],
-            aiBackend = EmbeddingBackend.entries.firstOrNull { it.name == this[KEY_AI_BACKEND] } ?: defaults.aiBackend,
+            aiBackend = EmbeddingBackend.entries.firstOrNull { it.name == this[KEY_AI_BACKEND] }
+                ?: defaults.aiBackend,
             aiOnlyWhileCharging = this[KEY_AI_CHARGING_ONLY] ?: defaults.aiOnlyWhileCharging,
         )
     }
@@ -59,7 +62,8 @@ class SettingsRepositoryImpl @Inject constructor(
         this[KEY_NEAR_ENABLED] = settings.nearDuplicatesEnabled
         this[KEY_SEMANTIC_ENABLED] = settings.semanticEnabled
         this[KEY_NEAR_HAMMING] = settings.nearHammingThreshold.coerceIn(AppSettings.HammingRange)
-        this[KEY_SEMANTIC_THRESHOLD] = settings.semanticThreshold.coerceIn(AppSettings.SemanticRange)
+        this[KEY_SEMANTIC_THRESHOLD] =
+            settings.semanticThreshold.coerceIn(AppSettings.SemanticRange)
         this[KEY_MIN_FILE_SIZE] = settings.minFileSizeBytes.coerceAtLeast(0L)
         this[KEY_SKIP_HIDDEN] = settings.skipHiddenFiles
         this[KEY_MODEL_WIFI_ONLY] = settings.modelDownloadWifiOnly

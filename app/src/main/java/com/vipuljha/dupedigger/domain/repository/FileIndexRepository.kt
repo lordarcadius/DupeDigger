@@ -53,7 +53,11 @@ interface FileIndexRepository {
     suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>)
 
     /** Every indexed file of [kinds], each with its stored vector under [modelKey] if there is one. */
-    suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>): List<EmbeddedFile>
+    suspend fun embeddingCandidates(
+        scanId: Long,
+        modelKey: String,
+        kinds: Set<MediaKind>
+    ): List<EmbeddedFile>
 
     /** Stores normalised vectors under [modelKey]; other models' vectors are left alone. */
     suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>)

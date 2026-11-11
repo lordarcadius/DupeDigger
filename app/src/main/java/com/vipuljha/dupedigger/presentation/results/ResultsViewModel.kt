@@ -65,7 +65,8 @@ class ResultsViewModel @Inject constructor(
     private var facets: List<GroupFacet> = emptyList()
     private var storage: StorageUsage? = null
 
-    private val filter: Flow<GroupFilter> = state.map { GroupFilter(kind = it.kind, tier = it.tier) }.distinctUntilChanged()
+    private val filter: Flow<GroupFilter> =
+        state.map { GroupFilter(kind = it.kind, tier = it.tier) }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val groups: Flow<PagingData<GroupRowUi>> = filter
@@ -75,7 +76,10 @@ class ResultsViewModel @Inject constructor(
         .combine(state.map { it.selection.keys }.distinctUntilChanged()) { page, selected ->
             page.map { row ->
                 val picked = row.removable.keys.count { it in selected }
-                row.copy(selected = picked == row.removable.size, partlySelected = picked in 1 until row.removable.size)
+                row.copy(
+                    selected = picked == row.removable.size,
+                    partlySelected = picked in 1 until row.removable.size
+                )
             }
         }
 
@@ -103,6 +107,7 @@ class ResultsViewModel @Inject constructor(
                 refreshFacets()
                 select(emptyMap())
             }
+
             is ResultsIntent.GroupToggled -> {
                 val row = intent.row
                 val selection = currentState.selection
@@ -110,39 +115,62 @@ class ResultsViewModel @Inject constructor(
                     if (row.selected) {
                         selection - row.removable.keys
                     } else {
-                        selection + row.removable.mapValues { (_, size) -> SelectedUi(size, row.tier) }
+                        selection + row.removable.mapValues { (_, size) ->
+                            SelectedUi(
+                                size,
+                                row.tier
+                            )
+                        }
                     },
                 )
             }
+
             is ResultsIntent.TierSelected -> if (intent.tier != currentState.tier) {
                 setState { copy(tier = intent.tier) }
                 refreshFacets()
                 select(emptyMap())
             }
+
             ResultsIntent.ShowAllClicked -> {
                 setState { copy(kind = null, tier = null) }
                 refreshFacets()
                 select(emptyMap())
             }
+
             ResultsIntent.SelectAllToggled -> if (currentState.allSelected) {
                 select(emptyMap())
             } else {
-                selectAll(GroupFilter(currentState.kind, currentState.tier), currentState.keepRule ?: KeepRule.Best)
+                selectAll(
+                    GroupFilter(currentState.kind, currentState.tier),
+                    currentState.keepRule ?: KeepRule.Best
+                )
             }
+
             is ResultsIntent.KeepRuleSelected -> {
                 setState { copy(folderChoices = null) }
                 selectAll(GroupFilter(currentState.kind, currentState.tier), intent.rule)
             }
+
             ResultsIntent.KeepFromFolderClicked -> viewModelScope.launch {
                 val folders = getDuplicateFolders(GroupFilter(currentState.kind, currentState.tier))
                 setState { copy(folderChoices = folders.map { it.toChoice() }.toImmutableList()) }
             }
+
             ResultsIntent.FolderPickerDismissed -> setState { copy(folderChoices = null) }
             ResultsIntent.ClearSelection -> select(emptyMap())
             ResultsIntent.StartScanClicked -> sendEffect(ResultsEffect.OpenScan)
             ResultsIntent.DeleteClicked -> if (currentState.hasSelection && !currentState.deleting) {
-                setState { copy(confirmDelete = deleteConfirm(selection, selection.values.count { it.tier != MatchTier.EXACT }, storage)) }
+                setState {
+                    copy(
+                        confirmDelete = deleteConfirm(
+                            selection,
+                            selection.values.count { it.tier != MatchTier.EXACT },
+                            storage
+                        )
+                    )
+                }
             }
+
             ResultsIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             ResultsIntent.DeleteConfirmed -> delete()
             is ResultsIntent.TrashAnswered -> trashAnswered(intent.accepted)
@@ -163,12 +191,28 @@ class ResultsViewModel @Inject constructor(
                 is Outcome.Success -> {
                     val result = outcome.data
                     select(emptyMap())
-                    removedMessage(result.removedIds.size, result.removedIds.sumOf { selection[it]?.size ?: 0L })?.let {
-                        sendEffect(ResultsEffect.ShowMessage(it, UndoUi(result.trashedUris, result.quarantineIds).takeIf { undo -> undo.count > 0 }))
+                    removedMessage(
+                        result.removedIds.size,
+                        result.removedIds.sumOf { selection[it]?.size ?: 0L })?.let {
+                        sendEffect(
+                            ResultsEffect.ShowMessage(
+                                it,
+                                UndoUi(
+                                    result.trashedUris,
+                                    result.quarantineIds
+                                ).takeIf { undo -> undo.count > 0 })
+                        )
                     }
-                    failedMessage(result.failedIds.size)?.let { sendEffect(ResultsEffect.ShowMessage(it)) }
+                    failedMessage(result.failedIds.size)?.let {
+                        sendEffect(
+                            ResultsEffect.ShowMessage(
+                                it
+                            )
+                        )
+                    }
                     result.consent?.let { consent ->
-                        pendingConsent = consent to consent.fileIds.sumOf { selection[it]?.size ?: 0L }
+                        pendingConsent =
+                            consent to consent.fileIds.sumOf { selection[it]?.size ?: 0L }
                         sendEffect(ResultsEffect.LaunchTrash(consent.platformRequest))
                     }
                 }
@@ -184,7 +228,13 @@ class ResultsViewModel @Inject constructor(
         if (!accepted) return
         viewModelScope.launch {
             confirmTrash(consent)
-            removedMessage(consent.fileIds.size, bytes)?.let { sendEffect(ResultsEffect.ShowMessage(it)) }
+            removedMessage(consent.fileIds.size, bytes)?.let {
+                sendEffect(
+                    ResultsEffect.ShowMessage(
+                        it
+                    )
+                )
+            }
             readStorage()
         }
     }
@@ -204,7 +254,11 @@ class ResultsViewModel @Inject constructor(
             val files = selectAllButKeepers(filter, rule)
             setState { copy(selecting = false) }
             if (GroupFilter(currentState.kind, currentState.tier) == filter) {
-                select(files.associate { it.fileId to SelectedUi(it.size, it.tier) }, rule, everything = true)
+                select(
+                    files.associate { it.fileId to SelectedUi(it.size, it.tier) },
+                    rule,
+                    everything = true
+                )
             }
         }
     }
@@ -215,7 +269,11 @@ class ResultsViewModel @Inject constructor(
         viewModelScope.launch {
             val removable = groupRepository.stillRemovable(currentState.selection.keys)
             val kept = currentState.selection.filterKeys { it in removable }
-            if (kept.size != currentState.selection.size) select(kept, currentState.keepRule, currentState.selectedEverything)
+            if (kept.size != currentState.selection.size) select(
+                kept,
+                currentState.keepRule,
+                currentState.selectedEverything
+            )
         }
     }
 
@@ -231,7 +289,11 @@ class ResultsViewModel @Inject constructor(
         storage = deviceStorage.usage()
     }
 
-    private fun select(selection: Map<Long, SelectedUi>, rule: KeepRule? = null, everything: Boolean = false) = setState {
+    private fun select(
+        selection: Map<Long, SelectedUi>,
+        rule: KeepRule? = null,
+        everything: Boolean = false
+    ) = setState {
         copy(
             selection = if (selection.isEmpty()) persistentMapOf() else selection.toImmutableMap(),
             selectionSummary = selectionSummary(selection),

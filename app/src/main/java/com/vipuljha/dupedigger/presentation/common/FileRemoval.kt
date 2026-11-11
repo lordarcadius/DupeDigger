@@ -46,20 +46,30 @@ class FileRemoval @Inject constructor(
     private var pending: Pair<TrashConsent, Long>? = null
 
     /** [sizes] maps each file id to delete to its size, for the "freed" message. */
-    suspend fun delete(sizes: Map<Long, Long>): List<Event> = when (val outcome = deleteDuplicates(sizes.keys)) {
-        is Outcome.Failure -> listOf(Event.Message(outcome.error.toUiText()))
-        is Outcome.Success -> buildList {
-            val result = outcome.data
-            removedMessage(result.removedIds.size, result.removedIds.sumOf { sizes[it] ?: 0L })?.let {
-                add(Event.Message(it, UndoUi(result.trashedUris, result.quarantineIds).takeIf { undo -> undo.count > 0 }))
-            }
-            failedMessage(result.failedIds.size)?.let { add(Event.Message(it)) }
-            result.consent?.let { consent ->
-                pending = consent to consent.fileIds.sumOf { sizes[it] ?: 0L }
-                add(Event.LaunchTrash(consent.platformRequest))
+    suspend fun delete(sizes: Map<Long, Long>): List<Event> =
+        when (val outcome = deleteDuplicates(sizes.keys)) {
+            is Outcome.Failure -> listOf(Event.Message(outcome.error.toUiText()))
+            is Outcome.Success -> buildList {
+                val result = outcome.data
+                removedMessage(
+                    result.removedIds.size,
+                    result.removedIds.sumOf { sizes[it] ?: 0L })?.let {
+                    add(
+                        Event.Message(
+                            it,
+                            UndoUi(
+                                result.trashedUris,
+                                result.quarantineIds
+                            ).takeIf { undo -> undo.count > 0 })
+                    )
+                }
+                failedMessage(result.failedIds.size)?.let { add(Event.Message(it)) }
+                result.consent?.let { consent ->
+                    pending = consent to consent.fileIds.sumOf { sizes[it] ?: 0L }
+                    add(Event.LaunchTrash(consent.platformRequest))
+                }
             }
         }
-    }
 
     suspend fun trashAnswered(accepted: Boolean): List<Event> {
         val (consent, bytes) = pending ?: return emptyList()
@@ -85,15 +95,23 @@ fun rememberRemovalEventHandler(
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
-    val trashPrompt = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        onTrashAnswered(result.resultCode == Activity.RESULT_OK)
-    }
+    val trashPrompt =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            onTrashAnswered(result.resultCode == Activity.RESULT_OK)
+        }
     return { event ->
         when (event) {
-            is FileRemoval.Event.LaunchTrash -> trashPrompt.launch(IntentSenderRequest.Builder(event.request as IntentSender).build())
+            is FileRemoval.Event.LaunchTrash -> trashPrompt.launch(
+                IntentSenderRequest.Builder(event.request as IntentSender).build()
+            )
+
             is FileRemoval.Event.Message -> scope.launch {
                 val undoLabel = event.undo?.let { resources.getString(R.string.action_undo) }
-                val answer = snackbarHostState.showSnackbar(event.text.asString(context), actionLabel = undoLabel, duration = SnackbarDuration.Long)
+                val answer = snackbarHostState.showSnackbar(
+                    event.text.asString(context),
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Long
+                )
                 if (answer == SnackbarResult.ActionPerformed) event.undo?.let(onUndo)
             }
         }

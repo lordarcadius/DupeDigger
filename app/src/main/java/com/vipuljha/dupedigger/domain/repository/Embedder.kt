@@ -11,7 +11,12 @@ interface Embedder {
      * One vector of [dim] floats per input, in order.
      * Fails with ModelUnavailable when the model isn't downloaded, or Unknown when the engine can't start or run.
      */
-    suspend fun embed(variant: ModelVariant, inputs: List<EmbeddingInput>, dim: Int, backend: EmbeddingBackend): Outcome<List<FloatArray>>
+    suspend fun embed(
+        variant: ModelVariant,
+        inputs: List<EmbeddingInput>,
+        dim: Int,
+        backend: EmbeddingBackend
+    ): Outcome<List<FloatArray>>
 
     /** Releases the loaded model now; the next call loads it again. */
     suspend fun close()

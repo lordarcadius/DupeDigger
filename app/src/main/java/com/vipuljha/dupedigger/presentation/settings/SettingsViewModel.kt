@@ -57,7 +57,11 @@ class SettingsViewModel @Inject constructor(
             is SettingsIntent.AddFolderClicked -> sendEffect(SettingsEffect.PickFolder(intent.purpose))
             is SettingsIntent.FolderPicked -> intent.treeUri?.let { onPicked(intent.purpose, it) }
             is SettingsIntent.RemoveClicked -> onRemove(intent.purpose, intent.key)
-            is SettingsIntent.NearThresholdChanged -> viewModelScope.launch { setNearThreshold(intent.bits) }
+            is SettingsIntent.NearThresholdChanged -> viewModelScope.launch {
+                setNearThreshold(
+                    intent.bits
+                )
+            }
         }
     }
 

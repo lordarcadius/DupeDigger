@@ -9,7 +9,8 @@ const val DOCUMENT_SIMHASH_THRESHOLD = 3
 private val wordPattern = Regex("[\\p{L}\\p{N}]+")
 
 /** Lower-case runs of letters and digits in any script; punctuation, spacing and layout don't matter. */
-fun normalizeWords(text: String): List<String> = wordPattern.findAll(text.lowercase()).map { it.value }.toList()
+fun normalizeWords(text: String): List<String> =
+    wordPattern.findAll(text.lowercase()).map { it.value }.toList()
 
 /** 64-bit SimHash over overlapping 3-word shingles; null when the text has fewer than [MIN_DOCUMENT_WORDS] words. */
 fun simHash(text: String): Long? {

@@ -13,7 +13,8 @@ import org.junit.runner.RunWith
 /** Cold start to the first frame, without compiled code and with the baseline profile (which must be in the APK). */
 @RunWith(AndroidJUnit4::class)
 class StartupBenchmark {
-    @get:Rule val rule = MacrobenchmarkRule()
+    @get:Rule
+    val rule = MacrobenchmarkRule()
 
     @Test
     fun coldStartNoCompilation() = startup(CompilationMode.None())

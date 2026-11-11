@@ -46,11 +46,19 @@ class WorkManagerModelDownloads @Inject constructor(
     private val fileChanges = MutableStateFlow(0)
 
     override fun start(variant: ModelVariant, wifiOnly: Boolean) {
-        workManager.enqueueUniqueWork(ModelDownloadWorker.UNIQUE_NAME, ExistingWorkPolicy.KEEP, downloadRequest(variant, wifiOnly))
+        workManager.enqueueUniqueWork(
+            ModelDownloadWorker.UNIQUE_NAME,
+            ExistingWorkPolicy.KEEP,
+            downloadRequest(variant, wifiOnly)
+        )
     }
 
     override fun restart(variant: ModelVariant, wifiOnly: Boolean) {
-        workManager.enqueueUniqueWork(ModelDownloadWorker.UNIQUE_NAME, ExistingWorkPolicy.REPLACE, downloadRequest(variant, wifiOnly))
+        workManager.enqueueUniqueWork(
+            ModelDownloadWorker.UNIQUE_NAME,
+            ExistingWorkPolicy.REPLACE,
+            downloadRequest(variant, wifiOnly)
+        )
     }
 
     override fun cancel(variant: ModelVariant) {
@@ -70,7 +78,8 @@ class WorkManagerModelDownloads @Inject constructor(
             .distinctUntilChanged()
             .flowOn(ioDispatcher)
 
-    override fun installedPath(variant: ModelVariant): String? = storage.fetcher.finalFile(variant).takeIf { it.exists() }?.path
+    override fun installedPath(variant: ModelVariant): String? =
+        storage.fetcher.finalFile(variant).takeIf { it.exists() }?.path
 
     companion object {
         fun tagOf(variant: ModelVariant) = "model:${variant.id}"
@@ -78,7 +87,11 @@ class WorkManagerModelDownloads @Inject constructor(
         fun downloadRequest(variant: ModelVariant, wifiOnly: Boolean): OneTimeWorkRequest =
             OneTimeWorkRequestBuilder<ModelDownloadWorker>()
                 .setInputData(workDataOf(ModelDownloadWorker.KEY_VARIANT to variant.id))
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED).build())
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                        .build()
+                )
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .addTag(tagOf(variant))
                 .build()
@@ -99,10 +112,18 @@ class WorkManagerModelDownloads @Inject constructor(
                 info.progress.getLong(ModelDownloadWorker.KEY_DOWNLOADED, 0),
                 info.progress.getLong(ModelDownloadWorker.KEY_TOTAL, 0),
             )
+
             info?.state == WorkInfo.State.ENQUEUED || info?.state == WorkInfo.State.BLOCKED -> ModelDownloadState.Queued
             installed -> ModelDownloadState.Downloaded
             info?.state == WorkInfo.State.FAILED ->
-                ModelDownloadState.Failed(ModelDownloadWorker.failureOf(info.outputData.getString(ModelDownloadWorker.KEY_FAILURE)))
+                ModelDownloadState.Failed(
+                    ModelDownloadWorker.failureOf(
+                        info.outputData.getString(
+                            ModelDownloadWorker.KEY_FAILURE
+                        )
+                    )
+                )
+
             else -> ModelDownloadState.NotDownloaded
         }
     }

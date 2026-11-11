@@ -29,9 +29,10 @@ fun ScanRoute(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val withNotificationPermission = rememberNotificationPermissionGate()
-    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        viewModel.onIntent(ScanIntent.FolderPicked(uri?.toString()))
-    }
+    val pickFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            viewModel.onIntent(ScanIntent.FolderPicked(uri?.toString()))
+        }
     val inLaterStep = state.phase == ScanPhase.Setup && state.step != SetupStep.Presets
     BackHandler(enabled = inLaterStep) { viewModel.onIntent(ScanIntent.BackClicked) }
 
@@ -43,7 +44,13 @@ fun ScanRoute(
         when (effect) {
             ScanEffect.ViewResults -> onViewResults()
             ScanEffect.PickFolder -> pickFolder.launch(null)
-            is ScanEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
+            is ScanEffect.ShowMessage -> scope.launch {
+                snackbarHostState.showSnackbar(
+                    effect.message.asString(
+                        context
+                    )
+                )
+            }
         }
     }
 
@@ -51,7 +58,11 @@ fun ScanRoute(
         state = state,
         progress = { progress.value },
         onIntent = { intent ->
-            if (intent == ScanIntent.StartClicked) withNotificationPermission { viewModel.onIntent(intent) } else viewModel.onIntent(intent)
+            if (intent == ScanIntent.StartClicked) withNotificationPermission {
+                viewModel.onIntent(
+                    intent
+                )
+            } else viewModel.onIntent(intent)
         },
         snackbarHostState = snackbarHostState,
         onBack = { if (inLaterStep) viewModel.onIntent(ScanIntent.BackClicked) else onBack() },

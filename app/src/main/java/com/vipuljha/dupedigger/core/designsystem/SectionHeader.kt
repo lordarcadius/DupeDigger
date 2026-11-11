@@ -21,9 +21,16 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, description: Str
             .heightIn(min = Dimens.controlDense),
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceXxs),
     ) {
-        Text(title, style = MaterialTheme.typography.titleLargeEmphasized, modifier = Modifier.semantics { heading() })
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLargeEmphasized,
+            modifier = Modifier.semantics { heading() })
         description?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

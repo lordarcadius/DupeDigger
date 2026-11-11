@@ -23,9 +23,19 @@ fun QuarantineRoute(
 
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
-            is QuarantineEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
+            is QuarantineEffect.ShowMessage -> scope.launch {
+                snackbarHostState.showSnackbar(
+                    effect.message.asString(
+                        context
+                    )
+                )
+            }
         }
     }
 
-    QuarantineScreen(state = state, onIntent = viewModel::onIntent, snackbarHostState = snackbarHostState)
+    QuarantineScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        snackbarHostState = snackbarHostState
+    )
 }

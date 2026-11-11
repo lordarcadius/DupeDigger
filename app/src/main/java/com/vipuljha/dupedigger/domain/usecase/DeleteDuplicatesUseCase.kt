@@ -25,8 +25,12 @@ class DeleteDuplicatesUseCase @Inject constructor(
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): Outcome<RemovalResult> {
         val memberSets = groups.groupsContaining(fileIds)
-        if (!memberSets.flatten().toSet().containsAll(fileIds)) return Outcome.Failure(DomainError.NotFound)
-        if (memberSets.any { members -> members.all { it in fileIds } }) return Outcome.Failure(DomainError.WouldRemoveAllCopies)
+        if (!memberSets.flatten().toSet()
+                .containsAll(fileIds)
+        ) return Outcome.Failure(DomainError.NotFound)
+        if (memberSets.any { members -> members.all { it in fileIds } }) return Outcome.Failure(
+            DomainError.WouldRemoveAllCopies
+        )
 
         val result = remover.remove(fileIndex.filesByIds(fileIds), onProgress)
         fileIndex.remove(result.removedIds)

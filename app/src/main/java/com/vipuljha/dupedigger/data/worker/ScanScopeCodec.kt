@@ -35,27 +35,35 @@ object ScanScopeCodec {
     )
 
     /** A folder whose grant was released since the scan was queued is dropped; null for unreadable input. */
-    fun fromData(data: Data, pickedFolders: List<ScanFolder>): ScanScope? = when (data.getString(KEY_KIND)) {
-        WHOLE_DEVICE -> ScanScope.WholeDevice
-        MEDIA_ONLY -> ScanScope.MediaOnly
-        FOLDERS -> {
-            val uris = data.getStringArray(KEY_FOLDERS).orEmpty().toSet()
-            ScanScope.Folders(pickedFolders.filter { it.uri in uris }.toImmutableList())
+    fun fromData(data: Data, pickedFolders: List<ScanFolder>): ScanScope? =
+        when (data.getString(KEY_KIND)) {
+            WHOLE_DEVICE -> ScanScope.WholeDevice
+            MEDIA_ONLY -> ScanScope.MediaOnly
+            FOLDERS -> {
+                val uris = data.getNullableStringArray(KEY_FOLDERS).orEmpty().toSet()
+                ScanScope.Folders(pickedFolders.filter { it.uri in uris }.toImmutableList())
+            }
+
+            // Work data can hold a null inside a string array, and a null path names nothing to scan.
+            PATHS -> ScanScope.Paths(
+                data.getNullableStringArray(KEY_PATHS).orEmpty().filterNotNull().toImmutableList()
+            )
+
+            else -> null
         }
-        PATHS -> ScanScope.Paths(data.getStringArray(KEY_PATHS).orEmpty().toList().toImmutableList())
-        else -> null
-    }
 
     /** Every type when none is stored, as for work queued before types could be chosen; unknown names are dropped. */
     fun mediaKindsFromData(data: Data): ImmutableSet<MediaKind> =
-        data.getStringArray(KEY_MEDIA_KINDS).orEmpty()
+        data.getNullableStringArray(KEY_MEDIA_KINDS).orEmpty()
             .mapNotNull { name -> MediaKind.entries.firstOrNull { it.name == name } }
             .toImmutableSet()
             .ifEmpty { AllMediaKinds }
 
     /** A readable, stable name for `scan_run.scope`. */
     fun key(scope: ScanScope): String = when (scope) {
-        is ScanScope.Folders -> "$FOLDERS:" + scope.folders.map { it.uri }.sorted().joinToString("|")
+        is ScanScope.Folders -> "$FOLDERS:" + scope.folders.map { it.uri }.sorted()
+            .joinToString("|")
+
         is ScanScope.Paths -> "$PATHS:" + scope.roots().sorted().joinToString("|")
         else -> kindOf(scope)
     }

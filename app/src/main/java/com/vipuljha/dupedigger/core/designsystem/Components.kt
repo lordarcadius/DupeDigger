@@ -38,7 +38,11 @@ fun AppProgressBar(
     trackColor: Color = WavyProgressIndicatorDefaults.trackColor,
 ) {
     if (progress == null) {
-        LinearWavyProgressIndicator(modifier = modifier.fillMaxWidth(), color = color, trackColor = trackColor)
+        LinearWavyProgressIndicator(
+            modifier = modifier.fillMaxWidth(),
+            color = color,
+            trackColor = trackColor
+        )
     } else {
         LinearWavyProgressIndicator(
             progress = progress,

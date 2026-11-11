@@ -21,7 +21,12 @@ data class GroupState(
 ) : UiState
 
 @Immutable
-data class GroupDetailUi(val title: String, val summary: UiText, val similar: Boolean, val members: ImmutableList<MemberUi>)
+data class GroupDetailUi(
+    val title: String,
+    val summary: UiText,
+    val similar: Boolean,
+    val members: ImmutableList<MemberUi>
+)
 
 /** [thumbnail] is the file's own URI for images and videos; [comparable] offers a side-by-side with the keeper. */
 @Immutable

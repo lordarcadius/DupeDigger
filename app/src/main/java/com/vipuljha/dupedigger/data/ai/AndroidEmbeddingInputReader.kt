@@ -50,11 +50,20 @@ class AndroidEmbeddingInputReader @Inject constructor(
         }
         val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
             val scale = IMAGE_SIDE.toFloat() / max(info.size.width, info.size.height)
-            if (scale < 1f) decoder.setTargetSize((info.size.width * scale).roundToInt().coerceAtLeast(1), (info.size.height * scale).roundToInt().coerceAtLeast(1))
+            if (scale < 1f) decoder.setTargetSize(
+                (info.size.width * scale).roundToInt().coerceAtLeast(1),
+                (info.size.height * scale).roundToInt().coerceAtLeast(1)
+            )
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         }
         try {
-            ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }.toByteArray()
+            ByteArrayOutputStream().also {
+                bitmap.compress(
+                    Bitmap.CompressFormat.JPEG,
+                    JPEG_QUALITY,
+                    it
+                )
+            }.toByteArray()
         } finally {
             bitmap.recycle()
         }
@@ -72,14 +81,26 @@ class AndroidEmbeddingInputReader @Inject constructor(
             } else {
                 retriever.setDataSource(context, Uri.parse(sourceUri))
             }
-            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
                 ?.takeIf { it > 0 } ?: return@use null
             val frames = (0 until VIDEO_EMBED_FRAMES).mapNotNull { i ->
                 currentCoroutineContext().ensureActive()
                 val timeUs = durationMs * 1000 * (2 * i + 1) / (2 * VIDEO_EMBED_FRAMES)
-                retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, IMAGE_SIDE, IMAGE_SIDE)?.let { frame ->
+                retriever.getScaledFrameAtTime(
+                    timeUs,
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                    IMAGE_SIDE,
+                    IMAGE_SIDE
+                )?.let { frame ->
                     try {
-                        ByteArrayOutputStream().also { frame.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }.toByteArray()
+                        ByteArrayOutputStream().also {
+                            frame.compress(
+                                Bitmap.CompressFormat.JPEG,
+                                JPEG_QUALITY,
+                                it
+                            )
+                        }.toByteArray()
                     } finally {
                         frame.recycle()
                     }
@@ -89,34 +110,51 @@ class AndroidEmbeddingInputReader @Inject constructor(
         }
     }
 
-    private suspend fun <T> read(what: String, block: suspend () -> T?): T? = withContext(ioDispatcher) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: IOException) {
-            Timber.w(e, "Couldn't prepare %s for embedding", what)
-            null
-        } catch (e: RuntimeException) {
-            // Decoders report unreadable or unsupported files as plain runtime exceptions.
-            Timber.w(e, "Couldn't prepare %s for embedding", what)
-            null
+    private suspend fun <T> read(what: String, block: suspend () -> T?): T? =
+        withContext(ioDispatcher) {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Timber.w(e, "Couldn't prepare %s for embedding", what)
+                null
+            } catch (e: RuntimeException) {
+                // Decoders report unreadable or unsupported files as plain runtime exceptions.
+                Timber.w(e, "Couldn't prepare %s for embedding", what)
+                null
+            }
         }
-    }
 
     /** Mono float samples of the clip and their sample rate, or null when the file has no audio track. */
     private suspend fun decodeClip(sourceUri: String): Pair<FloatArray, Int>? {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
-            if (sourceUri.startsWith("file:")) extractor.setDataSource(File(URI(sourceUri)).path) else extractor.setDataSource(context, Uri.parse(sourceUri), null)
-            val track = (0 until extractor.trackCount).firstOrNull { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+            if (sourceUri.startsWith("file:")) extractor.setDataSource(File(URI(sourceUri)).path) else extractor.setDataSource(
+                context,
+                Uri.parse(sourceUri),
+                null
+            )
+            val track = (0 until extractor.trackCount).firstOrNull {
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)
+                    ?.startsWith("audio/") == true
+            }
                 ?: return null
             val format = extractor.getTrackFormat(track)
             extractor.selectTrack(track)
-            val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
-            extractor.seekTo((durationUs / 4).coerceAtMost(max(0L, durationUs - CLIP_SECONDS * 1_000_000L)), MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-            val decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!).also { codec = it }
+            val durationUs =
+                if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
+            extractor.seekTo(
+                (durationUs / 4).coerceAtMost(
+                    max(
+                        0L,
+                        durationUs - CLIP_SECONDS * 1_000_000L
+                    )
+                ), MediaExtractor.SEEK_TO_CLOSEST_SYNC
+            )
+            val decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
+                .also { codec = it }
             decoder.configure(format, null, null, 0)
             decoder.start()
             var rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -131,7 +169,13 @@ class AndroidEmbeddingInputReader @Inject constructor(
                     if (index >= 0) {
                         val size = extractor.readSampleData(decoder.getInputBuffer(index)!!, 0)
                         if (size < 0) {
-                            decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            decoder.queueInputBuffer(
+                                index,
+                                0,
+                                0,
+                                0,
+                                MediaCodec.BUFFER_FLAG_END_OF_STREAM
+                            )
                             inputDone = true
                         } else {
                             decoder.queueInputBuffer(index, 0, size, extractor.sampleTime, 0)
@@ -144,7 +188,8 @@ class AndroidEmbeddingInputReader @Inject constructor(
                     rate = decoder.outputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                     channels = decoder.outputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
                 } else if (out >= 0) {
-                    val pcm = decoder.getOutputBuffer(out)!!.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
+                    val pcm = decoder.getOutputBuffer(out)!!.order(ByteOrder.LITTLE_ENDIAN)
+                        .asShortBuffer()
                     val frames = info.size / 2 / channels
                     for (f in 0 until frames) {
                         var sum = 0f
@@ -172,7 +217,8 @@ class AndroidEmbeddingInputReader @Inject constructor(
             val pos = i.toDouble() * from / to
             val j = pos.toInt().coerceAtMost(samples.lastIndex)
             val frac = (pos - j).toFloat()
-            out[i] = samples[j] * (1 - frac) + samples[(j + 1).coerceAtMost(samples.lastIndex)] * frac
+            out[i] =
+                samples[j] * (1 - frac) + samples[(j + 1).coerceAtMost(samples.lastIndex)] * frac
         }
         return out
     }
@@ -181,9 +227,12 @@ class AndroidEmbeddingInputReader @Inject constructor(
         val data = samples.size * 2
         val buffer = ByteBuffer.allocate(WAV_HEADER_BYTES + data).order(ByteOrder.LITTLE_ENDIAN)
         buffer.put("RIFF".toByteArray()).putInt(36 + data).put("WAVE".toByteArray())
-        buffer.put("fmt ".toByteArray()).putInt(16).putShort(1).putShort(1).putInt(TARGET_RATE).putInt(TARGET_RATE * 2).putShort(2).putShort(16)
+        buffer.put("fmt ".toByteArray()).putInt(16).putShort(1).putShort(1).putInt(TARGET_RATE)
+            .putInt(TARGET_RATE * 2).putShort(2).putShort(16)
         buffer.put("data".toByteArray()).putInt(data)
-        for (s in samples) buffer.putShort((s.coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort())
+        for (s in samples) buffer.putShort(
+            (s.coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort()
+        )
         return buffer.array()
     }
 

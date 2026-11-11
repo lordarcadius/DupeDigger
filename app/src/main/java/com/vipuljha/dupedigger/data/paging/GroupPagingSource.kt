@@ -49,7 +49,8 @@ class GroupPagingSource(
     override fun getRefreshKey(state: PagingState<Int, GroupWithMembers>): Int? =
         state.anchorPosition?.let { anchor ->
             val page = state.closestPageToPosition(anchor)
-            page?.prevKey?.plus(state.config.pageSize) ?: page?.nextKey?.minus(state.config.pageSize)
+            page?.prevKey?.plus(state.config.pageSize)
+                ?: page?.nextKey?.minus(state.config.pageSize)
         }
 
     private companion object {

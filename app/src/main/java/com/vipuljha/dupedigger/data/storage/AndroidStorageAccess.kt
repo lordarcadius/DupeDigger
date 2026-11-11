@@ -35,7 +35,7 @@ class AndroidStorageAccess @Inject constructor(
         }
         val grantedTypes = FULL_MEDIA_33.count(::granted)
         val selectedOnly = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-            granted(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                granted(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
         return when {
             grantedTypes == FULL_MEDIA_33.size -> MediaAccess.FULL
             grantedTypes > 0 || selectedOnly -> MediaAccess.PARTIAL

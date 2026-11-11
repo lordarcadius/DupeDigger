@@ -48,7 +48,11 @@ object AppMotion {
     const val ScrollbarFadeOutMillis = 400
     const val ScrollbarHideDelayMillis = 1500L
     const val ScrollbarGrabMillis = 180
-    val ScrollGlide = spring<Float>(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow, visibilityThreshold = 0.5f)
+    val ScrollGlide = spring<Float>(
+        Spring.DampingRatioNoBouncy,
+        Spring.StiffnessMediumLow,
+        visibilityThreshold = 0.5f
+    )
 }
 
 object HoverMotion {
@@ -57,8 +61,10 @@ object HoverMotion {
     const val ZoomScale = 1.045f
     const val NoScale = 1f
     const val PressDip = -0.35f
-    val Rise: SpringSpec<Float> = spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMediumLow)
-    val Settle: SpringSpec<Float> = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow)
+    val Rise: SpringSpec<Float> =
+        spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMediumLow)
+    val Settle: SpringSpec<Float> =
+        spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow)
 }
 
 object TintStrength {
@@ -73,7 +79,8 @@ object TintStrength {
  * - [stateChangeSpec] fades content in and out; effects specs never overshoot, which colour and alpha shouldn't.
  */
 @Composable
-fun listPlacementSpec(): FiniteAnimationSpec<IntOffset> = MaterialTheme.motionScheme.defaultSpatialSpec()
+fun listPlacementSpec(): FiniteAnimationSpec<IntOffset> =
+    MaterialTheme.motionScheme.defaultSpatialSpec()
 
 @Composable
 fun stateChangeSpec(): FiniteAnimationSpec<Float> = MaterialTheme.motionScheme.defaultEffectsSpec()

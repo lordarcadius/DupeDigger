@@ -22,11 +22,13 @@ fun OnboardingRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = LocalActivity.current
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-        val denied = results.filterValues { granted -> !granted }.keys
-        val canAskAgain = activity != null && denied.any(activity::shouldShowRequestPermissionRationale)
-        viewModel.onIntent(OnboardingIntent.MediaPermissionResult(canAskAgain))
-    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val denied = results.filterValues { granted -> !granted }.keys
+            val canAskAgain =
+                activity != null && denied.any(activity::shouldShowRequestPermissionRationale)
+            viewModel.onIntent(OnboardingIntent.MediaPermissionResult(canAskAgain))
+        }
 
     LifecycleResumeEffect(Unit) {
         viewModel.onIntent(OnboardingIntent.Refresh)
@@ -37,15 +39,22 @@ fun OnboardingRoute(
         when (effect) {
             is OnboardingEffect.RequestMediaPermissions -> permissionLauncher.launch(effect.permissions.toTypedArray())
             OnboardingEffect.OpenAllFilesAccessSettings -> {
-                val appScreen = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.fromParts("package", context.packageName, null))
+                val appScreen = Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.fromParts("package", context.packageName, null)
+                )
                 try {
                     context.startActivity(appScreen)
                 } catch (_: ActivityNotFoundException) {
                     context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
                 }
             }
+
             OnboardingEffect.OpenAppSettings -> context.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", context.packageName, null)
+                ),
             )
         }
     }

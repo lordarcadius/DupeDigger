@@ -53,8 +53,19 @@ private fun BuiltInPreset.titleRes() = when (this) {
 private fun ScanScope.summary(): UiText = when (this) {
     ScanScope.WholeDevice -> UiText.res(R.string.scope_whole_device)
     ScanScope.MediaOnly -> UiText.res(R.string.scope_media)
-    is ScanScope.Folders -> UiText.plural(R.plurals.scan_scope_folders_body, folders.size, formatCount(folders.size))
-    is ScanScope.Paths -> roots().size.let { UiText.plural(R.plurals.scan_scope_paths_body, it, formatCount(it)) }
+    is ScanScope.Folders -> UiText.plural(
+        R.plurals.scan_scope_folders_body,
+        folders.size,
+        formatCount(folders.size)
+    )
+
+    is ScanScope.Paths -> roots().size.let {
+        UiText.plural(
+            R.plurals.scan_scope_paths_body,
+            it,
+            formatCount(it)
+        )
+    }
 }
 
 /** "All file types", one type's name, or how many types. */
@@ -68,7 +79,10 @@ fun kindOptions(selected: Set<MediaKind>): ImmutableList<KindOptionUi> =
     MediaKind.entries.map { KindOptionUi(it, it.label(), it in selected) }.toImmutableList()
 
 /** Whole device and media library when they can be read, then picked folders, which can always be added to. */
-fun whereOptions(available: List<ScanScope>, picked: List<ScanFolder>): ImmutableList<ScopeOptionUi> =
+fun whereOptions(
+    available: List<ScanScope>,
+    picked: List<ScanFolder>
+): ImmutableList<ScopeOptionUi> =
     (available.filterNot { it is ScanScope.Folders }.map { it.toOption() } + ScopeOptionUi(
         kind = ScopeKind.FOLDERS,
         title = ScopeKind.FOLDERS.label(),
@@ -85,8 +99,19 @@ fun ScanScope.toOption() = ScopeOptionUi(
     body = when (this) {
         ScanScope.WholeDevice -> UiText.res(R.string.scan_scope_whole_device_body)
         ScanScope.MediaOnly -> UiText.res(R.string.scan_scope_media_body)
-        is ScanScope.Folders -> UiText.plural(R.plurals.scan_scope_folders_body, folders.size, formatCount(folders.size))
-        is ScanScope.Paths -> roots().size.let { UiText.plural(R.plurals.scan_scope_paths_body, it, formatCount(it)) }
+        is ScanScope.Folders -> UiText.plural(
+            R.plurals.scan_scope_folders_body,
+            folders.size,
+            formatCount(folders.size)
+        )
+
+        is ScanScope.Paths -> roots().size.let {
+            UiText.plural(
+                R.plurals.scan_scope_paths_body,
+                it,
+                formatCount(it)
+            )
+        }
     },
 )
 
@@ -106,12 +131,23 @@ fun ScanProgress.toUi(rate: Int?) = ScanProgressUi(
         },
     ),
     count = when {
-        stage == ScanStage.INDEXING -> UiText.plural(R.plurals.scan_files_found, done, formatCount(done))
-        total != null && total > 0 -> UiText.res(R.string.scan_compared, formatCount(done), formatCount(total))
+        stage == ScanStage.INDEXING -> UiText.plural(
+            R.plurals.scan_files_found,
+            done,
+            formatCount(done)
+        )
+
+        total != null && total > 0 -> UiText.res(
+            R.string.scan_compared,
+            formatCount(done),
+            formatCount(total)
+        )
+
         else -> null
     },
     rate = rate?.let { UiText.plural(R.plurals.scan_rate, it, formatCount(it)) },
-    fraction = total?.takeIf { stage != ScanStage.INDEXING && it > 0 }?.let { done.coerceAtMost(it).toFloat() / it },
+    fraction = total?.takeIf { stage != ScanStage.INDEXING && it > 0 }
+        ?.let { done.coerceAtMost(it).toFloat() / it },
     aiStage = stage == ScanStage.SEMANTIC,
 )
 
@@ -123,18 +159,25 @@ fun ScanRunInfo.toResult(): ScanResultUi = when (status) {
             body = if (found == 0) {
                 UiText.res(R.string.scan_done_none)
             } else {
-                UiText.plural(R.plurals.scan_done_found, found, formatCount(found), formatBytes(summary?.reclaimableBytes ?: 0))
+                UiText.plural(
+                    R.plurals.scan_done_found,
+                    found,
+                    formatCount(found),
+                    formatBytes(summary?.reclaimableBytes ?: 0)
+                )
             },
             isError = false,
             hasResults = found > 0,
         )
     }
+
     ScanStatus.CANCELLED, ScanStatus.INTERRUPTED -> ScanResultUi(
         title = UiText.res(R.string.scan_cancelled_title),
         body = UiText.res(R.string.scan_cancelled_body),
         isError = false,
         hasResults = false,
     )
+
     ScanStatus.FAILED, ScanStatus.RUNNING -> ScanResultUi(
         title = UiText.res(R.string.scan_failed_title),
         body = UiText.res(R.string.scan_failed_body),

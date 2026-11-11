@@ -60,7 +60,14 @@ data class ScanState(
 
 /** [hint] says why a preset that can't run right now is disabled. */
 @Immutable
-data class PresetUi(val id: Long, val title: UiText, val body: UiText, val enabled: Boolean, val hint: UiText?, val editable: Boolean)
+data class PresetUi(
+    val id: Long,
+    val title: UiText,
+    val body: UiText,
+    val enabled: Boolean,
+    val hint: UiText?,
+    val editable: Boolean
+)
 
 @Immutable
 data class KindOptionUi(val kind: MediaKind, val label: UiText, val selected: Boolean)
@@ -75,11 +82,22 @@ data class FolderOptionUi(val uri: String, val name: String, val selected: Boole
 data class PresetDraftUi(val id: Long, val name: String)
 
 @Immutable
-data class ScanResultUi(val title: UiText, val body: UiText, val isError: Boolean, val hasResults: Boolean)
+data class ScanResultUi(
+    val title: UiText,
+    val body: UiText,
+    val isError: Boolean,
+    val hasResults: Boolean
+)
 
 /** The live numbers; [fraction] is null while the amount of work is unknown; [aiStage] offers Skip AI. */
 @Immutable
-data class ScanProgressUi(val stage: UiText, val count: UiText?, val rate: UiText?, val fraction: Float?, val aiStage: Boolean = false)
+data class ScanProgressUi(
+    val stage: UiText,
+    val count: UiText?,
+    val rate: UiText?,
+    val fraction: Float?,
+    val aiStage: Boolean = false
+)
 
 sealed interface ScanIntent : UiIntent {
     data object Refresh : ScanIntent

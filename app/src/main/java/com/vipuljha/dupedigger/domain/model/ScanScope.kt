@@ -37,37 +37,50 @@ val ScanScope.kind: ScopeKind
 fun ScanScope.Paths.roots(): ImmutableList<String> {
     val kept = mutableListOf<String>()
     paths.mapNotNull(::cleanRelativePath).sortedBy { it.length }.forEach { path ->
-        if (kept.none { path.equals(it, ignoreCase = true) || path.startsWith("$it/", ignoreCase = true) }) kept += path
+        if (kept.none {
+                path.equals(it, ignoreCase = true) || path.startsWith(
+                    "$it/",
+                    ignoreCase = true
+                )
+            }) kept += path
     }
     return kept.toImmutableList()
 }
 
 private fun cleanRelativePath(path: String): String? {
     val segments = path.split('/').filter { it.isNotEmpty() }
-    return if (segments.isEmpty() || segments.any { it == "." || it == ".." }) null else segments.joinToString("/")
+    return if (segments.isEmpty() || segments.any { it == "." || it == ".." }) null else segments.joinToString(
+        "/"
+    )
 }
 
 /** The scopes the scan picker may offer, widest first; it never offers one the app can't read. */
-fun availableScopes(access: StorageAccessState, folders: List<ScanFolder>): ImmutableList<ScanScope> = buildList {
+fun availableScopes(
+    access: StorageAccessState,
+    folders: List<ScanFolder>
+): ImmutableList<ScanScope> = buildList {
     if (access.allFiles) add(ScanScope.WholeDevice)
     if (access.media != MediaAccess.NONE) add(ScanScope.MediaOnly)
     if (folders.isNotEmpty()) add(ScanScope.Folders(folders.toImmutableList()))
 }.toImmutableList()
 
 /** Whether this scope can still be read; a scan of an unreadable scope would find nothing and prune its whole index. */
-fun ScanScope.isReachable(access: StorageAccessState, folders: List<ScanFolder>): Boolean = when (this) {
-    ScanScope.WholeDevice -> access.allFiles
-    ScanScope.MediaOnly -> access.media != MediaAccess.NONE
-    is ScanScope.Folders -> this.folders.isNotEmpty() && this.folders.all { picked -> folders.any { it.uri == picked.uri } }
-    is ScanScope.Paths -> access.allFiles && roots().isNotEmpty()
-}
+fun ScanScope.isReachable(access: StorageAccessState, folders: List<ScanFolder>): Boolean =
+    when (this) {
+        ScanScope.WholeDevice -> access.allFiles
+        ScanScope.MediaOnly -> access.media != MediaAccess.NONE
+        is ScanScope.Folders -> this.folders.isNotEmpty() && this.folders.all { picked -> folders.any { it.uri == picked.uri } }
+        is ScanScope.Paths -> access.allFiles && roots().isNotEmpty()
+    }
 
 /** Whether this scope can be read now, judged from what [availableScopes] returned for the same access and folders. */
 fun ScanScope.isReachableWith(available: List<ScanScope>): Boolean = when (this) {
     ScanScope.WholeDevice, ScanScope.MediaOnly -> this in available
     is ScanScope.Folders -> {
-        val picked = available.filterIsInstance<ScanScope.Folders>().flatMap { scope -> scope.folders.map { it.uri } }
+        val picked = available.filterIsInstance<ScanScope.Folders>()
+            .flatMap { scope -> scope.folders.map { it.uri } }
         folders.isNotEmpty() && folders.all { it.uri in picked }
     }
+
     is ScanScope.Paths -> ScanScope.WholeDevice in available && roots().isNotEmpty()
 }

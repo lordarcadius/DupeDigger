@@ -23,7 +23,15 @@ fun keeperOf(members: List<GroupMember>, chosenSourceUri: String?): GroupMember 
 
 fun GroupWithMembers.toItem(): DuplicateGroupItem {
     val keeper = keeperOf(members, keepChoice)
-    return DuplicateGroupItem(groupId, fingerprint, tier, kind, keeper, members.filter { it.fileId != keeper.fileId }.toImmutableList(), score)
+    return DuplicateGroupItem(
+        groupId,
+        fingerprint,
+        tier,
+        kind,
+        keeper,
+        members.filter { it.fileId != keeper.fileId }.toImmutableList(),
+        score
+    )
 }
 
 /**
@@ -35,9 +43,15 @@ fun GroupWithMembers.keeperFor(rule: KeepRule): GroupMember {
     val known = members.filter { it.mtime > 0 }.ifEmpty { members }
     val candidates = when (rule) {
         KeepRule.Best -> return keeperOf(members, keepChoice)
-        KeepRule.Newest -> known.maxOf { it.mtime }.let { newest -> known.filter { it.mtime == newest } }
-        KeepRule.Oldest -> known.minOf { it.mtime }.let { oldest -> known.filter { it.mtime == oldest } }
-        KeepRule.Largest -> members.maxOf { it.size }.let { largest -> members.filter { it.size == largest } }
+        KeepRule.Newest -> known.maxOf { it.mtime }
+            .let { newest -> known.filter { it.mtime == newest } }
+
+        KeepRule.Oldest -> known.minOf { it.mtime }
+            .let { oldest -> known.filter { it.mtime == oldest } }
+
+        KeepRule.Largest -> members.maxOf { it.size }
+            .let { largest -> members.filter { it.size == largest } }
+
         is KeepRule.InFolder -> members.filter { it.path?.startsWith(rule.folder.trimEnd('/') + "/") == true }
             .ifEmpty { return keeperOf(members, keepChoice) }
     }
@@ -51,14 +65,15 @@ private val keeperOrder: Comparator<GroupMember> =
         .thenBy { if (it.mtime > 0) it.mtime else Long.MAX_VALUE }
         .thenBy { it.sourceUri }
 
-private val COPY_FOLDERS = setOf("whatsapp", "telegram", "download", "downloads", "messenger", ".thumbnails", "cache")
+private val COPY_FOLDERS =
+    setOf("whatsapp", "telegram", "download", "downloads", "messenger", ".thumbnails", "cache")
 private const val ORIGINAL_FOLDER = "dcim"
 
 private fun locationScore(path: String?): Int {
     if (path == null) return 1
     val folders = path.lowercase().split('/').dropLast(1)
     val isCopy = folders.any { it in COPY_FOLDERS } ||
-        folders.windowed(2).any { (parent, child) -> parent == "android" && child == "media" }
+            folders.windowed(2).any { (parent, child) -> parent == "android" && child == "media" }
     return when {
         isCopy -> 0
         ORIGINAL_FOLDER in folders -> 2

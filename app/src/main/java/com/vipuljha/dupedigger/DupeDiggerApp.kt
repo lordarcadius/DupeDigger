@@ -18,9 +18,11 @@ import javax.inject.Inject
 @HiltAndroidApp
 class DupeDiggerApp : Application(), Configuration.Provider, SingletonImageLoader.Factory {
 
-    @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
 
-    @Inject lateinit var embedder: Lazy<LiteRtEmbedder>
+    @Inject
+    lateinit var embedder: Lazy<LiteRtEmbedder>
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

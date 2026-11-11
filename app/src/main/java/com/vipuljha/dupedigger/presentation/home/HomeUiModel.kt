@@ -32,7 +32,8 @@ fun homeUiModel(
             UiText.plural(R.plurals.home_duplicate_files, files, formatCount(files)),
             UiText.plural(R.plurals.home_groups, groups, formatCount(groups)),
         ),
-        kinds = kinds.filter { it.files > 0 }.sortedByDescending { it.bytes }.map { it.toRow() }.toImmutableList(),
+        kinds = kinds.filter { it.files > 0 }.sortedByDescending { it.bytes }.map { it.toRow() }
+            .toImmutableList(),
         lastScan = lastRun?.toUi(nowMillis),
         scanning = scanning,
     )
@@ -45,7 +46,11 @@ fun homeUiModel(
 private fun storageUi(storage: StorageUsage, reclaimableBytes: Long): StorageUi? {
     if (storage.totalBytes <= 0L) return null
     return StorageUi(
-        headline = UiText.res(R.string.home_storage_used, formatBytes(storage.usedBytes), formatBytes(storage.totalBytes)),
+        headline = UiText.res(
+            R.string.home_storage_used,
+            formatBytes(storage.usedBytes),
+            formatBytes(storage.totalBytes)
+        ),
         freeNow = UiText.res(R.string.home_storage_free, formatBytes(storage.freeBytes)),
         usedFraction = storage.usedFraction(),
         duplicateFraction = storage.fractionOf(reclaimableBytes),
@@ -80,8 +85,15 @@ private fun ScanRunInfo.toUi(nowMillis: Long) = LastScanUi(
 
 /** "Took 2 min 5 s · 12,345 files scanned"; either half alone when the record lacks the other, null with neither. */
 private fun ScanRunInfo.scanStats(): UiText? {
-    val took = finishedAt?.let { UiText.res(R.string.home_last_scan_took, formatDuration(it - startedAt)) }
-    val files = summary?.index?.scanned?.let { UiText.plural(R.plurals.home_files_scanned, it, formatCount(it)) }
+    val took =
+        finishedAt?.let { UiText.res(R.string.home_last_scan_took, formatDuration(it - startedAt)) }
+    val files = summary?.index?.scanned?.let {
+        UiText.plural(
+            R.plurals.home_files_scanned,
+            it,
+            formatCount(it)
+        )
+    }
     return when {
         took != null && files != null -> UiText.res(R.string.home_last_scan_stats, took, files)
         else -> took ?: files

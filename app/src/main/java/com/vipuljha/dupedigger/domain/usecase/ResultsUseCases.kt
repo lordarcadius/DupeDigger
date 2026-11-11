@@ -31,7 +31,10 @@ data class SelectableFile(val fileId: Long, val size: Long, val tier: MatchTier)
  *   selection can't empty a group.
  */
 class SelectAllButKeepersUseCase @Inject constructor(private val groups: DuplicateGroupRepository) {
-    suspend operator fun invoke(filter: GroupFilter, rule: KeepRule = KeepRule.Best): List<SelectableFile> {
+    suspend operator fun invoke(
+        filter: GroupFilter,
+        rule: KeepRule = KeepRule.Best
+    ): List<SelectableFile> {
         val matching = groups.allGroups(filter)
         val keepers = matching.associate { it.groupId to it.keeperFor(rule).fileId }
         val kept = keepers.values.toSet()
@@ -48,7 +51,9 @@ class SelectAllButKeepersUseCase @Inject constructor(private val groups: Duplica
 class GetDuplicateFoldersUseCase @Inject constructor(private val groups: DuplicateGroupRepository) {
     suspend operator fun invoke(filter: GroupFilter): List<DuplicateFolder> =
         groups.allGroups(filter).flatMap { it.members }.distinctBy { it.fileId }
-            .mapNotNull { member -> member.path?.substringBeforeLast('/', "")?.takeIf { it.isNotEmpty() } }
+            .mapNotNull { member ->
+                member.path?.substringBeforeLast('/', "")?.takeIf { it.isNotEmpty() }
+            }
             .groupingBy { it }.eachCount()
             .map { (path, files) -> DuplicateFolder(path, files) }
             .sortedWith(compareByDescending<DuplicateFolder> { it.files }.thenBy { it.path })

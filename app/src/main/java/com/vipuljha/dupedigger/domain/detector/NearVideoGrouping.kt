@@ -4,7 +4,8 @@ import com.vipuljha.dupedigger.domain.model.VideoSignature
 import kotlin.math.max
 
 /** Two durations may differ by 1 s or 2 % of the longer, whichever is more, and still be the same video. */
-fun durationsMatch(a: Long, b: Long): Boolean = kotlin.math.abs(a - b) <= durationTolerance(max(a, b))
+fun durationsMatch(a: Long, b: Long): Boolean =
+    kotlin.math.abs(a - b) <= durationTolerance(max(a, b))
 
 /** Frame by frame, at least three quarters of the sampled frames are within [threshold] bits. */
 fun framesMatch(a: VideoSignature, b: VideoSignature, threshold: Int): Boolean {

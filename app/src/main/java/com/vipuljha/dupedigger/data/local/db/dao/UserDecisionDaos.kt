@@ -72,7 +72,13 @@ interface ScanPresetDao {
 
     /** Keeps `createdAt`, so an edited preset keeps its place. */
     @Query("UPDATE scan_preset SET name = :name, scopeKind = :scopeKind, locations = :locations, mediaKinds = :mediaKinds WHERE id = :id")
-    suspend fun update(id: Long, name: String, scopeKind: String, locations: String, mediaKinds: String)
+    suspend fun update(
+        id: Long,
+        name: String,
+        scopeKind: String,
+        locations: String,
+        mediaKinds: String
+    )
 
     @Query("DELETE FROM scan_preset WHERE id = :id")
     suspend fun delete(id: Long)

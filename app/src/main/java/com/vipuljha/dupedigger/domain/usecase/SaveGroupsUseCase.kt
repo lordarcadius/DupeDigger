@@ -11,7 +11,11 @@ import com.vipuljha.dupedigger.domain.repository.FilePresence
 import kotlinx.collections.immutable.toImmutableList
 import javax.inject.Inject
 
-data class SavedGroups(val exact: List<ExactGroup>, val near: List<NearGroup>, val semantic: List<NearGroup> = emptyList())
+data class SavedGroups(
+    val exact: List<ExactGroup>,
+    val near: List<NearGroup>,
+    val semantic: List<NearGroup> = emptyList()
+)
 
 /**
  * Saves a scan's groups of every tier in place of the previous results; returns those kept.
@@ -31,7 +35,9 @@ class SaveGroupsUseCase @Inject constructor(
         nearGroups: List<NearGroup> = emptyList(),
         semanticGroups: List<NearGroup> = emptyList(),
     ): SavedGroups {
-        val gone = dropVanished(scanId, exactGroups.flatMap { it.fileIds } + (nearGroups + semanticGroups).flatMap { it.fileIds })
+        val gone = dropVanished(
+            scanId,
+            exactGroups.flatMap { it.fileIds } + (nearGroups + semanticGroups).flatMap { it.fileIds })
         val ignored = groups.ignoredFingerprints()
         val exact = exactGroups.map { it.without(gone) }
             .filter { it.fileIds.size > 1 && exactFingerprint(it.size, it.fullHash) !in ignored }
@@ -39,9 +45,23 @@ class SaveGroupsUseCase @Inject constructor(
         val semantic = semanticGroups.kept(gone, ignored)
         groups.replaceGroups(
             scanId,
-            exact.map { FoundGroup(exactFingerprint(it.size, it.fullHash), MatchTier.EXACT, score = 1f, fileIds = it.fileIds) } +
-                near.map { FoundGroup(it.fingerprint, MatchTier.NEAR, it.score, it.fileIds) } +
-                semantic.map { FoundGroup(it.fingerprint, MatchTier.SEMANTIC, it.score, it.fileIds) },
+            exact.map {
+                FoundGroup(
+                    exactFingerprint(it.size, it.fullHash),
+                    MatchTier.EXACT,
+                    score = 1f,
+                    fileIds = it.fileIds
+                )
+            } +
+                    near.map { FoundGroup(it.fingerprint, MatchTier.NEAR, it.score, it.fileIds) } +
+                    semantic.map {
+                        FoundGroup(
+                            it.fingerprint,
+                            MatchTier.SEMANTIC,
+                            it.score,
+                            it.fileIds
+                        )
+                    },
         )
         return SavedGroups(exact, near, semantic)
     }
@@ -59,7 +79,8 @@ class SaveGroupsUseCase @Inject constructor(
     }
 
     private fun ExactGroup.without(gone: Set<Long>) =
-        if (gone.isEmpty()) this else copy(fileIds = fileIds.filterNot { it in gone }.toImmutableList())
+        if (gone.isEmpty()) this else copy(fileIds = fileIds.filterNot { it in gone }
+            .toImmutableList())
 
     private fun List<NearGroup>.kept(gone: Set<Long>, ignored: Set<String>) =
         filter { it.fileIds.size > 1 && it.fingerprint !in ignored && it.fileIds.none { id -> id in gone } }

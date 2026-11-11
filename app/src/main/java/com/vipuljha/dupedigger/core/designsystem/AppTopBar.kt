@@ -13,11 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import com.vipuljha.dupedigger.R
 
 /** Top bar inside the pane; the leading slot holds Back on pushed screens and is empty on a top-level one. */
 @Composable
@@ -52,6 +50,8 @@ fun RowScope.TopBarTitle(title: String) {
         style = MaterialTheme.typography.titleLarge,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f).semantics { heading() },
+        modifier = Modifier
+            .weight(1f)
+            .semantics { heading() },
     )
 }

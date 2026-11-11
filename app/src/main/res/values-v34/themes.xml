@@ -2,6 +2,7 @@
 <resources>
 
     <style name="Theme.DupeDigger" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/system_surface_container_high_light</item>
+        <item name="android:windowBackground">@android:color/system_surface_container_high_light
+        </item>
     </style>
 </resources>

@@ -67,7 +67,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS `scan_preset` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, " +
-                "`scopeKind` TEXT NOT NULL, `locations` TEXT NOT NULL, `mediaKinds` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+                    "`scopeKind` TEXT NOT NULL, `locations` TEXT NOT NULL, `mediaKinds` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
         )
     }
 }

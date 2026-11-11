@@ -26,12 +26,13 @@ class AndroidFilePresence @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : FilePresence {
 
-    override suspend fun missing(sourceUris: Collection<String>): Set<String> = withContext(ioDispatcher) {
-        sourceUris.filterNotTo(HashSet()) {
-            currentCoroutineContext().ensureActive()
-            exists(it)
+    override suspend fun missing(sourceUris: Collection<String>): Set<String> =
+        withContext(ioDispatcher) {
+            sourceUris.filterNotTo(HashSet()) {
+                currentCoroutineContext().ensureActive()
+                exists(it)
+            }
         }
-    }
 
     private fun exists(sourceUri: String): Boolean = if (sourceUri.startsWith("file:")) {
         try {

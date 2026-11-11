@@ -40,23 +40,24 @@ class StreamingContentHasher(
         @DefaultDispatcher dispatcher: CoroutineDispatcher,
     ) : this({ uri -> context.contentResolver.openSource(uri) }, dispatcher)
 
-    override suspend fun partialHash(sourceUri: String, size: Long): Outcome<ContentHashes> = hashing {
-        openStream(sourceUri).use { input ->
-            val partial = sha256().apply { update(size.toBigEndianBytes()) }
-            if (size <= 2L * WINDOW) {
-                val bytes = input.readExactly(size.toInt())
-                input.requireEnd()
-                partial.update(bytes)
-                ContentHashes(partial.hex(), sha256().digest(bytes).toHex())
-            } else {
-                partial.update(input.readExactly(WINDOW))
-                input.skipExactly(size - 2L * WINDOW)
-                partial.update(input.readExactly(WINDOW))
-                input.requireEnd()
-                ContentHashes(partial.hex(), null)
+    override suspend fun partialHash(sourceUri: String, size: Long): Outcome<ContentHashes> =
+        hashing {
+            openStream(sourceUri).use { input ->
+                val partial = sha256().apply { update(size.toBigEndianBytes()) }
+                if (size <= 2L * WINDOW) {
+                    val bytes = input.readExactly(size.toInt())
+                    input.requireEnd()
+                    partial.update(bytes)
+                    ContentHashes(partial.hex(), sha256().digest(bytes).toHex())
+                } else {
+                    partial.update(input.readExactly(WINDOW))
+                    input.skipExactly(size - 2L * WINDOW)
+                    partial.update(input.readExactly(WINDOW))
+                    input.requireEnd()
+                    ContentHashes(partial.hex(), null)
+                }
             }
         }
-    }
 
     override suspend fun fullHash(sourceUri: String, size: Long): Outcome<String> = hashing {
         openStream(sourceUri).use { input ->

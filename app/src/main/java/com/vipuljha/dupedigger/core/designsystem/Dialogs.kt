@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -36,9 +37,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Dp
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -58,34 +58,44 @@ fun AppDialog(
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
-) = CompositionLocalProvider(LocalContentBounds provides remember { mutableStateOf(IntRect.Zero) }) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            PrimeOsBlur.DressDialog()
-            Box(Modifier.dialogKeys(onConfirm = onEnter, onDismiss = onDismissRequest)) { confirmButton() }
-        },
-        modifier = modifier.width(dialogWidth(Dimens.dialogWidth)),
-        dismissButton = dismissButton,
-        icon = icon,
-        // M3 centres a dialog that has an icon and starts one that doesn't. Compose centres the title's box but
-        // leaves the text itself start-aligned, so a headline long enough to wrap still reads ragged; set it here.
-        title = title?.let { t ->
-            {
-                Centred(icon != null) {
-                    if (PrimeOsBlur.closeInset > 0.dp) Box(Modifier.padding(end = PrimeOsBlur.closeInset)) { t() } else t()
+) =
+    CompositionLocalProvider(LocalContentBounds provides remember { mutableStateOf(IntRect.Zero) }) {
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            confirmButton = {
+                PrimeOsBlur.DressDialog()
+                Box(
+                    Modifier.dialogKeys(
+                        onConfirm = onEnter,
+                        onDismiss = onDismissRequest
+                    )
+                ) { confirmButton() }
+            },
+            modifier = modifier.width(dialogWidth(Dimens.dialogWidth)),
+            dismissButton = dismissButton,
+            icon = icon,
+            // M3 centres a dialog that has an icon and starts one that doesn't. Compose centres the title's box but
+            // leaves the text itself start-aligned, so a headline long enough to wrap still reads ragged; set it here.
+            title = title?.let { t ->
+                {
+                    Centred(icon != null) {
+                        if (PrimeOsBlur.closeInset > 0.dp) Box(Modifier.padding(end = PrimeOsBlur.closeInset)) { t() } else t()
+                    }
                 }
-            }
-        },
-        text = text?.let { body -> { Centred(icon != null) { body() } } },
-        containerColor = PrimeOsBlur.container(AlertDialogDefaults.containerColor),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    )
-}
+            },
+            text = text?.let { body -> { Centred(icon != null) { body() } } },
+            containerColor = PrimeOsBlur.container(AlertDialogDefaults.containerColor),
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        )
+    }
 
 /** Enter confirms and Esc dismisses; the node takes focus as the dialog opens and draws no indicator. */
 @Composable
-fun Modifier.dialogKeys(onConfirm: () -> Unit, onDismiss: () -> Unit, initialFocus: FocusRequester? = null): Modifier {
+fun Modifier.dialogKeys(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    initialFocus: FocusRequester? = null
+): Modifier {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { (initialFocus ?: focus).requestFocus() }
     return this
@@ -94,8 +104,14 @@ fun Modifier.dialogKeys(onConfirm: () -> Unit, onDismiss: () -> Unit, initialFoc
         .onKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
             when (event.key) {
-                Key.Enter, Key.NumPadEnter -> { onConfirm(); true }
-                Key.Escape -> { onDismiss(); true }
+                Key.Enter, Key.NumPadEnter -> {
+                    onConfirm(); true
+                }
+
+                Key.Escape -> {
+                    onDismiss(); true
+                }
+
                 else -> false
             }
         }
@@ -141,7 +157,8 @@ object PrimeOsBlur {
 
     private fun dressCard(card: View, radius: Float, fallback: Int) {
         card.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) = outline.setRoundRect(0, 0, view.width, view.height, radius)
+            override fun getOutline(view: View, outline: Outline) =
+                outline.setRoundRect(0, 0, view.width, view.height, radius)
         }
         card.clipToOutline = true
         val blurred = reflect(false) {
@@ -149,11 +166,18 @@ object PrimeOsBlur {
             val fill = config.getMethod("fillColor", Context::class.java).invoke(null, card.context)
             card.background = null
             Class.forName(PKG + "PrimeRealBlur")
-                .getMethod("installStyled", View::class.java, Float::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                .getMethod(
+                    "installStyled",
+                    View::class.java,
+                    Float::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType
+                )
                 .invoke(null, card, radius, fill, config.getField("CONTENT_TEXT").getInt(null))
             true
         }
-        if (!blurred) card.background = GradientDrawable().apply { setColor(fallback); cornerRadius = radius }
+        if (!blurred) card.background =
+            GradientDrawable().apply { setColor(fallback); cornerRadius = radius }
     }
 
     private fun attachCloseButton(window: Window, card: View) {
@@ -161,8 +185,17 @@ object PrimeOsBlur {
         val host = window.decorView.findViewById<ViewGroup>(android.R.id.content) ?: return
         reflect(Unit) {
             Class.forName(PKG + "PrimeDialogStyle")
-                .getMethod("attachCloseButton", ViewGroup::class.java, View::class.java, Runnable::class.java)
-                .invoke(null, host, card, Runnable { @Suppress("DEPRECATION") dialog.onBackPressed() })
+                .getMethod(
+                    "attachCloseButton",
+                    ViewGroup::class.java,
+                    View::class.java,
+                    Runnable::class.java
+                )
+                .invoke(
+                    null,
+                    host,
+                    card,
+                    Runnable { @Suppress("DEPRECATION") dialog.onBackPressed() })
         }
     }
 
@@ -182,5 +215,8 @@ object PrimeOsBlur {
 @Composable
 private fun Centred(centred: Boolean, content: @Composable () -> Unit) {
     val align = if (centred) TextAlign.Center else TextAlign.Start
-    CompositionLocalProvider(LocalTextStyle provides LocalTextStyle.current.copy(textAlign = align), content = content)
+    CompositionLocalProvider(
+        LocalTextStyle provides LocalTextStyle.current.copy(textAlign = align),
+        content = content
+    )
 }

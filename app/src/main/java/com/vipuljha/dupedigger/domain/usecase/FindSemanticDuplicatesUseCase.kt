@@ -62,13 +62,27 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
     ): NearScanResult? {
         val key = embeddingKey(variant, backend)
         val readable = buildSet {
-            if (ModelCapability.VISION in variant.capabilities) addAll(listOf(MediaKind.IMAGE, MediaKind.VIDEO))
+            if (ModelCapability.VISION in variant.capabilities) addAll(
+                listOf(
+                    MediaKind.IMAGE,
+                    MediaKind.VIDEO
+                )
+            )
             if (ModelCapability.AUDIO in variant.capabilities) add(MediaKind.AUDIO)
             if (ModelCapability.TEXT in variant.capabilities) add(MediaKind.DOCUMENT)
         }
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cached, unvectored) = fileIndex.embeddingCandidates(scanId, key, readable intersect kinds)
-            .filter { it.size >= minSizeBytes && it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(it.name, it.mimeType)) }
+        val (cached, unvectored) = fileIndex.embeddingCandidates(
+            scanId,
+            key,
+            readable intersect kinds
+        )
+            .filter {
+                it.size >= minSizeBytes && it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(
+                    it.name,
+                    it.mimeType
+                ))
+            }
             .partition { it.vector != null }
         val missing = unvectored.filter { it.seenNow }
 
@@ -99,9 +113,12 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         }.filterNot { ids -> nearSets.any { it.containsAll(ids) } }.map { ids ->
             val first = files.getValue(ids.first()).vector!!
             NearGroup(
-                fingerprint = memberFingerprint(MatchTier.SEMANTIC, ids.map { files.getValue(it).sourceUri }),
+                fingerprint = memberFingerprint(
+                    MatchTier.SEMANTIC,
+                    ids.map { files.getValue(it).sourceUri }),
                 fileIds = ids.toImmutableList(),
-                score = ids.drop(1).map { cosine(first, files.getValue(it).vector!!) }.average().toFloat(),
+                score = ids.drop(1).map { cosine(first, files.getValue(it).vector!!) }.average()
+                    .toFloat(),
             )
         }
         return NearScanResult(
@@ -119,15 +136,19 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         prepared: List<Pair<EmbeddedFile, EmbeddingInput>>,
     ): Map<EmbeddedFile, FloatArray>? {
         if (prepared.isEmpty()) return emptyMap()
-        return when (val outcome = embedder.embed(variant, prepared.map { it.second }, EMBEDDING_DIM, backend)) {
-            is Outcome.Success -> prepared.map { it.first }.zip(outcome.data).filter { (_, vector) -> vector.isComparable() }.toMap()
+        return when (val outcome =
+            embedder.embed(variant, prepared.map { it.second }, EMBEDDING_DIM, backend)) {
+            is Outcome.Success -> prepared.map { it.first }.zip(outcome.data)
+                .filter { (_, vector) -> vector.isComparable() }.toMap()
+
             is Outcome.Failure -> if (outcome.error == DomainError.ModelUnavailable) {
                 null
             } else if (prepared.size == 1) {
                 emptyMap()
             } else {
                 val one = mutableMapOf<EmbeddedFile, FloatArray>()
-                for (item in prepared) one += embedBatch(variant, backend, listOf(item)) ?: return null
+                for (item in prepared) one += embedBatch(variant, backend, listOf(item))
+                    ?: return null
                 one
             }
         }
@@ -138,13 +159,18 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         MediaKind.IMAGE -> inputs.image(file.sourceUri)?.let { EmbeddingInput.Image(it) }
         MediaKind.VIDEO -> inputs.video(file.sourceUri)?.let { EmbeddingInput.Video(it) }
         MediaKind.AUDIO -> inputs.audio(file.sourceUri)?.let { EmbeddingInput.Audio(it) }
-        MediaKind.DOCUMENT -> textReader.text(file.sourceUri, file.name, file.mimeType)?.let { text ->
-            if (normalizeWords(text).size < MIN_DOCUMENT_WORDS) {
-                SKIP
-            } else {
-                EmbeddingInput.Text(SIMILARITY_PROMPT + text.replace(whitespace, " ").trim().take(MAX_TEXT_CHARS))
+        MediaKind.DOCUMENT -> textReader.text(file.sourceUri, file.name, file.mimeType)
+            ?.let { text ->
+                if (normalizeWords(text).size < MIN_DOCUMENT_WORDS) {
+                    SKIP
+                } else {
+                    EmbeddingInput.Text(
+                        SIMILARITY_PROMPT + text.replace(whitespace, " ").trim()
+                            .take(MAX_TEXT_CHARS)
+                    )
+                }
             }
-        }
+
         else -> null
     }
 
@@ -152,12 +178,15 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
      * A backend can hand back a vector holding NaN or infinity. Cosine with one is NaN, so it would match nothing,
      * and storing it would cache that silence for good — it counts as a file that couldn't be read, to try again.
      */
-    private fun FloatArray.isComparable(): Boolean = isNotEmpty() && all(Float::isFinite) && any { it != 0f }
+    private fun FloatArray.isComparable(): Boolean =
+        isNotEmpty() && all(Float::isFinite) && any { it != 0f }
 
-    private fun EmbeddedFile.withVector(vector: FloatArray) = EmbeddedFile(id, sourceUri, name, mimeType, kind, size, vector)
+    private fun EmbeddedFile.withVector(vector: FloatArray) =
+        EmbeddedFile(id, sourceUri, name, mimeType, kind, size, vector)
 
     private companion object {
         const val BATCH = 8
+
         /** About 400 tokens of text, inside the model's input window. */
         const val MAX_TEXT_CHARS = 1_500
         val whitespace = Regex("\\s+")

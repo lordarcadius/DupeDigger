@@ -27,7 +27,8 @@ fun ScopeKind.label(): UiText = UiText.res(
 )
 
 /** "Similar · 96%": a near or AI group's tier and similarity, never shown as 100% so it can't read as exact. */
-fun tierTag(tier: MatchTier, score: Float): UiText = UiText.res(R.string.results_tier_tag, tier.label(), formatSimilarity(score))
+fun tierTag(tier: MatchTier, score: Float): UiText =
+    UiText.res(R.string.results_tier_tag, tier.label(), formatSimilarity(score))
 
 fun MatchTier.label(): UiText = UiText.res(
     when (this) {

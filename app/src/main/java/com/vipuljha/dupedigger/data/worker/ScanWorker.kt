@@ -9,6 +9,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
+import com.vipuljha.dupedigger.data.worker.ScanWorker.Companion.REPORT_INTERVAL_MS
 import com.vipuljha.dupedigger.domain.model.ScanProgress
 import com.vipuljha.dupedigger.domain.model.ScanStage
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
@@ -41,11 +42,13 @@ class ScanWorker @AssistedInject constructor(
     private var lastReportedAt = 0L
 
     override suspend fun doWork(): Result {
-        val scope = ScanScopeCodec.fromData(inputData, scanFolders.folders.first()) ?: return Result.failure()
+        val scope = ScanScopeCodec.fromData(inputData, scanFolders.folders.first())
+            ?: return Result.failure()
         inForeground = runSuspendCatching { setForeground(notifications.foregroundInfo(id, null)) }
             .onFailure { Timber.w(it, "Scanning without a foreground notification") }
             .isSuccess
-        return when (val outcome = runScan(scope, ScanScopeCodec.mediaKindsFromData(inputData), ::report)) {
+        return when (val outcome =
+            runScan(scope, ScanScopeCodec.mediaKindsFromData(inputData), ::report)) {
             is Outcome.Success -> Result.success()
             is Outcome.Failure -> {
                 Timber.w(outcome.cause, "Scan failed: %s", outcome.error)
@@ -76,12 +79,20 @@ class ScanWorker @AssistedInject constructor(
         private const val KEY_DONE = "done"
         private const val KEY_TOTAL = "total"
 
-        fun ScanProgress.toData(): Data = workDataOf(KEY_STAGE to stage.name, KEY_DONE to done, KEY_TOTAL to (total ?: -1))
+        fun ScanProgress.toData(): Data =
+            workDataOf(KEY_STAGE to stage.name, KEY_DONE to done, KEY_TOTAL to (total ?: -1))
 
         /** Progress is empty until the first report, so a running scan without it reads as just started. */
         fun Data.toScanProgress(): ScanProgress {
-            val stage = getString(KEY_STAGE)?.let(ScanStage::valueOf) ?: return ScanProgress(ScanStage.INDEXING, 0, null)
-            return ScanProgress(stage, getInt(KEY_DONE, 0), getInt(KEY_TOTAL, -1).takeIf { it >= 0 })
+            val stage = getString(KEY_STAGE)?.let(ScanStage::valueOf) ?: return ScanProgress(
+                ScanStage.INDEXING,
+                0,
+                null
+            )
+            return ScanProgress(
+                stage,
+                getInt(KEY_DONE, 0),
+                getInt(KEY_TOTAL, -1).takeIf { it >= 0 })
         }
     }
 }

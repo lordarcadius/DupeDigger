@@ -14,7 +14,8 @@ fun MacrobenchmarkScope.passOnboarding() {
 /** Opens Results from the navigation panel and flings its list down and back up. */
 fun MacrobenchmarkScope.scrollResults() {
     device.findObject(By.text("Results"))?.click()
-    val list = device.wait(Until.findObject(By.scrollable(true)), 5_000) ?: error("Results has no list; seed it first")
+    val list = device.wait(Until.findObject(By.scrollable(true)), 5_000)
+        ?: error("Results has no list; seed it first")
     list.setGestureMargin(device.displayWidth / 5)
     repeat(3) { list.fling(Direction.DOWN) }
     repeat(3) { list.fling(Direction.UP) }

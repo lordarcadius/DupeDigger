@@ -33,7 +33,11 @@ const val EMBEDDING_DIM = 256
  * SEMANTIC tier groups at. Comparing a cached vector with one from another backend could therefore both miss real
  * duplicates and invent them. Changing backend re-reads the files, which the settings screen says.
  */
-fun embeddingKey(variant: ModelVariant, backend: EmbeddingBackend, dim: Int = EMBEDDING_DIM): String =
+fun embeddingKey(
+    variant: ModelVariant,
+    backend: EmbeddingBackend,
+    dim: Int = EMBEDDING_DIM
+): String =
     "${variant.id}@$dim/${backend.name}"
 
 /** EmbeddingGemma's symmetric-similarity prompt (D-006); document text is embedded after it. */

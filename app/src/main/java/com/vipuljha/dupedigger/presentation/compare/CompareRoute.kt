@@ -11,7 +11,13 @@ import com.vipuljha.dupedigger.presentation.common.rememberRemovalEventHandler
 
 @Composable
 fun compareViewModel(fingerprint: String, leftId: Long, rightId: Long): CompareViewModel =
-    hiltViewModel<CompareViewModel, CompareViewModel.Factory>(creationCallback = { it.create(fingerprint, leftId, rightId) })
+    hiltViewModel<CompareViewModel, CompareViewModel.Factory>(creationCallback = {
+        it.create(
+            fingerprint,
+            leftId,
+            rightId
+        )
+    })
 
 @Composable
 fun CompareRoute(onBack: () -> Unit, viewModel: CompareViewModel) {
@@ -27,5 +33,10 @@ fun CompareRoute(onBack: () -> Unit, viewModel: CompareViewModel) {
             is CompareEffect.Removal -> onRemoval(effect.event)
         }
     }
-    CompareScreen(state = state, onIntent = viewModel::onIntent, snackbarHostState = snackbarHostState, onBack = onBack)
+    CompareScreen(
+        state = state,
+        onIntent = viewModel::onIntent,
+        snackbarHostState = snackbarHostState,
+        onBack = onBack
+    )
 }

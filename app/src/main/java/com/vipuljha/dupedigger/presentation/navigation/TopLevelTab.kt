@@ -24,7 +24,22 @@ enum class TopLevelTab(
     val selectedIcon: ImageVector,
 ) {
     Home(Destination.Home, R.string.tab_home, Icons.Outlined.Home, Icons.Filled.Home),
-    Results(Destination.Results, R.string.tab_results, Icons.Outlined.FileCopy, Icons.Filled.FileCopy),
-    Quarantine(Destination.Quarantine, R.string.tab_quarantine, Icons.Outlined.Inventory2, Icons.Filled.Inventory2),
-    Settings(Destination.Settings, R.string.tab_settings, Icons.Outlined.Settings, Icons.Filled.Settings),
+    Results(
+        Destination.Results,
+        R.string.tab_results,
+        Icons.Outlined.FileCopy,
+        Icons.Filled.FileCopy
+    ),
+    Quarantine(
+        Destination.Quarantine,
+        R.string.tab_quarantine,
+        Icons.Outlined.Inventory2,
+        Icons.Filled.Inventory2
+    ),
+    Settings(
+        Destination.Settings,
+        R.string.tab_settings,
+        Icons.Outlined.Settings,
+        Icons.Filled.Settings
+    ),
 }

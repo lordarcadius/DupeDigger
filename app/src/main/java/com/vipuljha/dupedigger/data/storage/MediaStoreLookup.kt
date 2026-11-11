@@ -14,7 +14,10 @@ private const val MEDIA_URI_PREFIX = "content://media/"
  */
 fun ContentResolver.mediaCollectionUri(sourceUri: String, path: String?): Uri? {
     val (selection, args) = when {
-        sourceUri.startsWith(MEDIA_URI_PREFIX) -> "${MediaStore.Files.FileColumns._ID} = ?" to arrayOf(Uri.parse(sourceUri).lastPathSegment)
+        sourceUri.startsWith(MEDIA_URI_PREFIX) -> "${MediaStore.Files.FileColumns._ID} = ?" to arrayOf(
+            Uri.parse(sourceUri).lastPathSegment
+        )
+
         path != null -> "${MediaStore.Files.FileColumns.DATA} = ?" to arrayOf(path)
         else -> return null
     }
@@ -24,12 +27,27 @@ fun ContentResolver.mediaCollectionUri(sourceUri: String, path: String?): Uri? {
         MediaStore.Files.FileColumns.MEDIA_TYPE,
     )
     return try {
-        query(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), projection, selection, args, null)?.use { c ->
+        query(
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            projection,
+            selection,
+            args,
+            null
+        )?.use { c ->
             if (!c.moveToFirst()) return null
             val collection = when (c.getInt(2)) {
-                MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaStore.Images.Media.getContentUri(c.getString(1))
-                MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaStore.Video.Media.getContentUri(c.getString(1))
-                MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO -> MediaStore.Audio.Media.getContentUri(c.getString(1))
+                MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaStore.Images.Media.getContentUri(
+                    c.getString(1)
+                )
+
+                MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaStore.Video.Media.getContentUri(
+                    c.getString(1)
+                )
+
+                MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO -> MediaStore.Audio.Media.getContentUri(
+                    c.getString(1)
+                )
+
                 else -> return null
             }
             ContentUris.withAppendedId(collection, c.getLong(0))

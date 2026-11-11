@@ -22,27 +22,44 @@ fun DuplicateGroupItem.toDetailUi(): GroupDetailUi {
     return GroupDetailUi(
         title = keeper.displayName(),
         summary = if (exact) {
-            UiText.plural(R.plurals.group_summary, files, formatCount(files), formatBytes(reclaimableBytes))
+            UiText.plural(
+                R.plurals.group_summary,
+                files,
+                formatCount(files),
+                formatBytes(reclaimableBytes)
+            )
         } else {
-            UiText.plural(R.plurals.group_summary_similar, files, formatCount(files), tierTag(tier, score), formatBytes(reclaimableBytes))
+            UiText.plural(
+                R.plurals.group_summary_similar,
+                files,
+                formatCount(files),
+                tierTag(tier, score),
+                formatBytes(reclaimableBytes)
+            )
         },
         similar = !exact,
         members = (listOf(keeper) + removable).map {
-            it.toMemberUi(kind, isKeeper = it.fileId == keeper.fileId, comparable = kind == MediaKind.IMAGE && it.fileId != keeper.fileId)
+            it.toMemberUi(
+                kind,
+                isKeeper = it.fileId == keeper.fileId,
+                comparable = kind == MediaKind.IMAGE && it.fileId != keeper.fileId
+            )
         }.toImmutableList(),
     )
 }
 
-private fun GroupMember.toMemberUi(kind: MediaKind, isKeeper: Boolean, comparable: Boolean) = MemberUi(
-    fileId = fileId,
-    kind = kind,
-    name = displayName(),
-    location = path?.substringBeforeLast('/', "")?.takeIf { it.isNotEmpty() }?.let { UiText.Raw(it) } ?: UiText.res(R.string.value_unknown),
-    details = UiText.res(R.string.group_member_details, formatBytes(size), modifiedDate(mtime)),
-    isKeeper = isKeeper,
-    thumbnail = sourceUri.takeIf { kind == MediaKind.IMAGE || kind == MediaKind.VIDEO },
-    comparable = comparable,
-)
+private fun GroupMember.toMemberUi(kind: MediaKind, isKeeper: Boolean, comparable: Boolean) =
+    MemberUi(
+        fileId = fileId,
+        kind = kind,
+        name = displayName(),
+        location = path?.substringBeforeLast('/', "")?.takeIf { it.isNotEmpty() }
+            ?.let { UiText.Raw(it) } ?: UiText.res(R.string.value_unknown),
+        details = UiText.res(R.string.group_member_details, formatBytes(size), modifiedDate(mtime)),
+        isKeeper = isKeeper,
+        thumbnail = sourceUri.takeIf { kind == MediaKind.IMAGE || kind == MediaKind.VIDEO },
+        comparable = comparable,
+    )
 
 private fun GroupMember.displayName() = name.ifEmpty { sourceUri.substringAfterLast('/') }
 
@@ -50,5 +67,8 @@ private fun modifiedDate(mtime: Long): UiText =
     if (mtime <= 0) {
         UiText.res(R.string.value_unknown)
     } else {
-        UiText.Raw(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(Instant.ofEpochMilli(mtime).atZone(ZoneId.systemDefault())))
+        UiText.Raw(
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+                .format(Instant.ofEpochMilli(mtime).atZone(ZoneId.systemDefault()))
+        )
     }

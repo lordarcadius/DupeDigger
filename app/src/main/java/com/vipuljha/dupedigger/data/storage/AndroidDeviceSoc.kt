@@ -13,14 +13,19 @@ import javax.inject.Singleton
  * API 31, which is this app's minimum. A device that doesn't set it reports `unknown`, which matches no build.
  */
 @Singleton
-class AndroidDeviceSoc @Inject constructor(@param:ApplicationContext private val context: Context) : DeviceSoc {
+class AndroidDeviceSoc @Inject constructor(@param:ApplicationContext private val context: Context) :
+    DeviceSoc {
 
     override fun model(): String = Build.SOC_MODEL.takeUnless { it == Build.UNKNOWN }.orEmpty()
 
     override fun nativeLibraryDir(): String = context.applicationInfo.nativeLibraryDir
 
     override fun hasNpuRuntime(): Boolean =
-        File(nativeLibraryDir()).listFiles { _, name -> name.startsWith(DISPATCH_PREFIX) && name.endsWith(".so") }?.isNotEmpty() == true
+        File(nativeLibraryDir()).listFiles { _, name ->
+            name.startsWith(DISPATCH_PREFIX) && name.endsWith(
+                ".so"
+            )
+        }?.isNotEmpty() == true
 
     private companion object {
         /** What LiteRT names a vendor's dispatch library; a conditionally delivered module brings exactly one. */

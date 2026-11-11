@@ -38,9 +38,11 @@ fun IntOffset.clampInto(area: IntRect, size: IntSize) = IntOffset(
     y.coerceIn(area.top, maxOf(area.top, area.bottom - size.height)),
 )
 
-private fun IntRect.orWindow(windowSize: IntSize) = if (width > 0 && height > 0) this else IntRect(IntOffset.Zero, windowSize)
+private fun IntRect.orWindow(windowSize: IntSize) =
+    if (width > 0 && height > 0) this else IntRect(IntOffset.Zero, windowSize)
 
-class BoundedTooltipPositionProvider(private val bounds: IntRect, private val spacing: Int) : PopupPositionProvider {
+class BoundedTooltipPositionProvider(private val bounds: IntRect, private val spacing: Int) :
+    PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,
@@ -50,7 +52,10 @@ class BoundedTooltipPositionProvider(private val bounds: IntRect, private val sp
         val area = bounds.orWindow(windowSize)
         var y = anchorBounds.top - popupContentSize.height - spacing
         if (y < area.top) y = anchorBounds.bottom + spacing
-        return IntOffset(anchorBounds.center.x - popupContentSize.width / 2, y).clampInto(area, popupContentSize)
+        return IntOffset(anchorBounds.center.x - popupContentSize.width / 2, y).clampInto(
+            area,
+            popupContentSize
+        )
     }
 }
 

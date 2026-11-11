@@ -42,6 +42,7 @@ class OnboardingViewModel @Inject constructor(
     private fun onMediaAction() = when (currentState.mediaAction) {
         MediaAction.Allow, MediaAction.AllowAll ->
             sendEffect(OnboardingEffect.RequestMediaPermissions(storageAccess.mediaPermissions.toImmutableList()))
+
         MediaAction.OpenSettings -> sendEffect(OnboardingEffect.OpenAppSettings)
         MediaAction.None -> Unit
     }

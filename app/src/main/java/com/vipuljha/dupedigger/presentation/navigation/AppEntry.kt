@@ -2,10 +2,10 @@ package com.vipuljha.dupedigger.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.presentation.onboarding.OnboardingRoute
 import dagger.hilt.android.lifecycle.HiltViewModel

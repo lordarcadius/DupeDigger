@@ -36,7 +36,8 @@ class FindExactDuplicatesUseCase @Inject constructor(
         kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): ExactScanResult {
-        val sameSize = fileIndex.indexedFiles(scanId, kinds).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
+        val sameSize = fileIndex.indexedFiles(scanId, kinds).filter { it.size >= minSizeBytes }
+            .inSharedBuckets { it.size }
 
         val (withPartial, needPartial) = sameSize.partition { it.partialHash != null }
         val partials = withPartial.toMutableList()
@@ -80,7 +81,13 @@ class FindExactDuplicatesUseCase @Inject constructor(
         val groups = (withFull + fullyHashed)
             .groupBy { it.size to it.fullHash!! }
             .filterValues { it.size > 1 }
-            .map { (key, files) -> ExactGroup(key.first, key.second, files.map { it.id }.sorted().toImmutableList()) }
+            .map { (key, files) ->
+                ExactGroup(
+                    key.first,
+                    key.second,
+                    files.map { it.id }.sorted().toImmutableList()
+                )
+            }
             .sortedWith(compareByDescending<ExactGroup> { it.size }.thenBy { it.fullHash })
         return ExactScanResult(
             groups = groups.toImmutableList(),

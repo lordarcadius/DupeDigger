@@ -21,14 +21,22 @@ const val DHASH_CONFIRM_BITS = 16
 fun groupNearImages(items: List<Pair<Long, ImageHashes>>, threshold: Int): List<List<Long>> {
     val dHashes = LongArray(items.size) { items[it].second.dHash }
     val confirm = maxOf(threshold, DHASH_CONFIRM_BITS)
-    return groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second.pHash }, threshold) { i, j ->
+    return groupWithinHamming(
+        items.map { it.first },
+        LongArray(items.size) { items[it].second.pHash },
+        threshold
+    ) { i, j ->
         hammingDistance(dHashes[i], dHashes[j]) <= confirm
     }
 }
 
 /** Groups items whose single 64-bit hashes are within [threshold] bits, like [groupNearImages]. */
 fun groupNearHashes(items: List<Pair<Long, Long>>, threshold: Int): List<List<Long>> =
-    groupWithinHamming(items.map { it.first }, LongArray(items.size) { items[it].second }, threshold) { _, _ -> true }
+    groupWithinHamming(
+        items.map { it.first },
+        LongArray(items.size) { items[it].second },
+        threshold
+    ) { _, _ -> true }
 
 /** Union-find over every pair of [hashes] within [threshold] bits that [confirm] also accepts. */
 internal inline fun groupWithinHamming(
@@ -43,7 +51,10 @@ internal inline fun groupWithinHamming(
     for (i in ids.indices) {
         for (c in 0 until index.candidates(i, candidates)) {
             val j = candidates[c]
-            if (hammingDistance(hashes[i], hashes[j]) <= threshold && confirm(i, j)) sets.union(i, j)
+            if (hammingDistance(hashes[i], hashes[j]) <= threshold && confirm(i, j)) sets.union(
+                i,
+                j
+            )
         }
     }
     return ids.indices.groupBy(sets::find).values
@@ -67,8 +78,14 @@ class HammingIndex(private val values: LongArray, threshold: Int) {
     }
     private val bands = (threshold / (radius + 1) + 1).coerceAtMost(64)
     private val widths = IntArray(bands) { 64 / bands + if (it < 64 % bands) 1 else 0 }
-    private val offsets = IntArray(bands).also { for (b in 1 until bands) it[b] = it[b - 1] + widths[b - 1] }
-    private val buckets = List(bands) { band -> Buckets(LongArray(values.size) { key(values[it], band) }, widths[band]) }
+    private val offsets =
+        IntArray(bands).also { for (b in 1 until bands) it[b] = it[b - 1] + widths[b - 1] }
+    private val buckets = List(bands) { band ->
+        Buckets(
+            LongArray(values.size) { key(values[it], band) },
+            widths[band]
+        )
+    }
     private val lastSeen = IntArray(values.size) { -1 }
 
     /** Writes each index below [i] whose value shares a band within the probe radius into [out], once; returns the count. */
@@ -83,7 +100,8 @@ class HammingIndex(private val values: LongArray, threshold: Int) {
                 for (a in 0 until width) {
                     val one = key xor (1L shl a)
                     count = bucket.collect(one, i, out, count)
-                    if (radius >= 2) for (b in a + 1 until width) count = bucket.collect(one xor (1L shl b), i, out, count)
+                    if (radius >= 2) for (b in a + 1 until width) count =
+                        bucket.collect(one xor (1L shl b), i, out, count)
                 }
             }
         }
@@ -117,7 +135,8 @@ class HammingIndex(private val values: LongArray, threshold: Int) {
  */
 private class Buckets(keys: LongArray, width: Int) {
     private val direct = width <= DIRECT_WIDTH
-    private val mask = if (direct) (1 shl width) - 1 else Integer.highestOneBit(maxOf(keys.size, 1) * 2) * 2 - 1
+    private val mask =
+        if (direct) (1 shl width) - 1 else Integer.highestOneBit(maxOf(keys.size, 1) * 2) * 2 - 1
     private val slotKeys = LongArray(if (direct) 0 else mask + 1)
     private val used = BooleanArray(if (direct) 0 else mask + 1)
     val starts = IntArray(mask + 2)

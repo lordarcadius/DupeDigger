@@ -12,9 +12,9 @@ import com.vipuljha.dupedigger.domain.model.DiscoveredFile
 import com.vipuljha.dupedigger.domain.model.ScanFilter
 import com.vipuljha.dupedigger.domain.model.ScanFolder
 import com.vipuljha.dupedigger.domain.model.ScanScope
-import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.domain.model.mediaKindOf
 import com.vipuljha.dupedigger.domain.model.mimeTypeForName
+import com.vipuljha.dupedigger.domain.model.roots
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -37,8 +37,14 @@ fun sourceUriPrefixes(scope: ScanScope, volumes: List<File>): List<String> = whe
     ScanScope.MediaOnly -> listOf("${ContentResolver.SCHEME_CONTENT}://${MediaStore.AUTHORITY}/")
     is ScanScope.Folders -> scope.folders.map { folder ->
         val tree = Uri.parse(folder.uri)
-        "${DocumentsContract.buildTreeDocumentUri(tree.authority, DocumentsContract.getTreeDocumentId(tree))}/document/"
+        "${
+            DocumentsContract.buildTreeDocumentUri(
+                tree.authority,
+                DocumentsContract.getTreeDocumentId(tree)
+            )
+        }/document/"
     }
+
     is ScanScope.Paths -> scope.roots().flatMap { folder ->
         volumes.map { File(it, folder).toURI().toString().trimEnd('/') + "/" }
     }
@@ -53,15 +59,17 @@ class AndroidFileEnumerator @Inject constructor(
 
     private val resolver: ContentResolver get() = context.contentResolver
     private val walker = FileTreeWalker { name ->
-        MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase())
+        MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase())
     }
 
-    override fun enumerate(scope: ScanScope, filter: ScanFilter): Flow<DiscoveredFile> = when (scope) {
-        ScanScope.WholeDevice -> walker.walk(volumes.roots(), filter)
-        ScanScope.MediaOnly -> mediaStore(filter)
-        is ScanScope.Folders -> flow { scope.folders.forEach { emitAll(tree(it, filter)) } }
-        is ScanScope.Paths -> walker.walk(volumes.roots(), filter, scope.roots())
-    }.flowOn(ioDispatcher)
+    override fun enumerate(scope: ScanScope, filter: ScanFilter): Flow<DiscoveredFile> =
+        when (scope) {
+            ScanScope.WholeDevice -> walker.walk(volumes.roots(), filter)
+            ScanScope.MediaOnly -> mediaStore(filter)
+            is ScanScope.Folders -> flow { scope.folders.forEach { emitAll(tree(it, filter)) } }
+            is ScanScope.Paths -> walker.walk(volumes.roots(), filter, scope.roots())
+        }.flowOn(ioDispatcher)
 
     /** Images, videos and audio on every external volume; the system already hides trashed and pending rows. */
     private fun mediaStore(filter: ScanFilter): Flow<DiscoveredFile> = flow {
@@ -91,7 +99,10 @@ class AndroidFileEnumerator @Inject constructor(
                 val mime = c.getString(3) ?: mimeTypeForName(name)
                 emit(
                     DiscoveredFile(
-                        sourceUri = ContentUris.withAppendedId(MediaStore.Files.getContentUri(volume), c.getLong(0)).toString(),
+                        sourceUri = ContentUris.withAppendedId(
+                            MediaStore.Files.getContentUri(volume),
+                            c.getLong(0)
+                        ).toString(),
                         path = path,
                         name = name,
                         mimeType = mime,
@@ -109,7 +120,8 @@ class AndroidFileEnumerator @Inject constructor(
     private fun tree(folder: ScanFolder, filter: ScanFilter): Flow<DiscoveredFile> = flow {
         val treeUri = Uri.parse(folder.uri)
         val onLocalStorage = treeUri.authority == EXTERNAL_STORAGE_AUTHORITY
-        val pending = ArrayDeque<String>().apply { addLast(DocumentsContract.getTreeDocumentId(treeUri)) }
+        val pending =
+            ArrayDeque<String>().apply { addLast(DocumentsContract.getTreeDocumentId(treeUri)) }
         val projection = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -119,7 +131,8 @@ class AndroidFileEnumerator @Inject constructor(
         )
         while (pending.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
-            val children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, pending.removeFirst())
+            val children =
+                DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, pending.removeFirst())
             resolver.query(children, projection, null, null, null)?.use { c ->
                 while (c.moveToNext()) {
                     currentCoroutineContext().ensureActive()
@@ -133,10 +146,14 @@ class AndroidFileEnumerator @Inject constructor(
                         continue
                     }
                     // SAF often answers application/octet-stream for formats it does not know, so the name decides the kind.
-                    val mime = reported.takeUnless { it == null || it == GENERIC_MIME } ?: mimeTypeForName(name) ?: reported
+                    val mime =
+                        reported.takeUnless { it == null || it == GENERIC_MIME } ?: mimeTypeForName(
+                            name
+                        ) ?: reported
                     emit(
                         DiscoveredFile(
-                            sourceUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId).toString(),
+                            sourceUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+                                .toString(),
                             path = path,
                             name = name,
                             mimeType = mime,

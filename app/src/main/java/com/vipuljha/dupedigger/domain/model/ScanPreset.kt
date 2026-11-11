@@ -37,20 +37,39 @@ enum class BuiltInPreset(val paths: ImmutableList<String>, val kinds: ImmutableS
         AllMediaKinds,
     ),
     CAMERA(persistentListOf("DCIM/Camera"), PhotosAndVideos),
-    TELEGRAM(persistentListOf("Telegram", "Android/media/org.telegram.messenger/Telegram"), AllMediaKinds),
+    TELEGRAM(
+        persistentListOf("Telegram", "Android/media/org.telegram.messenger/Telegram"),
+        AllMediaKinds
+    ),
     SCREENSHOTS(persistentListOf("Pictures/Screenshots", "DCIM/Screenshots"), PhotosAndVideos),
-    FACEBOOK(persistentListOf("Pictures/Facebook", "DCIM/Facebook", "Movies/Facebook"), PhotosAndVideos),
-    INSTAGRAM(persistentListOf("Pictures/Instagram", "DCIM/Instagram", "Movies/Instagram"), PhotosAndVideos),
-    SNAPCHAT(persistentListOf("Snapchat", "Pictures/Snapchat", "DCIM/Snapchat", "Movies/Snapchat"), PhotosAndVideos),
+    FACEBOOK(
+        persistentListOf("Pictures/Facebook", "DCIM/Facebook", "Movies/Facebook"),
+        PhotosAndVideos
+    ),
+    INSTAGRAM(
+        persistentListOf("Pictures/Instagram", "DCIM/Instagram", "Movies/Instagram"),
+        PhotosAndVideos
+    ),
+    SNAPCHAT(
+        persistentListOf("Snapchat", "Pictures/Snapchat", "DCIM/Snapchat", "Movies/Snapchat"),
+        PhotosAndVideos
+    ),
     REDDIT(persistentListOf("Pictures/Reddit", "Movies/Reddit"), PhotosAndVideos),
     ;
 
     /** Negative ids, so they never collide with a saved preset's. */
-    fun toPreset() = ScanPreset(id = -(ordinal + 1L), name = name, scope = ScanScope.Paths(paths), kinds = kinds, builtIn = this)
+    fun toPreset() = ScanPreset(
+        id = -(ordinal + 1L),
+        name = name,
+        scope = ScanScope.Paths(paths),
+        kinds = kinds,
+        builtIn = this
+    )
 
     companion object {
         val presets: ImmutableList<ScanPreset> = entries.map { it.toPreset() }.toImmutableList()
     }
 }
 
-private val PhotosAndVideos: ImmutableSet<MediaKind> = persistentSetOf(MediaKind.IMAGE, MediaKind.VIDEO)
+private val PhotosAndVideos: ImmutableSet<MediaKind> =
+    persistentSetOf(MediaKind.IMAGE, MediaKind.VIDEO)

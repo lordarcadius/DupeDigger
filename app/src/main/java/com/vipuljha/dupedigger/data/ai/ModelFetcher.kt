@@ -38,14 +38,18 @@ class ModelFetcher(
 ) {
     fun finalFile(variant: ModelVariant) = File(dir, variant.fileName)
 
-    fun partFile(variant: ModelVariant) = File(dir, "${variant.fileName}.${variant.sha256.take(12)}.part")
+    fun partFile(variant: ModelVariant) =
+        File(dir, "${variant.fileName}.${variant.sha256.take(12)}.part")
 
     suspend fun fetch(
         variant: ModelVariant,
         onProgress: suspend (downloaded: Long, total: Long) -> Unit = { _, _ -> },
     ): FetchResult = withContext(ioDispatcher) { fetchNow(variant, onProgress) }
 
-    private suspend fun fetchNow(variant: ModelVariant, onProgress: suspend (Long, Long) -> Unit): FetchResult {
+    private suspend fun fetchNow(
+        variant: ModelVariant,
+        onProgress: suspend (Long, Long) -> Unit
+    ): FetchResult {
         val installed = finalFile(variant)
         if (installed.length() == variant.sizeBytes) return FetchResult.Done(installed)
         dir.mkdirs()
@@ -57,13 +61,20 @@ class ModelFetcher(
             }
             transfer(variant, part, onProgress)?.let { return it }
             // A connection closed early ends the stream without an error; keep what arrived and resume.
-            if (part.length() < variant.sizeBytes) return FetchResult.Failed(ModelDownloadFailure.NETWORK, retryable = true)
+            if (part.length() < variant.sizeBytes) return FetchResult.Failed(
+                ModelDownloadFailure.NETWORK,
+                retryable = true
+            )
         }
         return verify(variant, part)
     }
 
     /** Null when the partial file now holds the whole download (or the server says it already does). */
-    private suspend fun transfer(variant: ModelVariant, part: File, onProgress: suspend (Long, Long) -> Unit): FetchResult? {
+    private suspend fun transfer(
+        variant: ModelVariant,
+        part: File,
+        onProgress: suspend (Long, Long) -> Unit
+    ): FetchResult? {
         val offset = part.length()
         val connection = open(URL(variant.url))
         try {
@@ -72,14 +83,24 @@ class ModelFetcher(
             if (offset > 0) connection.setRequestProperty("Range", "bytes=$offset-")
             val code = connection.responseCode
             val append = when {
-                code == HttpURLConnection.HTTP_PARTIAL -> connection.getHeaderField("Content-Range")?.startsWith("bytes $offset-") == true
+                code == HttpURLConnection.HTTP_PARTIAL -> connection.getHeaderField("Content-Range")
+                    ?.startsWith("bytes $offset-") == true
+
                 code == HTTP_RANGE_NOT_SATISFIABLE -> return null
                 code == HttpURLConnection.HTTP_OK -> false
                 code == TOO_MANY_REQUESTS || code >= HttpURLConnection.HTTP_INTERNAL_ERROR ->
                     return FetchResult.Failed(ModelDownloadFailure.NETWORK, retryable = true)
+
                 else -> return FetchResult.Failed(ModelDownloadFailure.HTTP, retryable = false)
             }
-            Timber.i("Model %s: HTTP %d, Content-Range %s, %s at byte %d", variant.id, code, connection.getHeaderField("Content-Range"), if (append) "appending" else "restarting", if (append) offset else 0L)
+            Timber.i(
+                "Model %s: HTTP %d, Content-Range %s, %s at byte %d",
+                variant.id,
+                code,
+                connection.getHeaderField("Content-Range"),
+                if (append) "appending" else "restarting",
+                if (append) offset else 0L
+            )
             var downloaded = if (append) offset else 0L
             connection.inputStream.use { input ->
                 FileOutputStream(part, append).use { output ->
@@ -114,7 +135,10 @@ class ModelFetcher(
             return FetchResult.Failed(ModelDownloadFailure.CHECKSUM, retryable = false)
         }
         val target = finalFile(variant)
-        return if (part.renameTo(target)) FetchResult.Done(target) else FetchResult.Failed(ModelDownloadFailure.NETWORK, retryable = true)
+        return if (part.renameTo(target)) FetchResult.Done(target) else FetchResult.Failed(
+            ModelDownloadFailure.NETWORK,
+            retryable = true
+        )
     }
 
     private fun sha256(file: File): String {

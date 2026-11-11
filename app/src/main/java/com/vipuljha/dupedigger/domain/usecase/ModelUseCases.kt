@@ -11,5 +11,6 @@ class DownloadModelUseCase @Inject constructor(
     private val downloads: ModelDownloads,
     private val settings: SettingsRepository,
 ) {
-    suspend operator fun invoke(variant: ModelVariant) = downloads.start(variant, settings.settings.first().modelDownloadWifiOnly)
+    suspend operator fun invoke(variant: ModelVariant) =
+        downloads.start(variant, settings.settings.first().modelDownloadWifiOnly)
 }

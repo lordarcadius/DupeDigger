@@ -43,7 +43,8 @@ fun mediaKindOf(mimeType: String?): MediaKind {
         mime.startsWith("video/") -> MediaKind.VIDEO
         mime.startsWith("audio/") -> MediaKind.AUDIO
         mime.startsWith("text/") || mime in documentMimeTypes ||
-            mime.startsWith("application/vnd.openxmlformats-officedocument.") -> MediaKind.DOCUMENT
+                mime.startsWith("application/vnd.openxmlformats-officedocument.") -> MediaKind.DOCUMENT
+
         else -> MediaKind.OTHER
     }
 }

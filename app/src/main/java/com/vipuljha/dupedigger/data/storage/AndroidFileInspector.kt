@@ -37,35 +37,49 @@ class AndroidFileInspector @Inject constructor(
 
     private val resolver: ContentResolver get() = context.contentResolver
 
-    override suspend fun mediaInfo(member: GroupMember, kind: MediaKind): MediaInfo? = withContext(ioDispatcher) {
-        try {
-            when (kind) {
-                MediaKind.IMAGE -> imageInfo(member.sourceUri)
-                MediaKind.VIDEO -> videoInfo(member.sourceUri)
-                else -> null
+    override suspend fun mediaInfo(member: GroupMember, kind: MediaKind): MediaInfo? =
+        withContext(ioDispatcher) {
+            try {
+                when (kind) {
+                    MediaKind.IMAGE -> imageInfo(member.sourceUri)
+                    MediaKind.VIDEO -> videoInfo(member.sourceUri)
+                    else -> null
+                }
+            } catch (e: RuntimeException) {
+                Timber.w(e, "Couldn't read media dimensions")
+                null
+            } catch (e: IOException) {
+                Timber.w(e, "Couldn't read media dimensions")
+                null
             }
-        } catch (e: RuntimeException) {
-            Timber.w(e, "Couldn't read media dimensions")
-            null
-        } catch (e: IOException) {
-            Timber.w(e, "Couldn't read media dimensions")
-            null
         }
-    }
 
     override suspend fun viewTarget(member: GroupMember): ViewTarget? = withContext(ioDispatcher) {
         val uri = when {
-            member.sourceUri.startsWith("file:") -> resolver.mediaCollectionUri(member.sourceUri, member.path) ?: fileProviderUri(member.sourceUri)
-            member.sourceUri.startsWith("content://media/") -> resolver.mediaCollectionUri(member.sourceUri, member.path)
+            member.sourceUri.startsWith("file:") -> resolver.mediaCollectionUri(
+                member.sourceUri,
+                member.path
+            ) ?: fileProviderUri(member.sourceUri)
+
+            member.sourceUri.startsWith("content://media/") -> resolver.mediaCollectionUri(
+                member.sourceUri,
+                member.path
+            )
+
             else -> Uri.parse(member.sourceUri)
         } ?: return@withContext null
         val mime = resolver.getType(uri)
-            ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(member.name.substringAfterLast('.', "").lowercase())
+            ?: MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(member.name.substringAfterLast('.', "").lowercase())
         ViewTarget(uri.toString(), mime)
     }
 
     private fun fileProviderUri(sourceUri: String): Uri? = try {
-        FileProvider.getUriForFile(context, "${context.packageName}$FILE_PROVIDER_SUFFIX", File(URI(sourceUri)))
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}$FILE_PROVIDER_SUFFIX",
+            File(URI(sourceUri))
+        )
     } catch (e: IllegalArgumentException) {
         Timber.w(e, "No FileProvider root covers this file")
         null
@@ -75,20 +89,31 @@ class AndroidFileInspector @Inject constructor(
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openSource(sourceUri).use { BitmapFactory.decodeStream(it, null, bounds) }
         val orientation = resolver.openSource(sourceUri).use {
-            ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            ExifInterface(it).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
         }
         val rotated = orientation in SIDEWAYS_ORIENTATIONS
         val (w, h) = bounds.outWidth.takeIf { it > 0 } to bounds.outHeight.takeIf { it > 0 }
         return if (rotated) MediaInfo(h, w) else MediaInfo(w, h)
     }
 
-    private fun videoInfo(sourceUri: String): MediaInfo = MediaMetadataRetriever().use { retriever ->
-        if (sourceUri.startsWith("file:")) retriever.setDataSource(File(URI(sourceUri)).path) else retriever.setDataSource(context, Uri.parse(sourceUri))
-        val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
-        val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
-        val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-        if (rotation % 180 != 0) MediaInfo(h, w) else MediaInfo(w, h)
-    }
+    private fun videoInfo(sourceUri: String): MediaInfo =
+        MediaMetadataRetriever().use { retriever ->
+            if (sourceUri.startsWith("file:")) retriever.setDataSource(File(URI(sourceUri)).path) else retriever.setDataSource(
+                context,
+                Uri.parse(sourceUri)
+            )
+            val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                ?.toIntOrNull()
+            val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                ?.toIntOrNull()
+            val rotation =
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                    ?.toIntOrNull() ?: 0
+            if (rotation % 180 != 0) MediaInfo(h, w) else MediaInfo(w, h)
+        }
 
     companion object {
         const val FILE_PROVIDER_SUFFIX = ".files"

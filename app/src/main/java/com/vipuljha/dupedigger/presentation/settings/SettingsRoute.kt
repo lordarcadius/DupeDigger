@@ -23,12 +23,14 @@ fun SettingsRoute(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val pickScanFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        viewModel.onIntent(SettingsIntent.FolderPicked(FolderPurpose.Scan, uri?.toString()))
-    }
-    val pickExcludedFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        viewModel.onIntent(SettingsIntent.FolderPicked(FolderPurpose.Exclude, uri?.toString()))
-    }
+    val pickScanFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            viewModel.onIntent(SettingsIntent.FolderPicked(FolderPurpose.Scan, uri?.toString()))
+        }
+    val pickExcludedFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            viewModel.onIntent(SettingsIntent.FolderPicked(FolderPurpose.Exclude, uri?.toString()))
+        }
 
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
@@ -36,7 +38,14 @@ fun SettingsRoute(
                 FolderPurpose.Scan -> pickScanFolder.launch(null)
                 FolderPurpose.Exclude -> pickExcludedFolder.launch(null)
             }
-            is SettingsEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
+
+            is SettingsEffect.ShowMessage -> scope.launch {
+                snackbarHostState.showSnackbar(
+                    effect.message.asString(
+                        context
+                    )
+                )
+            }
         }
     }
 

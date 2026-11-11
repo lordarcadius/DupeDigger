@@ -99,7 +99,11 @@ class LiteRtEmbedder @Inject constructor(
      * Tries [backend], then each simpler one. An accelerator that can't start the model is a device fact, not an
      * error worth failing a scan over, and the chosen backend is a preference (D-034).
      */
-    private fun loadFallingBack(path: String, variant: ModelVariant, backend: EmbeddingBackend): LoadedModel? {
+    private fun loadFallingBack(
+        path: String,
+        variant: ModelVariant,
+        backend: EmbeddingBackend
+    ): LoadedModel? {
         val order = FALLBACK.dropWhile { it != backend }.ifEmpty { listOf(EmbeddingBackend.CPU) }
         for ((index, candidate) in order.withIndex()) {
             try {
@@ -108,7 +112,13 @@ class LiteRtEmbedder @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (index == order.lastIndex) throw e
-                Timber.w(e, "%s couldn't start %s; trying %s", candidate, variant.id, order[index + 1])
+                Timber.w(
+                    e,
+                    "%s couldn't start %s; trying %s",
+                    candidate,
+                    variant.id,
+                    order[index + 1]
+                )
             }
         }
         return null
@@ -124,6 +134,7 @@ class LiteRtEmbedder @Inject constructor(
         const val IDLE_CLOSE_MS = 60_000L
 
         /** Most to least capable; a backend falls back to the next one along. */
-        private val FALLBACK = listOf(EmbeddingBackend.NPU, EmbeddingBackend.GPU, EmbeddingBackend.CPU)
+        private val FALLBACK =
+            listOf(EmbeddingBackend.NPU, EmbeddingBackend.GPU, EmbeddingBackend.CPU)
     }
 }

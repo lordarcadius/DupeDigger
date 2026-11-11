@@ -41,7 +41,15 @@ class QuarantineRepositoryImpl @Inject constructor(
     private val resolver: ContentResolver get() = context.contentResolver
 
     override fun observeAll(): Flow<List<QuarantinedFile>> = dao.observeAll().map { rows ->
-        rows.map { QuarantinedFile(it.id, it.originalPath.substringAfterLast('/').substringAfterLast(':'), it.originalPath, it.size, it.movedAt) }
+        rows.map {
+            QuarantinedFile(
+                it.id,
+                it.originalPath.substringAfterLast('/').substringAfterLast(':'),
+                it.originalPath,
+                it.size,
+                it.movedAt
+            )
+        }
     }
 
     override suspend fun restore(id: Long): Outcome<Unit> {
@@ -74,7 +82,9 @@ class QuarantineRepositoryImpl @Inject constructor(
             } else {
                 target.parentFile?.mkdirs()
                 val written = try {
-                    FileInputStream(copy).use { input -> target.outputStream().use { input.copyTo(it) } }
+                    FileInputStream(copy).use { input ->
+                        target.outputStream().use { input.copyTo(it) }
+                    }
                 } catch (e: IOException) {
                     target.delete()
                     throw e
@@ -96,16 +106,21 @@ class QuarantineRepositoryImpl @Inject constructor(
         val source = Uri.parse(item.sourceUri)
         if (source.authority != EXTERNAL_STORAGE_AUTHORITY || !DocumentsContract.isTreeUri(source)) return DomainError.Io
         val docId = DocumentsContract.getDocumentId(source)
-        val parent = DocumentsContract.buildDocumentUriUsingTree(source, docId.substringBeforeLast('/'))
+        val parent =
+            DocumentsContract.buildDocumentUriUsingTree(source, docId.substringBeforeLast('/'))
         val name = docId.substringAfterLast('/')
-        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase()) ?: "application/octet-stream"
-        val created = DocumentsContract.createDocument(resolver, parent, mime, name) ?: return DomainError.Io
+        val mime = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase())
+            ?: "application/octet-stream"
+        val created =
+            DocumentsContract.createDocument(resolver, parent, mime, name) ?: return DomainError.Io
         // The provider renames on a clash ("notes (1).txt"); that means the original place is taken.
         val written = try {
             if (DocumentsContract.getDocumentId(created) != docId) {
                 null
             } else {
-                resolver.openOutputStream(created)?.use { out -> FileInputStream(copy).use { it.copyTo(out) } }
+                resolver.openOutputStream(created)
+                    ?.use { out -> FileInputStream(copy).use { it.copyTo(out) } }
             }
         } catch (e: IOException) {
             DocumentsContract.deleteDocument(resolver, created)

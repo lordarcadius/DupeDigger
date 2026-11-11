@@ -13,11 +13,18 @@ fun DuplicateGroupItem.toCompareUi(leftId: Long, rightId: Long): CompareUi? {
     val members = (listOf(keeper) + removable).associateBy { it.fileId }
     val left = members[leftId] ?: return null
     val right = members[rightId] ?: return null
-    return CompareUi(left.toPane(), right.toPane(), tierTag(tier, score).takeIf { tier != MatchTier.EXACT })
+    return CompareUi(
+        left.toPane(),
+        right.toPane(),
+        tierTag(tier, score).takeIf { tier != MatchTier.EXACT })
 }
 
 private fun GroupMember.toPane() = ComparePaneUi(
     name = name.ifEmpty { sourceUri.substringAfterLast('/') },
     uri = sourceUri,
-    details = UiText.res(R.string.compare_pane_details, formatBytes(size), path?.substringBeforeLast('/', "") ?: ""),
+    details = UiText.res(
+        R.string.compare_pane_details,
+        formatBytes(size),
+        path?.substringBeforeLast('/', "") ?: ""
+    ),
 )

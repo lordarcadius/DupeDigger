@@ -27,7 +27,11 @@ fun groupBySimilarity(items: List<Pair<Long, FloatArray>>, threshold: Float): Li
     val vectors = items.map { it.second }
     val planes = hyperplanes(vectors.first().size)
     val signatures = LongArray(vectors.size) { signature(vectors[it], planes) }
-    return groupWithinHamming(items.map { it.first }, signatures, signatureBudget(threshold)) { i, j ->
+    return groupWithinHamming(
+        items.map { it.first },
+        signatures,
+        signatureBudget(threshold)
+    ) { i, j ->
         cosine(vectors[i], vectors[j]) >= threshold
     }
 }
@@ -35,7 +39,8 @@ fun groupBySimilarity(items: List<Pair<Long, FloatArray>>, threshold: Float): Li
 /** Differing signature bits allowed for a pair at cosine [threshold]. */
 internal fun signatureBudget(threshold: Float): Int {
     val p = acos(threshold.coerceIn(-1f, 1f).toDouble()) / PI
-    return ceil(SIGNATURE_BITS * p + RECALL_SIGMAS * sqrt(SIGNATURE_BITS * p * (1 - p))).toInt().coerceIn(0, SIGNATURE_BITS)
+    return ceil(SIGNATURE_BITS * p + RECALL_SIGMAS * sqrt(SIGNATURE_BITS * p * (1 - p))).toInt()
+        .coerceIn(0, SIGNATURE_BITS)
 }
 
 internal fun signature(vector: FloatArray, planes: Array<FloatArray>): Long {

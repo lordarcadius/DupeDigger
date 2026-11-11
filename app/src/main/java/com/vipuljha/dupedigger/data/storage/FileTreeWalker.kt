@@ -25,7 +25,11 @@ import java.nio.file.attribute.BasicFileAttributes
 class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
 
     /** Walks each of [volumes], or only its [folders] (paths relative to the volume) when given. */
-    fun walk(volumes: List<File>, filter: ScanFilter, folders: List<String>? = null): Flow<DiscoveredFile> = flow {
+    fun walk(
+        volumes: List<File>,
+        filter: ScanFilter,
+        folders: List<String>? = null
+    ): Flow<DiscoveredFile> = flow {
         for (volume in volumes) {
             val pending = ArrayDeque(folders?.map { File(volume, it) } ?: listOf(volume))
             while (pending.isNotEmpty()) {
@@ -62,7 +66,11 @@ class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
 
     /** One stat call per entry, never following a symlink; null for an entry that vanished or can't be read. */
     private fun attributesOf(file: File): BasicFileAttributes? = try {
-        Files.readAttributes(file.toPath(), BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        Files.readAttributes(
+            file.toPath(),
+            BasicFileAttributes::class.java,
+            LinkOption.NOFOLLOW_LINKS
+        )
     } catch (_: IOException) {
         null
     }

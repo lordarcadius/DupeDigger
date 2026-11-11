@@ -29,15 +29,35 @@ fun StorageMeter(
     duplicateColor: Color = MaterialTheme.colorScheme.tertiary,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
 ) {
-    val used by animateFloatAsState(usedFraction.coerceIn(0f, 1f), stateChangeSpec(), label = "used")
-    val duplicates by animateFloatAsState(duplicateFraction.coerceIn(0f, used), stateChangeSpec(), label = "duplicates")
-    Canvas(modifier.fillMaxWidth().height(MeterHeight).clearAndSetSemantics {}) {
+    val used by animateFloatAsState(
+        usedFraction.coerceIn(0f, 1f),
+        stateChangeSpec(),
+        label = "used"
+    )
+    val duplicates by animateFloatAsState(
+        duplicateFraction.coerceIn(0f, used),
+        stateChangeSpec(),
+        label = "duplicates"
+    )
+    Canvas(modifier
+        .fillMaxWidth()
+        .height(MeterHeight)
+        .clearAndSetSemantics {}) {
         val radius = CornerRadius(size.height / 2)
         drawRoundRect(trackColor, cornerRadius = radius)
-        if (used > 0f) drawRoundRect(usedColor, size = Size(size.width * used, size.height), cornerRadius = radius)
+        if (used > 0f) drawRoundRect(
+            usedColor,
+            size = Size(size.width * used, size.height),
+            cornerRadius = radius
+        )
         if (duplicates > 0f) {
             val width = size.width * duplicates
-            drawRoundRect(duplicateColor, topLeft = Offset(size.width * used - width, 0f), size = Size(width, size.height), cornerRadius = radius)
+            drawRoundRect(
+                duplicateColor,
+                topLeft = Offset(size.width * used - width, 0f),
+                size = Size(width, size.height),
+                cornerRadius = radius
+            )
         }
     }
 }

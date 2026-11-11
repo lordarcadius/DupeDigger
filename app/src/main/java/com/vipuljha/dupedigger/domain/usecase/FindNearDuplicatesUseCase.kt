@@ -61,14 +61,25 @@ class FindNearDuplicatesUseCase @Inject constructor(
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult {
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.indexedImages(scanId) else emptyList())
+        val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.indexedImages(
+            scanId
+        ) else emptyList())
             .filter { it.size >= minSizeBytes && it.id !in exactCopies }
             .partitionWork({ it.hashes != null }, { it.seenNow })
-        val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.indexedVideos(scanId) else emptyList())
+        val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.indexedVideos(
+            scanId
+        ) else emptyList())
             .filter { it.size >= minSizeBytes && it.id !in exactCopies }
             .partitionWork({ it.signature != null }, { it.seenNow })
-        val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.indexedDocuments(scanId) else emptyList())
-            .filter { it.size >= minSizeBytes && it.id !in exactCopies && textReader.supports(it.name, it.mimeType) }
+        val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.indexedDocuments(
+            scanId
+        ) else emptyList())
+            .filter {
+                it.size >= minSizeBytes && it.id !in exactCopies && textReader.supports(
+                    it.name,
+                    it.mimeType
+                )
+            }
             .partitionWork({ it.simHash != null }, { it.seenNow })
         val (cachedAudio, newAudio) = (if (MediaKind.AUDIO in kinds) fileIndex.indexedAudio(scanId) else emptyList())
             .filter { it.size >= minSizeBytes && it.id !in exactCopies }
@@ -78,7 +89,9 @@ class FindNearDuplicatesUseCase @Inject constructor(
         val step: suspend () -> Unit = { onProgress(attempted.incrementAndGet(), total) }
 
         val hashedImages = newImages.chunked(BATCH).flatMap { batch ->
-            batch.mapConcurrently { image -> imageHasher.hash(image.sourceUri)?.let { image.copy(hashes = it) }.also { step() } }
+            batch.mapConcurrently { image ->
+                imageHasher.hash(image.sourceUri)?.let { image.copy(hashes = it) }.also { step() }
+            }
                 .also { done -> fileIndex.saveImageHashes(done.associate { it.id to it.hashes!! }) }
         }
         val signedVideos = newVideos.mapNotNull { video ->
@@ -89,48 +102,83 @@ class FindNearDuplicatesUseCase @Inject constructor(
         }
         val hashedDocs = newDocs.chunked(BATCH).flatMap { batch ->
             batch.mapConcurrently { doc ->
-                textReader.text(doc.sourceUri, doc.name, doc.mimeType)?.let { doc.copy(simHash = simHash(it) ?: NO_TEXT_SIMHASH) }
+                textReader.text(doc.sourceUri, doc.name, doc.mimeType)
+                    ?.let { doc.copy(simHash = simHash(it) ?: NO_TEXT_SIMHASH) }
                     .also { step() }
-            }.also { done -> fileIndex.saveDocumentHashes(done.associate { it.id to it.simHash!! }) }
+            }
+                .also { done -> fileIndex.saveDocumentHashes(done.associate { it.id to it.simHash!! }) }
         }
         val readAudio = newAudio.chunked(BATCH).flatMap { batch ->
             batch.mapConcurrently { audio ->
                 tagReader.read(audio.sourceUri)?.let { tags ->
-                    audio.copy(signature = AudioSignature(tags.durationMs, tags.title?.let(::audioTitleKey), tags.artist?.let(::audioArtistKey), tags.bitrate))
+                    audio.copy(
+                        signature = AudioSignature(
+                            tags.durationMs,
+                            tags.title?.let(::audioTitleKey),
+                            tags.artist?.let(::audioArtistKey),
+                            tags.bitrate
+                        )
+                    )
                 }.also { step() }
-            }.also { done -> fileIndex.saveAudioSignatures(done.associate { it.id to it.signature!! }) }
+            }
+                .also { done -> fileIndex.saveAudioSignatures(done.associate { it.id to it.signature!! }) }
         }
 
         val images = (cachedImages + hashedImages).associateBy { it.id }
         val videos = (cachedVideos + signedVideos).associateBy { it.id }
-        val docs = (cachedDocs + hashedDocs).filter { it.simHash != NO_TEXT_SIMHASH }.associateBy { it.id }
+        val docs =
+            (cachedDocs + hashedDocs).filter { it.simHash != NO_TEXT_SIMHASH }.associateBy { it.id }
         val audio = (cachedAudio + readAudio).associateBy { it.id }
         val audioCandidates = audio.values.mapNotNull { file ->
             val signature = file.signature!!
             val titleKey = signature.titleKey ?: audioTitleKey(file.name.substringBeforeLast('.'))
-            titleKey?.let { file.id to AudioCandidate(signature.durationMs, it, signature.artistKey) }
+            titleKey?.let {
+                file.id to AudioCandidate(
+                    signature.durationMs,
+                    it,
+                    signature.artistKey
+                )
+            }
         }
 
-        val groups = groupNearImages(images.values.map { it.id to it.hashes!! }, threshold).map { ids ->
-            val first = images.getValue(ids.first()).hashes!!.pHash
-            nearGroup(ids, images.mapValues { it.value.sourceUri }) { hammingDistance(first, images.getValue(it).hashes!!.pHash).toDouble() / 64 }
-        } + groupNearVideos(videos.values.map { it.id to it.signature!! }, threshold).map { ids ->
-            val first = videos.getValue(ids.first()).signature!!.frames
-            nearGroup(ids, videos.mapValues { it.value.sourceUri }) { id ->
-                videos.getValue(id).signature!!.frames.zip(first, ::hammingDistance).average() / 64
+        val groups =
+            groupNearImages(images.values.map { it.id to it.hashes!! }, threshold).map { ids ->
+                val first = images.getValue(ids.first()).hashes!!.pHash
+                nearGroup(ids, images.mapValues { it.value.sourceUri }) {
+                    hammingDistance(
+                        first,
+                        images.getValue(it).hashes!!.pHash
+                    ).toDouble() / 64
+                }
+            } + groupNearVideos(
+                videos.values.map { it.id to it.signature!! },
+                threshold
+            ).map { ids ->
+                val first = videos.getValue(ids.first()).signature!!.frames
+                nearGroup(ids, videos.mapValues { it.value.sourceUri }) { id ->
+                    videos.getValue(id).signature!!.frames.zip(first, ::hammingDistance)
+                        .average() / 64
+                }
+            } + groupNearHashes(
+                docs.values.map { it.id to it.simHash!! },
+                DOCUMENT_SIMHASH_THRESHOLD
+            ).map { ids ->
+                val first = docs.getValue(ids.first()).simHash!!
+                nearGroup(ids, docs.mapValues { it.value.sourceUri }) {
+                    hammingDistance(
+                        first,
+                        docs.getValue(it).simHash!!
+                    ).toDouble() / 64
+                }
+            } + groupNearAudio(audioCandidates).map { ids ->
+                val first = audio.getValue(ids.first()).signature!!.durationMs
+                nearGroup(ids, audio.mapValues { it.value.sourceUri }) { id ->
+                    val d = audio.getValue(id).signature!!.durationMs
+                    abs(d - first).toDouble() / max(d, first)
+                }
             }
-        } + groupNearHashes(docs.values.map { it.id to it.simHash!! }, DOCUMENT_SIMHASH_THRESHOLD).map { ids ->
-            val first = docs.getValue(ids.first()).simHash!!
-            nearGroup(ids, docs.mapValues { it.value.sourceUri }) { hammingDistance(first, docs.getValue(it).simHash!!).toDouble() / 64 }
-        } + groupNearAudio(audioCandidates).map { ids ->
-            val first = audio.getValue(ids.first()).signature!!.durationMs
-            nearGroup(ids, audio.mapValues { it.value.sourceUri }) { id ->
-                val d = audio.getValue(id).signature!!.durationMs
-                abs(d - first).toDouble() / max(d, first)
-            }
-        }
         val sizes = images.mapValues { it.value.size } + videos.mapValues { it.value.size } +
-            docs.mapValues { it.value.size } + audio.mapValues { it.value.size }
+                docs.mapValues { it.value.size } + audio.mapValues { it.value.size }
         val done = hashedImages.size + signedVideos.size + hashedDocs.size + readAudio.size
         return NearScanResult(
             groups = groups.toImmutableList(),
@@ -146,17 +194,21 @@ class FindNearDuplicatesUseCase @Inject constructor(
      * matched; without one it is dropped rather than read, because hashing here costs a decode per file and the
      * scan was asked for one scope, not the whole device.
      */
-    private inline fun <T> List<T>.partitionWork(hashed: (T) -> Boolean, seenNow: (T) -> Boolean): Pair<List<T>, List<T>> {
+    private inline fun <T> List<T>.partitionWork(
+        hashed: (T) -> Boolean,
+        seenNow: (T) -> Boolean
+    ): Pair<List<T>, List<T>> {
         val (cached, rest) = partition(hashed)
         return cached to rest.filter(seenNow)
     }
 
     /** [difference] is each member's 0–1 distance from the first; the score is 1 minus their mean. */
-    private fun nearGroup(ids: List<Long>, uris: Map<Long, String>, difference: (Long) -> Double) = NearGroup(
-        fingerprint = nearFingerprint(ids.map(uris::getValue)),
-        fileIds = ids.toImmutableList(),
-        score = (1 - ids.drop(1).map(difference).average()).toFloat(),
-    )
+    private fun nearGroup(ids: List<Long>, uris: Map<Long, String>, difference: (Long) -> Double) =
+        NearGroup(
+            fingerprint = nearFingerprint(ids.map(uris::getValue)),
+            fileIds = ids.toImmutableList(),
+            score = (1 - ids.drop(1).map(difference).average()).toFloat(),
+        )
 
     private companion object {
         const val BATCH = 100

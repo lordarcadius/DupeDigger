@@ -37,32 +37,70 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
     private val keepChoiceDao: KeepChoiceDao,
 ) : DuplicateGroupRepository {
 
-    override fun observeReclaimable(): Flow<List<KindReclaim>> = groupDao.observeReclaimable().map { rows ->
-        rows.map { KindReclaim(MediaKind.valueOf(it.mediaKind), it.groupCount, it.files, it.bytes) }
-    }
+    override fun observeReclaimable(): Flow<List<KindReclaim>> =
+        groupDao.observeReclaimable().map { rows ->
+            rows.map {
+                KindReclaim(
+                    MediaKind.valueOf(it.mediaKind),
+                    it.groupCount,
+                    it.files,
+                    it.bytes
+                )
+            }
+        }
 
     override fun observeFacets(): Flow<List<GroupFacet>> = groupDao.observeFacets().map { rows ->
-        rows.map { GroupFacet(MediaKind.valueOf(it.mediaKind), MatchTier.valueOf(it.tier), it.groupCount, it.files, it.bytes) }
+        rows.map {
+            GroupFacet(
+                MediaKind.valueOf(it.mediaKind),
+                MatchTier.valueOf(it.tier),
+                it.groupCount,
+                it.files,
+                it.bytes
+            )
+        }
     }
 
-    override fun observeGroup(fingerprint: String): Flow<GroupWithMembers?> = groupDao.observeGroupDetail(fingerprint).map { rows ->
-        val first = rows.firstOrNull() ?: return@map null
-        GroupWithMembers(
-            groupId = first.groupId,
-            fingerprint = first.fingerprint,
-            tier = MatchTier.valueOf(first.tier),
-            kind = MediaKind.valueOf(rows.minOf { it.mediaKind }),
-            members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, quality = it.quality, name = it.name) }.toImmutableList(),
-            keepChoice = first.keepChoice,
-            score = first.score,
-        )
-    }
+    override fun observeGroup(fingerprint: String): Flow<GroupWithMembers?> =
+        groupDao.observeGroupDetail(fingerprint).map { rows ->
+            val first = rows.firstOrNull() ?: return@map null
+            GroupWithMembers(
+                groupId = first.groupId,
+                fingerprint = first.fingerprint,
+                tier = MatchTier.valueOf(first.tier),
+                kind = MediaKind.valueOf(rows.minOf { it.mediaKind }),
+                members = rows.map {
+                    GroupMember(
+                        it.fileId,
+                        it.sourceUri,
+                        it.path,
+                        it.size,
+                        it.mtime,
+                        quality = it.quality,
+                        name = it.name
+                    )
+                }.toImmutableList(),
+                keepChoice = first.keepChoice,
+                score = first.score,
+            )
+        }
 
     override fun observeDecisionChanges(): Flow<Unit> =
-        db.invalidationTracker.createFlow("keep_choice", "duplicate_group", "group_member", emitInitialState = false).map { }
+        db.invalidationTracker.createFlow(
+            "keep_choice",
+            "duplicate_group",
+            "group_member",
+            emitInitialState = false
+        ).map { }
 
     override suspend fun setKeepChoice(fingerprint: String, sourceUri: String) =
-        keepChoiceDao.upsert(KeepChoiceEntity(fingerprint, sourceUri, chosenAt = System.currentTimeMillis()))
+        keepChoiceDao.upsert(
+            KeepChoiceEntity(
+                fingerprint,
+                sourceUri,
+                chosenAt = System.currentTimeMillis()
+            )
+        )
 
     override suspend fun markNotDuplicates(fingerprint: String) = db.withTransaction {
         ignoredDao.upsert(IgnoredGroupEntity(fingerprint, ignoredAt = System.currentTimeMillis()))
@@ -71,16 +109,32 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
 
     override suspend fun ignoredFingerprints(): Set<String> = ignoredDao.fingerprints().toSet()
 
-    override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) = db.withTransaction {
-        groupDao.deleteAll()
-        if (groups.isEmpty()) return@withTransaction
-        val ids = groupDao.insertGroups(
-            groups.map { DuplicateGroupEntity(tier = it.tier.name, score = it.score, scanId = scanId, fingerprint = it.fingerprint) },
-        )
-        groupDao.insertMembers(
-            groups.zip(ids).flatMap { (group, groupId) -> group.fileIds.map { GroupMemberEntity(groupId, it, similarity = group.score) } },
-        )
-    }
+    override suspend fun replaceGroups(scanId: Long, groups: List<FoundGroup>) =
+        db.withTransaction {
+            groupDao.deleteAll()
+            if (groups.isEmpty()) return@withTransaction
+            val ids = groupDao.insertGroups(
+                groups.map {
+                    DuplicateGroupEntity(
+                        tier = it.tier.name,
+                        score = it.score,
+                        scanId = scanId,
+                        fingerprint = it.fingerprint
+                    )
+                },
+            )
+            groupDao.insertMembers(
+                groups.zip(ids).flatMap { (group, groupId) ->
+                    group.fileIds.map {
+                        GroupMemberEntity(
+                            groupId,
+                            it,
+                            similarity = group.score
+                        )
+                    }
+                },
+            )
+        }
 
     override suspend fun stillRemovable(fileIds: Set<Long>): Set<Long> =
         fileIds.chunked(MAX_QUERY_ARGS).flatMap { groupDao.stillRemovable(it) }.toSet()
@@ -91,38 +145,56 @@ class DuplicateGroupRepositoryImpl @Inject constructor(
             .groupBy({ it.groupId }, { it.fileId })
             .values.map { it.toSet() }
 
-    override suspend fun keepChoice(fingerprint: String): String? = keepChoiceDao.get(fingerprint)?.keeperSourceUri
+    override suspend fun keepChoice(fingerprint: String): String? =
+        keepChoiceDao.get(fingerprint)?.keeperSourceUri
 
     override fun pagedGroups(filter: GroupFilter): Flow<PagingData<GroupWithMembers>> = Pager(
-        config = PagingConfig(pageSize = PAGE_SIZE, initialLoadSize = PAGE_SIZE, enablePlaceholders = false),
+        config = PagingConfig(
+            pageSize = PAGE_SIZE,
+            initialLoadSize = PAGE_SIZE,
+            enablePlaceholders = false
+        ),
         pagingSourceFactory = { groupPagingSource(filter) },
     ).flow
 
-    internal fun groupPagingSource(filter: GroupFilter) = GroupPagingSource(db) { offset, limit -> loadGroups(filter, limit, offset) }
+    internal fun groupPagingSource(filter: GroupFilter) =
+        GroupPagingSource(db) { offset, limit -> loadGroups(filter, limit, offset) }
 
-    override suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers> = loadGroups(filter, ALL, 0).groups
+    override suspend fun allGroups(filter: GroupFilter): List<GroupWithMembers> =
+        loadGroups(filter, ALL, 0).groups
 
     /** Headers and members are read in one transaction, so a scan replacing groups meanwhile can't leave a group without members. */
-    private suspend fun loadGroups(filter: GroupFilter, limit: Int, offset: Int): GroupPage = db.withTransaction {
-        val headers = groupDao.groupHeaders(filter.kind?.name, filter.tier?.name, limit, offset)
-        val members = headers.map { it.groupId }.chunked(MAX_QUERY_ARGS)
-            .flatMap { groupDao.membersOfGroups(it) }
-            .groupBy { it.groupId }
-        val groups = headers.mapNotNull { header ->
-            val rows = members[header.groupId].orEmpty()
-            if (rows.size < 2) return@mapNotNull null
-            GroupWithMembers(
-                groupId = header.groupId,
-                fingerprint = header.fingerprint,
-                tier = MatchTier.valueOf(header.tier),
-                kind = MediaKind.valueOf(header.mediaKind),
-                members = rows.map { GroupMember(it.fileId, it.sourceUri, it.path, it.size, it.mtime, quality = it.quality, name = it.name) }.toImmutableList(),
-                keepChoice = header.keepChoice,
-                score = header.score,
-            )
+    private suspend fun loadGroups(filter: GroupFilter, limit: Int, offset: Int): GroupPage =
+        db.withTransaction {
+            val headers = groupDao.groupHeaders(filter.kind?.name, filter.tier?.name, limit, offset)
+            val members = headers.map { it.groupId }.chunked(MAX_QUERY_ARGS)
+                .flatMap { groupDao.membersOfGroups(it) }
+                .groupBy { it.groupId }
+            val groups = headers.mapNotNull { header ->
+                val rows = members[header.groupId].orEmpty()
+                if (rows.size < 2) return@mapNotNull null
+                GroupWithMembers(
+                    groupId = header.groupId,
+                    fingerprint = header.fingerprint,
+                    tier = MatchTier.valueOf(header.tier),
+                    kind = MediaKind.valueOf(header.mediaKind),
+                    members = rows.map {
+                        GroupMember(
+                            it.fileId,
+                            it.sourceUri,
+                            it.path,
+                            it.size,
+                            it.mtime,
+                            quality = it.quality,
+                            name = it.name
+                        )
+                    }.toImmutableList(),
+                    keepChoice = header.keepChoice,
+                    score = header.score,
+                )
+            }
+            GroupPage(groups, fetched = headers.size)
         }
-        GroupPage(groups, fetched = headers.size)
-    }
 
     private companion object {
         const val MAX_QUERY_ARGS = 500

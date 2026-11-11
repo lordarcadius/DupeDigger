@@ -64,17 +64,34 @@ fun StateMessage(
                 modifier = Modifier
                     .size(Dimens.illustrationDisc)
                     .background(
-                        if (isError) colors.errorContainer.copy(alpha = ErrorDiscAlpha) else colors.primaryContainer.copy(alpha = EmptyDiscAlpha),
+                        if (isError) colors.errorContainer.copy(alpha = ErrorDiscAlpha) else colors.primaryContainer.copy(
+                            alpha = EmptyDiscAlpha
+                        ),
                         CircleShape,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, null, Modifier.size(Dimens.iconIllustration), tint = if (isError) colors.error else colors.primary)
+                Icon(
+                    icon,
+                    null,
+                    Modifier.size(Dimens.iconIllustration),
+                    tint = if (isError) colors.error else colors.primary
+                )
             }
             Spacer(Modifier.height(StateDiscGap))
-            Text(title, style = MaterialTheme.typography.titleLargeEmphasized, color = colors.onSurface, textAlign = TextAlign.Center)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                color = colors.onSurface,
+                textAlign = TextAlign.Center
+            )
             Spacer(Modifier.height(Dimens.spaceSm))
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
             if (action != null) {
                 Spacer(Modifier.height(Dimens.spaceLg))
                 action()
@@ -88,7 +105,11 @@ private const val EmptyDiscAlpha = 0.4f
 private const val ErrorDiscAlpha = 0.5f
 
 @Stable
-class Shimmer internal constructor(val base: Color, val highlight: Color, val progress: State<Float>)
+class Shimmer internal constructor(
+    val base: Color,
+    val highlight: Color,
+    val progress: State<Float>
+)
 
 /** One sweep clock per screen; create it inside the loading branch only. */
 @Composable
@@ -96,7 +117,12 @@ fun rememberShimmer(): Shimmer {
     val progress = rememberInfiniteTransition(label = "shimmer").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(AppMotion.ShimmerSweepMillis, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(
+            tween(
+                AppMotion.ShimmerSweepMillis,
+                easing = LinearEasing
+            ), RepeatMode.Restart
+        ),
         label = "shimmerSweep",
     )
     val base = MaterialTheme.colorScheme.surfaceContainerHighest

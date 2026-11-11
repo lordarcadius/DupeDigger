@@ -1,82 +1,71 @@
 package com.vipuljha.dupedigger.core.designsystem
 
-import androidx.compose.foundation.background
-
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationItemIconPosition
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarArrangement
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
 import androidx.compose.material3.WideNavigationRailItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.toIntSize
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toIntSize
 import kotlinx.collections.immutable.ImmutableList
 
 @Immutable
@@ -162,7 +151,11 @@ private fun paneMetrics(width: Dp) = PaneMetrics(
 )
 
 @Composable
-private fun Pane(metrics: PaneMetrics, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun Pane(
+    metrics: PaneMetrics,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     Box(
         modifier
             .fillMaxSize()
@@ -192,7 +185,9 @@ private fun AppNavBar(
     modifier: Modifier = Modifier,
 ) {
     val blurRadius = with(LocalDensity.current) { FloatingBarBlur.toPx() }
-    val glass = rememberGraphicsLayer().apply { renderEffect = BlurEffect(blurRadius, blurRadius, TileMode.Clamp) }
+    val glass = rememberGraphicsLayer().apply {
+        renderEffect = BlurEffect(blurRadius, blurRadius, TileMode.Clamp)
+    }
     var origin by remember { mutableStateOf(Offset.Zero) }
     val tint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = GlassTintAlpha)
     val indicator = MaterialTheme.colorScheme.onSurface.copy(alpha = IndicatorAlpha)
@@ -223,7 +218,8 @@ private fun AppNavBar(
                     val down = awaitFirstDown(requireUnconsumed = false)
                     pressed = (down.position.x / cell).toInt().coerceIn(items.indices)
                     while (true) {
-                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                        val change =
+                            awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
                         pressed = (change.position.x / cell).toInt().coerceIn(items.indices)
                     }
@@ -245,7 +241,9 @@ private fun AppNavBar(
         )
         Row(Modifier.fillMaxSize()) {
             items.forEachIndexed { index, item ->
-                NavIcon(item, highlighted == index, Modifier.weight(1f).fillMaxHeight())
+                NavIcon(item, highlighted == index, Modifier
+                    .weight(1f)
+                    .fillMaxHeight())
             }
         }
     }
@@ -287,7 +285,12 @@ private fun AppNavRail(items: ImmutableList<AppNavItem>) {
                 railExpanded = false,
                 selected = item.selected,
                 onClick = item.onClick,
-                icon = { Icon(if (item.selected) item.selectedIcon else item.icon, contentDescription = null) },
+                icon = {
+                    Icon(
+                        if (item.selected) item.selectedIcon else item.icon,
+                        contentDescription = null
+                    )
+                },
                 label = { Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
@@ -300,6 +303,7 @@ private val RailWidth = 96.dp
 private val FloatingBarInset = 16.dp
 private val FloatingBarHeight = 72.dp
 private val NavIconSize = 28.dp
+
 // Proportions taken from the reference: the indicator is 0.83x the bar's height and a little wider than tall.
 // Uniform on all four sides, so at the ends the indicator's curve nests inside the container's own.
 private val IndicatorInset = 4.dp

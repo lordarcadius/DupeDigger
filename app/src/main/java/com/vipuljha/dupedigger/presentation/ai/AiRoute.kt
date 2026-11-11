@@ -26,7 +26,13 @@ fun AiRoute(
 
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
-            is AiEffect.ShowMessage -> scope.launch { snackbarHostState.showSnackbar(effect.message.asString(context)) }
+            is AiEffect.ShowMessage -> scope.launch {
+                snackbarHostState.showSnackbar(
+                    effect.message.asString(
+                        context
+                    )
+                )
+            }
         }
     }
 
@@ -34,7 +40,11 @@ fun AiRoute(
         state = state,
         onIntent = { intent ->
             // The download shows progress in a notification, so ask for that permission first, as Scan does.
-            if (intent is AiIntent.DownloadClicked) withNotificationPermission { viewModel.onIntent(intent) } else viewModel.onIntent(intent)
+            if (intent is AiIntent.DownloadClicked) withNotificationPermission {
+                viewModel.onIntent(
+                    intent
+                )
+            } else viewModel.onIntent(intent)
         },
         snackbarHostState = snackbarHostState,
         onBack = onBack,

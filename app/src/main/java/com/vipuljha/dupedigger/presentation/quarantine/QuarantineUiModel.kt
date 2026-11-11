@@ -11,8 +11,13 @@ fun QuarantinedFile.toUi(nowMillis: Long, selected: Boolean = false) = Quarantin
     id = id,
     selected = selected,
     name = name,
-    folder = originalPath.substringBeforeLast('/', "").takeIf { it.isNotEmpty() }?.let { UiText.Raw(it) } ?: UiText.res(R.string.value_unknown),
-    details = UiText.res(R.string.quarantine_item_details, formatBytes(size), formatRelativeTime(movedAt, nowMillis)),
+    folder = originalPath.substringBeforeLast('/', "").takeIf { it.isNotEmpty() }
+        ?.let { UiText.Raw(it) } ?: UiText.res(R.string.value_unknown),
+    details = UiText.res(
+        R.string.quarantine_item_details,
+        formatBytes(size),
+        formatRelativeTime(movedAt, nowMillis)
+    ),
 )
 
 /** Restored files come back into results on the next scan. */

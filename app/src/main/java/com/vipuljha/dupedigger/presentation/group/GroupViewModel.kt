@@ -52,7 +52,16 @@ class GroupViewModel @AssistedInject constructor(
                 setState { copy(content = ContentState.Success(item?.toDetailUi())) }
                 item?.let(::readDimensions)
             }
-            .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
+            .catch {
+                setState {
+                    copy(
+                        content = ContentState.Error(
+                            DomainError.Unknown.toUiText(),
+                            retryable = false
+                        )
+                    )
+                }
+            }
             .launchIn(viewModelScope)
     }
 
@@ -69,19 +78,30 @@ class GroupViewModel @AssistedInject constructor(
             is GroupIntent.KeepClicked -> members.firstOrNull { it.fileId == intent.fileId }?.let {
                 viewModelScope.launch { chooseKeeper(fingerprint, it) }
             }
-            is GroupIntent.OpenClicked -> members.firstOrNull { it.fileId == intent.fileId }?.let { member ->
-                viewModelScope.launch {
-                    val target = getViewTarget(member)
-                    sendEffect(
-                        if (target != null) GroupEffect.OpenFile(target.uri, target.mimeType)
-                        else GroupEffect.ShowMessage(UiText.res(R.string.group_open_failed)),
-                    )
+
+            is GroupIntent.OpenClicked -> members.firstOrNull { it.fileId == intent.fileId }
+                ?.let { member ->
+                    viewModelScope.launch {
+                        val target = getViewTarget(member)
+                        sendEffect(
+                            if (target != null) GroupEffect.OpenFile(target.uri, target.mimeType)
+                            else GroupEffect.ShowMessage(UiText.res(R.string.group_open_failed)),
+                        )
+                    }
                 }
-            }
-            is GroupIntent.CompareClicked -> sendEffect(GroupEffect.OpenCompare(current.keeper.fileId, intent.fileId))
-            is GroupIntent.DeleteClicked -> current.removable.firstOrNull { it.fileId == intent.fileId }?.let { member ->
-                report { removal.delete(mapOf(member.fileId to member.size)) }
-            }
+
+            is GroupIntent.CompareClicked -> sendEffect(
+                GroupEffect.OpenCompare(
+                    current.keeper.fileId,
+                    intent.fileId
+                )
+            )
+
+            is GroupIntent.DeleteClicked -> current.removable.firstOrNull { it.fileId == intent.fileId }
+                ?.let { member ->
+                    report { removal.delete(mapOf(member.fileId to member.size)) }
+                }
+
             is GroupIntent.TrashAnswered, is GroupIntent.UndoClicked -> Unit
             GroupIntent.NotDuplicatesClicked -> viewModelScope.launch {
                 markNotDuplicates(fingerprint)
@@ -96,15 +116,24 @@ class GroupViewModel @AssistedInject constructor(
 
     private fun readDimensions(item: DuplicateGroupItem) {
         if (item.kind != MediaKind.IMAGE && item.kind != MediaKind.VIDEO) return
-        (listOf(item.keeper) + item.removable).filter { requested.add(it.fileId) }.forEach { member ->
-            viewModelScope.launch {
-                val info = readMediaInfo(member, item.kind) ?: return@launch
-                val (w, h) = info.width to info.height
-                if (w != null && h != null) {
-                    setState { copy(resolutions = (resolutions + (member.fileId to UiText.res(R.string.group_resolution, w, h))).toImmutableMap()) }
+        (listOf(item.keeper) + item.removable).filter { requested.add(it.fileId) }
+            .forEach { member ->
+                viewModelScope.launch {
+                    val info = readMediaInfo(member, item.kind) ?: return@launch
+                    val (w, h) = info.width to info.height
+                    if (w != null && h != null) {
+                        setState {
+                            copy(
+                                resolutions = (resolutions + (member.fileId to UiText.res(
+                                    R.string.group_resolution,
+                                    w,
+                                    h
+                                ))).toImmutableMap()
+                            )
+                        }
+                    }
                 }
             }
-        }
     }
 
     @AssistedFactory

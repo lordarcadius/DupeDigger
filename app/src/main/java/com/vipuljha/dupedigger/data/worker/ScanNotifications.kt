@@ -29,13 +29,38 @@ class ScanNotifications @Inject constructor(
         val (title, text) = when (progress?.stage) {
             null -> context.getString(R.string.scan_notification_starting) to null
             ScanStage.INDEXING -> context.getString(R.string.scan_stage_indexing) to
-                context.resources.getQuantityString(R.plurals.scan_files_found, progress.done, count.format(progress.done))
+                    context.resources.getQuantityString(
+                        R.plurals.scan_files_found,
+                        progress.done,
+                        count.format(progress.done)
+                    )
+
             ScanStage.EXACT -> context.getString(R.string.scan_stage_exact) to
-                progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
+                    progress.total?.takeIf { it > 0 }?.let {
+                        context.getString(
+                            R.string.scan_compared,
+                            count.format(progress.done),
+                            count.format(it)
+                        )
+                    }
+
             ScanStage.NEAR -> context.getString(R.string.scan_stage_near) to
-                progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
+                    progress.total?.takeIf { it > 0 }?.let {
+                        context.getString(
+                            R.string.scan_compared,
+                            count.format(progress.done),
+                            count.format(it)
+                        )
+                    }
+
             ScanStage.SEMANTIC -> context.getString(R.string.scan_stage_semantic) to
-                progress.total?.takeIf { it > 0 }?.let { context.getString(R.string.scan_compared, count.format(progress.done), count.format(it)) }
+                    progress.total?.takeIf { it > 0 }?.let {
+                        context.getString(
+                            R.string.scan_compared,
+                            count.format(progress.done),
+                            count.format(it)
+                        )
+                    }
         }
         val total = progress?.total?.takeIf { it > 0 }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -48,26 +73,53 @@ class ScanNotifications @Inject constructor(
             .setSilent(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openApp())
-            .addAction(0, context.getString(R.string.scan_action_cancel), WorkManager.getInstance(context).createCancelPendingIntent(workId))
-        if (progress?.stage == ScanStage.SEMANTIC) builder.addAction(0, context.getString(R.string.scan_action_skip_ai), skipAi())
-        return ForegroundInfo(NOTIFICATION_ID, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            .addAction(
+                0,
+                context.getString(R.string.scan_action_cancel),
+                WorkManager.getInstance(context).createCancelPendingIntent(workId)
+            )
+        if (progress?.stage == ScanStage.SEMANTIC) builder.addAction(
+            0,
+            context.getString(R.string.scan_action_skip_ai),
+            skipAi()
+        )
+        return ForegroundInfo(
+            NOTIFICATION_ID,
+            builder.build(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
     }
 
     private fun ensureChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.scan_channel_name), NotificationManager.IMPORTANCE_LOW)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.scan_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        )
             .apply { description = context.getString(R.string.scan_channel_description) }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     private fun skipAi(): PendingIntent =
-        PendingIntent.getBroadcast(context, 0, Intent(context, SkipAiReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)
+        PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, SkipAiReceiver::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
 
     /** Brings back the open app, or starts it, on the Scan screen. */
-    private fun openApp(): PendingIntent? = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-        it.action = ACTION_OPEN_SCAN
-        it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-    }
+    private fun openApp(): PendingIntent? =
+        context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+            it.action = ACTION_OPEN_SCAN
+            it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            PendingIntent.getActivity(
+                context,
+                0,
+                it,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
 
     companion object {
         const val ACTION_OPEN_SCAN = "com.vipuljha.dupedigger.action.OPEN_SCAN"

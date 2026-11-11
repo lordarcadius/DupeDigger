@@ -28,7 +28,10 @@ fun rememberNotificationPermissionGate(): (action: () -> Unit) -> Unit {
     return remember(context, launcher) {
         { action ->
             val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
             if (granted) {
                 action()
             } else {

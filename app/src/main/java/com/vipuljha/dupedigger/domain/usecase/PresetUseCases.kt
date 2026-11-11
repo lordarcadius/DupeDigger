@@ -15,7 +15,8 @@ import javax.inject.Inject
 
 /** Every preset to offer: the user's own, oldest first, then the built-in ones. */
 class ObserveScanPresetsUseCase @Inject constructor(private val presets: ScanPresetRepository) {
-    operator fun invoke(): Flow<ImmutableList<ScanPreset>> = presets.presets.map { (it + BuiltInPreset.presets).toImmutableList() }
+    operator fun invoke(): Flow<ImmutableList<ScanPreset>> =
+        presets.presets.map { (it + BuiltInPreset.presets).toImmutableList() }
 }
 
 /**

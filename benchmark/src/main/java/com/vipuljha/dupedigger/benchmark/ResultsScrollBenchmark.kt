@@ -17,7 +17,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ResultsScrollBenchmark {
-    @get:Rule val rule = MacrobenchmarkRule()
+    @get:Rule
+    val rule = MacrobenchmarkRule()
 
     @Test
     fun scrollResults() = rule.measureRepeated(

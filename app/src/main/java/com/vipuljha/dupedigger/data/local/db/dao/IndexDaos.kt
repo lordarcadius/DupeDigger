@@ -75,16 +75,34 @@ interface FileHashDao {
     /** Every indexed file of [kinds], not only this scan's, so a copy in a folder scanned earlier is still found. */
     @Query(
         "SELECT f.id, f.sourceUri, f.size, f.mtime, h.partialHash, h.fullHash, (f.lastSeenScanId = :scanId) AS seenNow " +
-            "FROM file_index f LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.mediaKind IN (:kinds)",
+                "FROM file_index f LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.mediaKind IN (:kinds)",
     )
     suspend fun hashState(scanId: Long, kinds: List<String>): List<FileHashState>
 }
 
-data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)
+data class KindReclaimRow(
+    val mediaKind: String,
+    val groupCount: Int,
+    val files: Int,
+    val bytes: Long
+)
 
-data class GroupHeaderRow(val groupId: Long, val fingerprint: String, val tier: String, val score: Float, val mediaKind: String, val keepChoice: String?)
+data class GroupHeaderRow(
+    val groupId: Long,
+    val fingerprint: String,
+    val tier: String,
+    val score: Float,
+    val mediaKind: String,
+    val keepChoice: String?
+)
 
-data class GroupFacetRow(val mediaKind: String, val tier: String, val groupCount: Int, val files: Int, val bytes: Long)
+data class GroupFacetRow(
+    val mediaKind: String,
+    val tier: String,
+    val groupCount: Int,
+    val files: Int,
+    val bytes: Long
+)
 
 data class GroupDetailRow(
     val groupId: Long,
@@ -136,32 +154,32 @@ interface PerceptualHashDao {
 
     @Query(
         "SELECT f.id, f.sourceUri, f.size, d.value AS dHash, p.value AS pHash, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
-            "LEFT JOIN perceptual_hash d ON d.fileId = f.id AND d.algo = 'DHASH' AND d.frameIndex = 0 " +
-            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'PHASH' AND p.frameIndex = 0 " +
-            "WHERE f.mediaKind = 'IMAGE'",
+                "LEFT JOIN perceptual_hash d ON d.fileId = f.id AND d.algo = 'DHASH' AND d.frameIndex = 0 " +
+                "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'PHASH' AND p.frameIndex = 0 " +
+                "WHERE f.mediaKind = 'IMAGE'",
     )
     suspend fun images(scanId: Long): List<ImageHashRow>
 
     /** One row per stored signature part (duration, then frames), or one row with no part for an unsigned video. */
     @Query(
         "SELECT f.id, f.sourceUri, f.size, p.algo, p.frameIndex, p.value, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
-            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('VIDEO_DURATION', 'VIDEO_PHASH') " +
-            "WHERE f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
+                "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('VIDEO_DURATION', 'VIDEO_PHASH') " +
+                "WHERE f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
     )
     suspend fun videos(scanId: Long): List<VideoHashRow>
 
     @Query(
         "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.size, p.value AS simHash, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
-            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'SIMHASH' AND p.frameIndex = 0 " +
-            "WHERE f.mediaKind = 'DOCUMENT'",
+                "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'SIMHASH' AND p.frameIndex = 0 " +
+                "WHERE f.mediaKind = 'DOCUMENT'",
     )
     suspend fun documents(scanId: Long): List<DocumentHashRow>
 
     /** One row per stored signature part, or one row with no part for an unread file. */
     @Query(
         "SELECT f.id, f.sourceUri, f.name, f.size, p.algo, p.value, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
-            "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('AUDIO_DURATION', 'AUDIO_TITLE', 'AUDIO_ARTIST') " +
-            "WHERE f.mediaKind = 'AUDIO' ORDER BY f.id",
+                "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('AUDIO_DURATION', 'AUDIO_TITLE', 'AUDIO_ARTIST') " +
+                "WHERE f.mediaKind = 'AUDIO' ORDER BY f.id",
     )
     suspend fun audio(scanId: Long): List<AudioHashRow>
 }
@@ -176,7 +194,15 @@ data class DocumentHashRow(
     val seenNow: Boolean,
 )
 
-data class AudioHashRow(val id: Long, val sourceUri: String, val name: String, val size: Long, val algo: String?, val value: Long?, val seenNow: Boolean)
+data class AudioHashRow(
+    val id: Long,
+    val sourceUri: String,
+    val name: String,
+    val size: Long,
+    val algo: String?,
+    val value: Long?,
+    val seenNow: Boolean
+)
 
 data class VideoHashRow(
     val id: Long,
@@ -188,7 +214,14 @@ data class VideoHashRow(
     val seenNow: Boolean,
 )
 
-data class ImageHashRow(val id: Long, val sourceUri: String, val size: Long, val dHash: Long?, val pHash: Long?, val seenNow: Boolean)
+data class ImageHashRow(
+    val id: Long,
+    val sourceUri: String,
+    val size: Long,
+    val dHash: Long?,
+    val pHash: Long?,
+    val seenNow: Boolean
+)
 
 @Dao
 interface EmbeddingDao {
@@ -212,10 +245,14 @@ interface EmbeddingDao {
 
     @Query(
         "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.mediaKind, f.size, e.vector, (f.lastSeenScanId = :scanId) AS seenNow " +
-            "FROM file_index f LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +
-            "WHERE f.mediaKind IN (:kinds)",
+                "FROM file_index f LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +
+                "WHERE f.mediaKind IN (:kinds)",
     )
-    suspend fun candidates(scanId: Long, modelKey: String, kinds: List<String>): List<EmbeddingCandidateRow>
+    suspend fun candidates(
+        scanId: Long,
+        modelKey: String,
+        kinds: List<String>
+    ): List<EmbeddingCandidateRow>
 }
 
 class EmbeddingCandidateRow(
@@ -288,7 +325,12 @@ interface DuplicateGroupDao {
         LIMIT :limit OFFSET :offset
         """,
     )
-    suspend fun groupHeaders(kind: String?, tier: String?, limit: Int, offset: Int): List<GroupHeaderRow>
+    suspend fun groupHeaders(
+        kind: String?,
+        tier: String?,
+        limit: Int,
+        offset: Int
+    ): List<GroupHeaderRow>
 
     @Query(
         """
@@ -320,7 +362,10 @@ interface DuplicateGroupDao {
     suspend fun deleteByFingerprint(fingerprint: String)
 
     @Transaction
-    suspend fun insertGroupWithMembers(group: DuplicateGroupEntity, members: List<GroupMemberEntity>): Long {
+    suspend fun insertGroupWithMembers(
+        group: DuplicateGroupEntity,
+        members: List<GroupMemberEntity>
+    ): Long {
         val groupId = insertGroup(group)
         insertMembers(members.map { it.copy(groupId = groupId) })
         return groupId

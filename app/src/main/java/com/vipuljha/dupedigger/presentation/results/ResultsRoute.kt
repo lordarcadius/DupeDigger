@@ -35,18 +35,30 @@ fun ResultsRoute(
     val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val trashPrompt = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        viewModel.onIntent(ResultsIntent.TrashAnswered(result.resultCode == Activity.RESULT_OK))
-    }
+    val trashPrompt =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            viewModel.onIntent(ResultsIntent.TrashAnswered(result.resultCode == Activity.RESULT_OK))
+        }
 
     ObserveAsEvents(viewModel.effect) { effect ->
         when (effect) {
             ResultsEffect.OpenScan -> onStartScan()
-            is ResultsEffect.LaunchTrash -> trashPrompt.launch(IntentSenderRequest.Builder(effect.request as IntentSender).build())
+            is ResultsEffect.LaunchTrash -> trashPrompt.launch(
+                IntentSenderRequest.Builder(effect.request as IntentSender).build()
+            )
+
             is ResultsEffect.ShowMessage -> scope.launch {
                 val undoLabel = effect.undo?.let { resources.getString(R.string.action_undo) }
-                val answer = snackbarHostState.showSnackbar(effect.message.asString(context), actionLabel = undoLabel, duration = SnackbarDuration.Long)
-                if (answer == SnackbarResult.ActionPerformed) effect.undo?.let { viewModel.onIntent(ResultsIntent.UndoClicked(it)) }
+                val answer = snackbarHostState.showSnackbar(
+                    effect.message.asString(context),
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Long
+                )
+                if (answer == SnackbarResult.ActionPerformed) effect.undo?.let {
+                    viewModel.onIntent(
+                        ResultsIntent.UndoClicked(it)
+                    )
+                }
             }
         }
     }

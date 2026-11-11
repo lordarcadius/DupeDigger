@@ -46,8 +46,14 @@ class ListDetailSceneStrategy<T : Any>(
 ) : SceneStrategy<T> {
     override fun SceneStrategyScope<T>.calculateScene(entries: List<NavEntry<T>>): Scene<T>? {
         if (!twoPane) return null
-        val (list, detail) = listDetailIndices(entries.map { it.metadata[PANE_ROLE] as? PaneRole }) ?: return null
-        return ListDetailScene(entries[list], detail?.let(entries::get), entries.dropLast(1), emptyDetail)
+        val (list, detail) = listDetailIndices(entries.map { it.metadata[PANE_ROLE] as? PaneRole })
+            ?: return null
+        return ListDetailScene(
+            entries[list],
+            detail?.let(entries::get),
+            entries.dropLast(1),
+            emptyDetail
+        )
     }
 }
 
@@ -68,9 +74,14 @@ private class ListDetailScene<T : Any>(
             val listWidth = (this.maxWidth * ListFraction).coerceIn(ListMinWidth, ListMaxWidth)
             Row(Modifier.fillMaxSize()) {
                 SubPane(parent, listWidth, Modifier.width(listWidth)) { list.Content() }
-                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = Dimens.hairline)
+                VerticalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    thickness = Dimens.hairline
+                )
                 val detailWidth = this@BoxWithConstraints.maxWidth - listWidth - Dimens.hairline
-                SubPane(parent, detailWidth, Modifier.width(detailWidth)) { detail?.Content() ?: emptyDetail() }
+                SubPane(parent, detailWidth, Modifier.width(detailWidth)) {
+                    detail?.Content() ?: emptyDetail()
+                }
             }
         }
     }
@@ -78,11 +89,17 @@ private class ListDetailScene<T : Any>(
     override fun equals(other: Any?) =
         other is ListDetailScene<*> && list == other.list && detail == other.detail && previousEntries == other.previousEntries
 
-    override fun hashCode() = 31 * (31 * list.hashCode() + detail.hashCode()) + previousEntries.hashCode()
+    override fun hashCode() =
+        31 * (31 * list.hashCode() + detail.hashCode()) + previousEntries.hashCode()
 }
 
 @Composable
-private fun SubPane(parent: PaneMetrics, width: Dp, modifier: Modifier, content: @Composable () -> Unit) {
+private fun SubPane(
+    parent: PaneMetrics,
+    width: Dp,
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
     val metrics = parent.copy(
         width = width,
         gutter = if (width < WindowBreakpoints.Medium) Dimens.gutterCompact else Dimens.gutterMedium,

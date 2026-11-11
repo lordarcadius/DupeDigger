@@ -24,4 +24,5 @@ val InterFamily = FontFamily(
 
 val AppTypography = Typography(fontFamily = InterFamily)
 
-val SectionLabelStyle = AppTypography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)
+val SectionLabelStyle =
+    AppTypography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)

@@ -27,7 +27,8 @@ internal fun differenceHash(gray9x8: FloatArray): Long {
 }
 
 internal fun dctHash(gray32: FloatArray): Long {
-    val rows = Array(LOW) { u -> DoubleArray(DCT_SIZE) { y -> (0 until DCT_SIZE).sumOf { x -> gray32[y * DCT_SIZE + x] * COS[u][x] } } }
+    val rows =
+        Array(LOW) { u -> DoubleArray(DCT_SIZE) { y -> (0 until DCT_SIZE).sumOf { x -> gray32[y * DCT_SIZE + x] * COS[u][x] } } }
     val low = DoubleArray(LOW * LOW) { i ->
         val (v, u) = i / LOW to i % LOW
         (0 until DCT_SIZE).sumOf { y -> rows[u][y] * COS[v][y] }
@@ -39,7 +40,13 @@ internal fun dctHash(gray32: FloatArray): Long {
 }
 
 /** Each target pixel is the mean of the source area it covers, weighting partly covered source pixels. */
-internal fun areaResize(src: FloatArray, width: Int, height: Int, targetWidth: Int, targetHeight: Int): FloatArray {
+internal fun areaResize(
+    src: FloatArray,
+    width: Int,
+    height: Int,
+    targetWidth: Int,
+    targetHeight: Int
+): FloatArray {
     val out = FloatArray(targetWidth * targetHeight)
     val sx = width.toDouble() / targetWidth
     val sy = height.toDouble() / targetHeight
@@ -67,4 +74,5 @@ internal fun areaResize(src: FloatArray, width: Int, height: Int, targetWidth: I
 
 private const val DCT_SIZE = 32
 private const val LOW = 8
-private val COS = Array(LOW) { u -> DoubleArray(DCT_SIZE) { x -> cos((2 * x + 1) * u * PI / (2 * DCT_SIZE)) } }
+private val COS =
+    Array(LOW) { u -> DoubleArray(DCT_SIZE) { x -> cos((2 * x + 1) * u * PI / (2 * DCT_SIZE)) } }

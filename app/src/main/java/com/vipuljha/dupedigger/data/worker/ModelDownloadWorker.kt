@@ -9,6 +9,7 @@ import androidx.work.workDataOf
 import com.vipuljha.dupedigger.core.common.runSuspendCatching
 import com.vipuljha.dupedigger.data.ai.FetchResult
 import com.vipuljha.dupedigger.data.ai.ModelStorage
+import com.vipuljha.dupedigger.data.worker.ModelDownloadWorker.Companion.MAX_ATTEMPTS
 import com.vipuljha.dupedigger.domain.model.ModelCatalog
 import com.vipuljha.dupedigger.domain.model.ModelDownloadFailure
 import dagger.assisted.Assisted
@@ -31,17 +32,39 @@ class ModelDownloadWorker @AssistedInject constructor(
     private var lastReportedAt = 0L
 
     override suspend fun doWork(): Result {
-        val variant = inputData.getString(KEY_VARIANT)?.let(ModelCatalog::byId) ?: return Result.failure()
+        val variant =
+            inputData.getString(KEY_VARIANT)?.let(ModelCatalog::byId) ?: return Result.failure()
         val start = storage.fetcher.partFile(variant).length()
-        Timber.i("Model download %s starting at byte %d (attempt %d)", variant.id, start, runAttemptCount + 1)
-        runSuspendCatching { setForeground(notifications.foregroundInfo(id, start, variant.sizeBytes)) }
+        Timber.i(
+            "Model download %s starting at byte %d (attempt %d)",
+            variant.id,
+            start,
+            runAttemptCount + 1
+        )
+        runSuspendCatching {
+            setForeground(
+                notifications.foregroundInfo(
+                    id,
+                    start,
+                    variant.sizeBytes
+                )
+            )
+        }
             .onFailure { Timber.w(it, "Downloading the model without a foreground notification") }
         val result = storage.fetcher.fetch(variant) { downloaded, total ->
             val now = SystemClock.elapsedRealtime()
             if (now - lastReportedAt >= REPORT_INTERVAL_MS || downloaded == total) {
                 lastReportedAt = now
                 setProgress(workDataOf(KEY_DOWNLOADED to downloaded, KEY_TOTAL to total))
-                runSuspendCatching { setForeground(notifications.foregroundInfo(id, downloaded, total)) }
+                runSuspendCatching {
+                    setForeground(
+                        notifications.foregroundInfo(
+                            id,
+                            downloaded,
+                            total
+                        )
+                    )
+                }
             }
         }
         return when (result) {
@@ -63,6 +86,7 @@ class ModelDownloadWorker @AssistedInject constructor(
         private const val REPORT_INTERVAL_MS = 500L
 
         fun failureOf(name: String?): ModelDownloadFailure =
-            ModelDownloadFailure.entries.firstOrNull { it.name == name } ?: ModelDownloadFailure.NETWORK
+            ModelDownloadFailure.entries.firstOrNull { it.name == name }
+                ?: ModelDownloadFailure.NETWORK
     }
 }

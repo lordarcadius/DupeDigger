@@ -70,15 +70,18 @@ class ScanViewModel @Inject constructor(
 
     private var available: List<ScanScope> = emptyList()
     private var presets: List<ScanPreset> = emptyList()
+
     /** Null until the user changes the folder selection, so every picked folder counts as selected. */
     private var selectedFolders: Set<String>? = null
     private var lastStarted: Pair<ScanScope, Set<MediaKind>>? = null
     private var latestRunId = 0L
+
     /** Runs newer than this id end on the Done phase; null while no scan is being watched. */
     private var watchedAfterRunId: Long? = null
     private var stageStart: StageStart? = null
 
-    private val picked: List<ScanFolder> get() = available.filterIsInstance<ScanScope.Folders>().flatMap { it.folders }
+    private val picked: List<ScanFolder>
+        get() = available.filterIsInstance<ScanScope.Folders>().flatMap { it.folders }
 
     val progress: StateFlow<ScanProgressUi?> = scheduler.observeProgress()
         .map { it?.let { p -> p.toUi(rateFor(p)) } }
@@ -93,26 +96,46 @@ class ScanViewModel @Inject constructor(
         settings.settings
             .map { (it.aiModelId != null) to (it.semanticEnabled && it.aiModelId != null) }
             .distinctUntilChanged()
-            .onEach { (available, enabled) -> setState { copy(aiAvailable = available, aiEnabled = enabled) } }
+            .onEach { (available, enabled) ->
+                setState {
+                    copy(
+                        aiAvailable = available,
+                        aiEnabled = enabled
+                    )
+                }
+            }
             .launchIn(viewModelScope)
-        semanticStageSkip.requested.onEach { setState { copy(aiSkipped = it) } }.launchIn(viewModelScope)
+        semanticStageSkip.requested.onEach { setState { copy(aiSkipped = it) } }
+            .launchIn(viewModelScope)
         viewModelScope.launch {
             loadScopes()
             observePresets().onEach {
                 presets = it
                 showPresets()
             }.launchIn(this)
-            combine(scheduler.observeProgress().map { it != null }.distinctUntilChanged(), scanRuns.observeLatest()) { running, latest ->
+            combine(
+                scheduler.observeProgress().map { it != null }.distinctUntilChanged(),
+                scanRuns.observeLatest()
+            ) { running, latest ->
                 latestRunId = latest?.id ?: 0L
                 when {
                     running -> {
                         if (watchedAfterRunId == null) watchedAfterRunId = latestRunId - 1
                         setState { copy(phase = ScanPhase.Running, starting = false) }
                     }
-                    latest != null && latest.status != ScanStatus.RUNNING && latest.id > (watchedAfterRunId ?: Long.MAX_VALUE) -> {
+
+                    latest != null && latest.status != ScanStatus.RUNNING && latest.id > (watchedAfterRunId
+                        ?: Long.MAX_VALUE) -> {
                         watchedAfterRunId = null
-                        setState { copy(phase = ScanPhase.Done(latest.toResult()), starting = false, cancelling = false) }
+                        setState {
+                            copy(
+                                phase = ScanPhase.Done(latest.toResult()),
+                                starting = false,
+                                cancelling = false
+                            )
+                        }
                     }
+
                     currentState.phase == ScanPhase.Loading -> setState { copy(phase = ScanPhase.Setup) }
                 }
             }.launchIn(this)
@@ -126,25 +149,33 @@ class ScanViewModel @Inject constructor(
             ScanIntent.NextClicked -> next()
             ScanIntent.BackClicked -> back()
             is ScanIntent.KindToggled -> setState {
-                copy(kinds = kinds.map { if (it.kind == intent.kind) it.copy(selected = !it.selected) else it }.toImmutableList())
+                copy(kinds = kinds.map { if (it.kind == intent.kind) it.copy(selected = !it.selected) else it }
+                    .toImmutableList())
             }
+
             is ScanIntent.ScopeSelected -> setState { copy(selectedScope = intent.kind) }
             is ScanIntent.FolderToggled -> {
                 val current = selectedFolders ?: picked.map { it.uri }.toSet()
-                selectedFolders = if (intent.uri in current) current - intent.uri else current + intent.uri
+                selectedFolders =
+                    if (intent.uri in current) current - intent.uri else current + intent.uri
                 showFolders()
             }
+
             ScanIntent.AddFolderClicked -> sendEffect(ScanEffect.PickFolder)
             is ScanIntent.FolderPicked -> intent.treeUri?.let(::addFolder)
             ScanIntent.NewPresetClicked -> editDraft(PresetDraftUi(0, ""), AllMediaKinds, null)
-            is ScanIntent.EditPresetClicked -> presets.firstOrNull { it.id == intent.id && it.deletable }?.let {
-                editDraft(PresetDraftUi(it.id, it.name), it.kinds, it.scope)
-            }
+            is ScanIntent.EditPresetClicked -> presets.firstOrNull { it.id == intent.id && it.deletable }
+                ?.let {
+                    editDraft(PresetDraftUi(it.id, it.name), it.kinds, it.scope)
+                }
+
             is ScanIntent.DraftNameChanged -> setState { copy(draft = draft?.copy(name = intent.name)) }
             ScanIntent.SavePresetClicked -> save()
             is ScanIntent.DeletePresetClicked -> setState {
-                copy(confirmDelete = this@ScanViewModel.presets.firstOrNull { it.id == intent.id && it.deletable }?.toUi(available))
+                copy(confirmDelete = this@ScanViewModel.presets.firstOrNull { it.id == intent.id && it.deletable }
+                    ?.toUi(available))
             }
+
             ScanIntent.DeleteConfirmed -> delete()
             ScanIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             is ScanIntent.NearToggled -> viewModelScope.launch { setNearEnabled(intent.enabled) }
@@ -155,10 +186,12 @@ class ScanViewModel @Inject constructor(
                 setState { copy(cancelling = true) }
                 cancelScan()
             }
+
             ScanIntent.ScanAgainClicked -> {
                 setState { copy(phase = ScanPhase.Setup, step = SetupStep.Presets, draft = null) }
                 viewModelScope.launch { loadScopes() }
             }
+
             ScanIntent.ViewResultsClicked -> sendEffect(ScanEffect.ViewResults)
         }
     }
@@ -175,14 +208,26 @@ class ScanViewModel @Inject constructor(
     private fun back() = setState {
         when (step) {
             SetupStep.Presets -> this
-            SetupStep.Types -> copy(step = SetupStep.Presets, draft = null, kinds = kindOptions(AllMediaKinds))
+            SetupStep.Types -> copy(
+                step = SetupStep.Presets,
+                draft = null,
+                kinds = kindOptions(AllMediaKinds)
+            )
+
             SetupStep.Where -> copy(step = SetupStep.Types)
         }
     }
 
     private fun editDraft(draft: PresetDraftUi, kinds: Set<MediaKind>, scope: ScanScope?) {
         selectedFolders = (scope as? ScanScope.Folders)?.folders?.map { it.uri }?.toSet()
-        setState { copy(step = SetupStep.Types, draft = draft, kinds = kindOptions(kinds), selectedScope = scope?.kind ?: selectedScope) }
+        setState {
+            copy(
+                step = SetupStep.Types,
+                draft = draft,
+                kinds = kindOptions(kinds),
+                selectedScope = scope?.kind ?: selectedScope
+            )
+        }
         showFolders()
     }
 
@@ -190,17 +235,30 @@ class ScanViewModel @Inject constructor(
         available = getAvailableScopes()
         val options = whereOptions(available, picked)
         setState {
-            copy(scopes = options, selectedScope = selectedScope?.takeIf { kind -> options.any { it.kind == kind } } ?: options.first().kind)
+            copy(
+                scopes = options,
+                selectedScope = selectedScope?.takeIf { kind -> options.any { it.kind == kind } }
+                    ?: options.first().kind)
         }
         showFolders()
         showPresets()
     }
 
-    private fun showPresets() = setState { copy(presets = this@ScanViewModel.presets.map { it.toUi(available) }.toImmutableList()) }
+    private fun showPresets() = setState {
+        copy(presets = this@ScanViewModel.presets.map { it.toUi(available) }.toImmutableList())
+    }
 
     private fun showFolders() {
         val chosen = selectedFolders
-        setState { copy(folders = picked.map { FolderOptionUi(it.uri, it.name, chosen == null || it.uri in chosen) }.toImmutableList()) }
+        setState {
+            copy(folders = picked.map {
+                FolderOptionUi(
+                    it.uri,
+                    it.name,
+                    chosen == null || it.uri in chosen
+                )
+            }.toImmutableList())
+        }
     }
 
     /** A newly picked folder comes back selected, with picked folders chosen as where to look. */
@@ -214,7 +272,12 @@ class ScanViewModel @Inject constructor(
             }
             available = getAvailableScopes()
             selectedFolders = selectedFolders?.plus(picked.map { it.uri }.toSet() - before)
-            setState { copy(scopes = whereOptions(available, picked), selectedScope = ScopeKind.FOLDERS) }
+            setState {
+                copy(
+                    scopes = whereOptions(available, picked),
+                    selectedScope = ScopeKind.FOLDERS
+                )
+            }
             showFolders()
             showPresets()
         }
@@ -227,8 +290,10 @@ class ScanViewModel @Inject constructor(
         val scope = when (state.selectedScope) {
             ScopeKind.WHOLE_DEVICE -> ScanScope.WholeDevice
             ScopeKind.MEDIA_ONLY -> ScanScope.MediaOnly
-            ScopeKind.FOLDERS -> ScanScope.Folders(picked.filter { folder -> state.folders.any { it.uri == folder.uri && it.selected } }.toImmutableList())
+            ScopeKind.FOLDERS -> ScanScope.Folders(picked.filter { folder -> state.folders.any { it.uri == folder.uri && it.selected } }
+                .toImmutableList())
                 .takeIf { it.folders.isNotEmpty() }
+
             ScopeKind.PATHS, null -> null
         }
         return if (scope == null || kinds.isEmpty()) null else scope to kinds
@@ -238,13 +303,16 @@ class ScanViewModel @Inject constructor(
     private fun start() {
         val state = currentState
         val request = when {
-            state.phase is ScanPhase.Done -> lastStarted ?: return handleIntent(ScanIntent.ScanAgainClicked)
+            state.phase is ScanPhase.Done -> lastStarted
+                ?: return handleIntent(ScanIntent.ScanAgainClicked)
             // With no preset the first step can start straight away, on every file type and the default scope.
             state.step == SetupStep.Presets -> if (state.selectedPresetId == null) {
                 chosen()
             } else {
-                presets.firstOrNull { it.id == state.selectedPresetId }?.let { it.scope to it.kinds }
+                presets.firstOrNull { it.id == state.selectedPresetId }
+                    ?.let { it.scope to it.kinds }
             }
+
             state.step == SetupStep.Where && state.draft == null -> chosen()
             else -> null
         }
@@ -268,10 +336,18 @@ class ScanViewModel @Inject constructor(
         if (currentState.saving) return
         setState { copy(saving = true) }
         viewModelScope.launch {
-            when (val outcome = savePreset(ScanPreset(draft.id, draft.name, scope, kinds.toImmutableSet()))) {
+            when (val outcome =
+                savePreset(ScanPreset(draft.id, draft.name, scope, kinds.toImmutableSet()))) {
                 is Outcome.Success -> setState {
-                    copy(saving = false, draft = null, step = SetupStep.Presets, selectedPresetId = outcome.data, kinds = kindOptions(AllMediaKinds))
+                    copy(
+                        saving = false,
+                        draft = null,
+                        step = SetupStep.Presets,
+                        selectedPresetId = outcome.data,
+                        kinds = kindOptions(AllMediaKinds)
+                    )
                 }
+
                 is Outcome.Failure -> {
                     setState { copy(saving = false) }
                     sendEffect(ScanEffect.ShowMessage(outcome.error.toUiText()))
@@ -286,7 +362,12 @@ class ScanViewModel @Inject constructor(
         if (target == null) return
         viewModelScope.launch {
             when (val outcome = deletePreset(target)) {
-                is Outcome.Success -> setState { if (selectedPresetId == target.id) copy(selectedPresetId = null) else this }
+                is Outcome.Success -> setState {
+                    if (selectedPresetId == target.id) copy(
+                        selectedPresetId = null
+                    ) else this
+                }
+
                 is Outcome.Failure -> sendEffect(ScanEffect.ShowMessage(outcome.error.toUiText()))
             }
         }
@@ -294,7 +375,11 @@ class ScanViewModel @Inject constructor(
 
     private fun rateFor(progress: ScanProgress): Int? {
         val now = System.nanoTime()
-        val start = stageStart?.takeIf { it.stage == progress.stage } ?: StageStart(progress.stage, now, progress.done).also { stageStart = it }
+        val start = stageStart?.takeIf { it.stage == progress.stage } ?: StageStart(
+            progress.stage,
+            now,
+            progress.done
+        ).also { stageStart = it }
         return filesPerSecond(progress.done - start.done, now - start.nanos)
     }
 

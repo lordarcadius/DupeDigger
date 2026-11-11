@@ -35,7 +35,12 @@ data class FileIndexEntity(
 
 @Entity(
     tableName = "file_hash",
-    foreignKeys = [ForeignKey(FileIndexEntity::class, ["id"], ["fileId"], onDelete = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(
+        FileIndexEntity::class,
+        ["id"],
+        ["fileId"],
+        onDelete = ForeignKey.CASCADE
+    )],
     indices = [Index(value = ["partialHash"]), Index(value = ["fullHash"])],
 )
 data class FileHashEntity(
@@ -48,7 +53,12 @@ data class FileHashEntity(
 @Entity(
     tableName = "perceptual_hash",
     primaryKeys = ["fileId", "algo", "frameIndex"],
-    foreignKeys = [ForeignKey(FileIndexEntity::class, ["id"], ["fileId"], onDelete = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(
+        FileIndexEntity::class,
+        ["id"],
+        ["fileId"],
+        onDelete = ForeignKey.CASCADE
+    )],
     indices = [Index(value = ["algo"])],
 )
 data class PerceptualHashEntity(
@@ -61,7 +71,12 @@ data class PerceptualHashEntity(
 @Entity(
     tableName = "embedding",
     primaryKeys = ["fileId", "modelId"],
-    foreignKeys = [ForeignKey(FileIndexEntity::class, ["id"], ["fileId"], onDelete = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(
+        FileIndexEntity::class,
+        ["id"],
+        ["fileId"],
+        onDelete = ForeignKey.CASCADE
+    )],
     indices = [Index(value = ["modelId"])],
 )
 data class EmbeddingEntity(
@@ -72,9 +87,12 @@ data class EmbeddingEntity(
     @ColumnInfo(typeAffinity = ColumnInfo.BLOB) val vector: ByteArray,
 ) {
     override fun equals(other: Any?): Boolean = other is EmbeddingEntity &&
-        fileId == other.fileId && modelId == other.modelId && dim == other.dim && vector.contentEquals(other.vector)
+            fileId == other.fileId && modelId == other.modelId && dim == other.dim && vector.contentEquals(
+        other.vector
+    )
 
-    override fun hashCode(): Int = ((fileId.hashCode() * 31 + modelId.hashCode()) * 31 + dim) * 31 + vector.contentHashCode()
+    override fun hashCode(): Int =
+        ((fileId.hashCode() * 31 + modelId.hashCode()) * 31 + dim) * 31 + vector.contentHashCode()
 }
 
 @Entity(
@@ -93,7 +111,12 @@ data class DuplicateGroupEntity(
     tableName = "group_member",
     primaryKeys = ["groupId", "fileId"],
     foreignKeys = [
-        ForeignKey(DuplicateGroupEntity::class, ["groupId"], ["groupId"], onDelete = ForeignKey.CASCADE),
+        ForeignKey(
+            DuplicateGroupEntity::class,
+            ["groupId"],
+            ["groupId"],
+            onDelete = ForeignKey.CASCADE
+        ),
         ForeignKey(FileIndexEntity::class, ["id"], ["fileId"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index(value = ["fileId"])],

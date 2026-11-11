@@ -33,15 +33,26 @@ object DatabaseModule {
             .addMigrations(*ALL_MIGRATIONS)
             .build()
 
-    @Provides fun provideFileIndexDao(db: DupeDiggerDatabase): FileIndexDao = db.fileIndexDao()
-    @Provides fun provideFileHashDao(db: DupeDiggerDatabase): FileHashDao = db.fileHashDao()
-    @Provides fun providePerceptualHashDao(db: DupeDiggerDatabase): PerceptualHashDao = db.perceptualHashDao()
-    @Provides fun provideEmbeddingDao(db: DupeDiggerDatabase): EmbeddingDao = db.embeddingDao()
-    @Provides fun provideDuplicateGroupDao(db: DupeDiggerDatabase): DuplicateGroupDao = db.duplicateGroupDao()
-    @Provides fun provideScanRunDao(db: DupeDiggerDatabase): ScanRunDao = db.scanRunDao()
-    @Provides fun provideIgnoredGroupDao(db: DupeDiggerDatabase): IgnoredGroupDao = db.ignoredGroupDao()
-    @Provides fun provideKeepChoiceDao(db: DupeDiggerDatabase): KeepChoiceDao = db.keepChoiceDao()
-    @Provides fun provideQuarantineDao(db: DupeDiggerDatabase): QuarantineDao = db.quarantineDao()
-    @Provides fun provideExcludedPathDao(db: DupeDiggerDatabase): ExcludedPathDao = db.excludedPathDao()
-    @Provides fun provideScanPresetDao(db: DupeDiggerDatabase): ScanPresetDao = db.scanPresetDao()
+    @Provides
+    fun provideFileIndexDao(db: DupeDiggerDatabase): FileIndexDao = db.fileIndexDao()
+    @Provides
+    fun provideFileHashDao(db: DupeDiggerDatabase): FileHashDao = db.fileHashDao()
+    @Provides
+    fun providePerceptualHashDao(db: DupeDiggerDatabase): PerceptualHashDao = db.perceptualHashDao()
+    @Provides
+    fun provideEmbeddingDao(db: DupeDiggerDatabase): EmbeddingDao = db.embeddingDao()
+    @Provides
+    fun provideDuplicateGroupDao(db: DupeDiggerDatabase): DuplicateGroupDao = db.duplicateGroupDao()
+    @Provides
+    fun provideScanRunDao(db: DupeDiggerDatabase): ScanRunDao = db.scanRunDao()
+    @Provides
+    fun provideIgnoredGroupDao(db: DupeDiggerDatabase): IgnoredGroupDao = db.ignoredGroupDao()
+    @Provides
+    fun provideKeepChoiceDao(db: DupeDiggerDatabase): KeepChoiceDao = db.keepChoiceDao()
+    @Provides
+    fun provideQuarantineDao(db: DupeDiggerDatabase): QuarantineDao = db.quarantineDao()
+    @Provides
+    fun provideExcludedPathDao(db: DupeDiggerDatabase): ExcludedPathDao = db.excludedPathDao()
+    @Provides
+    fun provideScanPresetDao(db: DupeDiggerDatabase): ScanPresetDao = db.scanPresetDao()
 }

@@ -22,21 +22,39 @@ class ModelDownloadNotifications @Inject constructor(
 ) {
     fun foregroundInfo(workId: UUID, downloaded: Long, total: Long): ForegroundInfo {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, context.getString(R.string.model_channel_name), NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.model_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ),
         )
         val percent = if (total > 0) (downloaded * 100 / total).toInt() else 0
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_scan)
             .setContentTitle(context.getString(R.string.model_notification_title))
-            .setContentText(context.getString(R.string.model_notification_progress, formatBytes(downloaded).asString(context), formatBytes(total).asString(context)))
+            .setContentText(
+                context.getString(
+                    R.string.model_notification_progress,
+                    formatBytes(downloaded).asString(context),
+                    formatBytes(total).asString(context)
+                )
+            )
             .setProgress(100, percent, total <= 0)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .addAction(0, context.getString(R.string.action_cancel), WorkManager.getInstance(context).createCancelPendingIntent(workId))
+            .addAction(
+                0,
+                context.getString(R.string.action_cancel),
+                WorkManager.getInstance(context).createCancelPendingIntent(workId)
+            )
             .build()
-        return ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        return ForegroundInfo(
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
     }
 
     private companion object {

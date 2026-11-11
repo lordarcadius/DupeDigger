@@ -56,7 +56,10 @@ class AndroidFileRemover @Inject constructor(
         val needsConsent = mutableListOf<Pair<Long, Uri>>()
         for ((index, file) in files.withIndex()) {
             ensureActive()
-            val mediaUri = if (file.mediaKind in MEDIA_KINDS) resolver.mediaCollectionUri(file.sourceUri, file.path) else null
+            val mediaUri = if (file.mediaKind in MEDIA_KINDS) resolver.mediaCollectionUri(
+                file.sourceUri,
+                file.path
+            ) else null
             if (mediaUri != null) {
                 if (trashDirectly(mediaUri)) {
                     removed += file.id
@@ -83,7 +86,11 @@ class AndroidFileRemover @Inject constructor(
                 TrashConsent(
                     fileIds = pending.map { it.first }.toImmutableList(),
                     mediaUris = pending.map { it.second.toString() }.toImmutableList(),
-                    platformRequest = MediaStore.createTrashRequest(resolver, pending.map { it.second }, true).intentSender,
+                    platformRequest = MediaStore.createTrashRequest(
+                        resolver,
+                        pending.map { it.second },
+                        true
+                    ).intentSender,
                 )
             },
             failedIds = failed.toImmutableList(),
@@ -91,10 +98,15 @@ class AndroidFileRemover @Inject constructor(
     }
 
     override suspend fun untrash(mediaUris: List<String>): Int = withContext(ioDispatcher) {
-        val includeTrashed = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
+        val includeTrashed =
+            Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
         mediaUris.count { uri ->
             try {
-                resolver.update(Uri.parse(uri), ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 0) }, includeTrashed) == 0
+                resolver.update(
+                    Uri.parse(uri),
+                    ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 0) },
+                    includeTrashed
+                ) == 0
             } catch (e: SecurityException) {
                 Timber.w(e, "Couldn't take a file out of the trash")
                 true
@@ -104,7 +116,12 @@ class AndroidFileRemover @Inject constructor(
 
     /** Works for media the app owns, and where the platform lets it trash others' media without asking. */
     private fun trashDirectly(uri: Uri): Boolean = try {
-        resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }, null, null) > 0
+        resolver.update(
+            uri,
+            ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) },
+            null,
+            null
+        ) > 0
     } catch (e: SecurityException) {
         false
     }
@@ -127,12 +144,22 @@ class AndroidFileRemover @Inject constructor(
         return null
     }
 
-    private fun quarantineDir(): File = File(context.getExternalFilesDir(null) ?: context.filesDir, QUARANTINE_DIR).apply { mkdirs() }
+    private fun quarantineDir(): File = File(
+        context.getExternalFilesDir(null) ?: context.filesDir,
+        QUARANTINE_DIR
+    ).apply { mkdirs() }
 
     private fun copyChecked(file: StoredFile, copy: File): Boolean {
         val ok = try {
             copy.parentFile!!.usableSpace > file.size + FREE_SPACE_MARGIN &&
-                resolver.openSource(file.sourceUri).use { input -> FileOutputStream(copy).use { input.copyTo(it, BUFFER) } } == file.size
+                    resolver.openSource(file.sourceUri).use { input ->
+                        FileOutputStream(copy).use {
+                            input.copyTo(
+                                it,
+                                BUFFER
+                            )
+                        }
+                    } == file.size
         } catch (e: IOException) {
             Timber.w(e, "Couldn't copy a file into quarantine")
             false

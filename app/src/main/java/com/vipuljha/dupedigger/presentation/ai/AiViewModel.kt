@@ -52,16 +52,28 @@ class AiViewModel @Inject constructor(
 ) : MviViewModel<AiState, AiIntent, AiEffect>(AiState()) {
 
     init {
-        val states = combine(ModelCatalog.variants.map { variant -> downloads.observe(variant) }) { it.toList() }
+        val states =
+            combine(ModelCatalog.variants.map { variant -> downloads.observe(variant) }) { it.toList() }
         val npu = settings.settings
             .map { it.aiModelId?.let(ModelCatalog::byId)?.let(resolveModel::npuBuild) }
             .distinctUntilChanged { old, new -> old?.id == new?.id }
-            .flatMapLatest { build -> build?.let { b -> downloads.observe(b).map { b to it } } ?: flowOf(null) }
+            .flatMapLatest { build ->
+                build?.let { b -> downloads.observe(b).map { b to it } } ?: flowOf(null)
+            }
         combine(settings.settings, states, npu) { appSettings, modelStates, npuState ->
             aiUi(appSettings, ModelCatalog.variants.zip(modelStates), npuState)
         }
             .onEach { ui -> setState { copy(content = ContentState.Success(ui)) } }
-            .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
+            .catch {
+                setState {
+                    copy(
+                        content = ContentState.Error(
+                            DomainError.Unknown.toUiText(),
+                            retryable = false
+                        )
+                    )
+                }
+            }
             .launchIn(viewModelScope)
     }
 
@@ -69,12 +81,35 @@ class AiViewModel @Inject constructor(
         val variant = ::variantOf
         when (intent) {
             is AiIntent.EnabledToggled -> viewModelScope.launch { setEnabled(intent.enabled) }
-            is AiIntent.DownloadClicked -> variant(intent.id)?.let { viewModelScope.launch { download(it) } }
+            is AiIntent.DownloadClicked -> variant(intent.id)?.let {
+                viewModelScope.launch {
+                    download(
+                        it
+                    )
+                }
+            }
+
             is AiIntent.CancelClicked -> variant(intent.id)?.let(cancelDownload::invoke)
             is AiIntent.UseClicked -> variant(intent.id)?.let { v ->
-                viewModelScope.launch { if (!chooseModel(v)) sendEffect(AiEffect.ShowMessage(UiText.res(R.string.ai_not_downloaded))) }
+                viewModelScope.launch {
+                    if (!chooseModel(v)) sendEffect(
+                        AiEffect.ShowMessage(
+                            UiText.res(
+                                R.string.ai_not_downloaded
+                            )
+                        )
+                    )
+                }
             }
-            is AiIntent.DeleteClicked -> rowOf(intent.id)?.let { row -> setState { copy(confirmDelete = row) } }
+
+            is AiIntent.DeleteClicked -> rowOf(intent.id)?.let { row ->
+                setState {
+                    copy(
+                        confirmDelete = row
+                    )
+                }
+            }
+
             AiIntent.DeleteDismissed -> setState { copy(confirmDelete = null) }
             AiIntent.DeleteConfirmed -> {
                 val row = currentState.confirmDelete ?: return
@@ -86,6 +121,7 @@ class AiViewModel @Inject constructor(
                     }
                 }
             }
+
             is AiIntent.BackendSelected -> viewModelScope.launch { setBackend(intent.backend) }
             is AiIntent.ThresholdChanged -> viewModelScope.launch { setThreshold(intent.threshold) }
             is AiIntent.WifiOnlyToggled -> viewModelScope.launch { setWifiOnly(intent.wifiOnly) }
@@ -96,7 +132,8 @@ class AiViewModel @Inject constructor(
     /** An id names a catalog model, or that model's build for this chip when it carries the chip's name. */
     private fun variantOf(id: String): ModelVariant? {
         val base = ModelCatalog.byId(id.substringBefore(NPU_ID_SEPARATOR)) ?: return null
-        return if (NPU_ID_SEPARATOR in id) resolveModel.npuBuild(base)?.takeIf { it.id == id } else base
+        return if (NPU_ID_SEPARATOR in id) resolveModel.npuBuild(base)
+            ?.takeIf { it.id == id } else base
     }
 
     private fun rowOf(id: String) = (currentState.content as? ContentState.Success)?.data

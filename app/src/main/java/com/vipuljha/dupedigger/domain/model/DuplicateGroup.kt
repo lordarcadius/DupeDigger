@@ -84,7 +84,13 @@ data class ViewTarget(val uri: String, val mimeType: String?)
  * What the saved groups of one kind and tier add up to: how many groups, how many copies could go, and their bytes.
  * Both filter chips are counted from these, so a count never promises groups the other filter hides.
  */
-data class GroupFacet(val kind: MediaKind, val tier: MatchTier, val groups: Int, val files: Int, val bytes: Long)
+data class GroupFacet(
+    val kind: MediaKind,
+    val tier: MatchTier,
+    val groups: Int,
+    val files: Int,
+    val bytes: Long
+)
 
 /** The facets left once the other filter is applied: [kind] or [tier] null means that filter is off. */
 fun List<GroupFacet>.matching(kind: MediaKind? = null, tier: MatchTier? = null): List<GroupFacet> =

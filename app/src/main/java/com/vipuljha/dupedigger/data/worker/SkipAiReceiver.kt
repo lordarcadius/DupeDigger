@@ -12,7 +12,8 @@ import dagger.hilt.components.SingletonComponent
 /** The scan notification's Skip AI action. */
 class SkipAiReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        EntryPointAccessors.fromApplication(context, SkipAiEntryPoint::class.java).semanticStageSkip().request()
+        EntryPointAccessors.fromApplication(context, SkipAiEntryPoint::class.java)
+            .semanticStageSkip().request()
     }
 
     @EntryPoint

@@ -22,8 +22,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import javax.inject.Inject
 import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 /**
  * Home: what the saved groups could free, the last scan, and the way into the Scan screen.
@@ -55,6 +55,7 @@ class HomeViewModel @Inject constructor(
                 setState { copy(content = content.reloading()) }
                 observeSummary()
             }
+
             HomeIntent.OpenScanClicked -> sendEffect(HomeEffect.OpenScan)
         }
     }
@@ -70,7 +71,13 @@ class HomeViewModel @Inject constructor(
             // Space on the volumes is read again on each change, so a delete shows up in the meter at once.
             .map { (kinds, lastRun, scanning) ->
                 ContentState.Success(
-                    homeUiModel(kinds, lastRun, scanning, deviceStorage.usage(), System.currentTimeMillis()),
+                    homeUiModel(
+                        kinds,
+                        lastRun,
+                        scanning,
+                        deviceStorage.usage(),
+                        System.currentTimeMillis()
+                    ),
                 ) as ContentState<HomeUiModel>
             }
             .catch { emit(ContentState.Error(DomainError.Unknown.toUiText())) }

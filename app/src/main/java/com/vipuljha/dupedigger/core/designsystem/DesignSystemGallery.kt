@@ -48,36 +48,61 @@ private fun DesignSystemGallery() {
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceXl),
         ) {
             GallerySection("Colour roles") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm), verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm)
+                ) {
                     listOf(
-                        "primary" to scheme.primary, "onPrimary" to scheme.onPrimary,
-                        "primaryContainer" to scheme.primaryContainer, "secondary" to scheme.secondary,
-                        "secondaryContainer" to scheme.secondaryContainer, "tertiary" to scheme.tertiary,
-                        "tertiaryContainer" to scheme.tertiaryContainer, "error" to scheme.error,
-                        "errorContainer" to scheme.errorContainer, "surface" to scheme.surface,
-                        "surfaceContainerLow" to scheme.surfaceContainerLow, "surfaceContainer" to scheme.surfaceContainer,
-                        "surfaceContainerHigh" to scheme.surfaceContainerHigh, "surfaceContainerHighest" to scheme.surfaceContainerHighest,
-                        "onSurface" to scheme.onSurface, "onSurfaceVariant" to scheme.onSurfaceVariant,
-                        "outline" to scheme.outline, "outlineVariant" to scheme.outlineVariant,
+                        "primary" to scheme.primary,
+                        "onPrimary" to scheme.onPrimary,
+                        "primaryContainer" to scheme.primaryContainer,
+                        "secondary" to scheme.secondary,
+                        "secondaryContainer" to scheme.secondaryContainer,
+                        "tertiary" to scheme.tertiary,
+                        "tertiaryContainer" to scheme.tertiaryContainer,
+                        "error" to scheme.error,
+                        "errorContainer" to scheme.errorContainer,
+                        "surface" to scheme.surface,
+                        "surfaceContainerLow" to scheme.surfaceContainerLow,
+                        "surfaceContainer" to scheme.surfaceContainer,
+                        "surfaceContainerHigh" to scheme.surfaceContainerHigh,
+                        "surfaceContainerHighest" to scheme.surfaceContainerHighest,
+                        "onSurface" to scheme.onSurface,
+                        "onSurfaceVariant" to scheme.onSurfaceVariant,
+                        "outline" to scheme.outline,
+                        "outlineVariant" to scheme.outlineVariant,
                     ).forEach { (name, color) -> Swatch(name, color) }
                 }
             }
             GallerySection("Type scale") {
                 listOf(
-                    "displaySmall" to type.displaySmall, "headlineMedium" to type.headlineMedium,
-                    "titleLarge" to type.titleLarge, "titleLargeEmphasized" to type.titleLargeEmphasized,
-                    "titleMedium" to type.titleMedium, "bodyLarge" to type.bodyLarge,
-                    "bodyMedium" to type.bodyMedium, "bodyMediumEmphasized" to type.bodyMediumEmphasized,
-                    "labelLarge" to type.labelLarge, "labelSmall" to type.labelSmall,
+                    "displaySmall" to type.displaySmall,
+                    "headlineMedium" to type.headlineMedium,
+                    "titleLarge" to type.titleLarge,
+                    "titleLargeEmphasized" to type.titleLargeEmphasized,
+                    "titleMedium" to type.titleMedium,
+                    "bodyLarge" to type.bodyLarge,
+                    "bodyMedium" to type.bodyMedium,
+                    "bodyMediumEmphasized" to type.bodyMediumEmphasized,
+                    "labelLarge" to type.labelLarge,
+                    "labelSmall" to type.labelSmall,
                     "SECTION LABEL" to SectionLabelStyle,
                 ).forEach { (name, style) -> TypeSample(name, style) }
             }
             GallerySection("Shapes") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm), verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spaceSm)
+                ) {
                     listOf(
-                        "4" to shapes.extraSmall, "8" to shapes.small, "12" to shapes.medium, "16" to shapes.large,
-                        "20" to shapes.largeIncreased, "28" to shapes.extraLarge,
-                        "32" to shapes.extraLargeIncreased, "48" to shapes.extraExtraLarge,
+                        "4" to shapes.extraSmall,
+                        "8" to shapes.small,
+                        "12" to shapes.medium,
+                        "16" to shapes.large,
+                        "20" to shapes.largeIncreased,
+                        "28" to shapes.extraLarge,
+                        "32" to shapes.extraLargeIncreased,
+                        "48" to shapes.extraExtraLarge,
                     ).forEach { (name, shape) -> ShapeSample(name, shape) }
                 }
             }
@@ -88,7 +113,10 @@ private fun DesignSystemGallery() {
                 ).forEach { SpaceSample(it) }
             }
             GallerySection("Components") {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceLg), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spaceLg),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     AppLoadingIndicator()
                     AppLoadingIndicator(contained = true)
                 }
@@ -124,9 +152,17 @@ private fun Swatch(name: String, color: Color) {
                 .size(Dimens.touchTarget)
                 .clip(MaterialTheme.shapes.small)
                 .background(color)
-                .border(Dimens.hairline, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small),
+                .border(
+                    Dimens.hairline,
+                    MaterialTheme.colorScheme.outlineVariant,
+                    MaterialTheme.shapes.small
+                ),
         )
-        Text(name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            name,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -144,15 +180,30 @@ private fun ShapeSample(name: String, shape: Shape) {
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
-        Text(name, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(
+            name,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 
 @Composable
 private fun SpaceSample(space: Dp) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm)) {
-        Box(Modifier.size(width = space, height = Dimens.spaceLg).background(MaterialTheme.colorScheme.tertiary))
-        Text(space.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spaceSm)
+    ) {
+        Box(
+            Modifier
+                .size(width = space, height = Dimens.spaceLg)
+                .background(MaterialTheme.colorScheme.tertiary)
+        )
+        Text(
+            space.toString(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

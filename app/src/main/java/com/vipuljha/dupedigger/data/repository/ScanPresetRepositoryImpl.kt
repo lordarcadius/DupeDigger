@@ -26,7 +26,10 @@ class ScanPresetRepositoryImpl @Inject constructor(
 ) : ScanPresetRepository {
 
     override val presets: Flow<ImmutableList<ScanPreset>> =
-        combine(dao.observeAll(), scanFolders.folders) { rows, picked -> rows.mapNotNull { it.toDomain(picked) }.toImmutableList() }
+        combine(
+            dao.observeAll(),
+            scanFolders.folders
+        ) { rows, picked -> rows.mapNotNull { it.toDomain(picked) }.toImmutableList() }
 
     override suspend fun save(preset: ScanPreset): Long {
         val row = preset.toEntity(createdAt = System.currentTimeMillis())

@@ -40,5 +40,6 @@ class MainActivity : ComponentActivity() {
 
     // androidx marks its own override restricted; this overrides the public platform Activity method.
     @SuppressLint("RestrictedApi")
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean = shortcuts.onKeyEvent(event) || super.dispatchKeyEvent(event)
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        shortcuts.onKeyEvent(event) || super.dispatchKeyEvent(event)
 }

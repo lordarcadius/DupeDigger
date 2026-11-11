@@ -32,13 +32,18 @@ class AndroidAudioTagReader @Inject constructor(
                 } else {
                     retriever.setDataSource(context, Uri.parse(sourceUri))
                 }
-                val tag = { key: Int -> retriever.extractMetadata(key)?.trim()?.takeIf { it.isNotEmpty() } }
-                val duration = tag(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.takeIf { it > 0 }
+                val tag = { key: Int ->
+                    retriever.extractMetadata(key)?.trim()?.takeIf { it.isNotEmpty() }
+                }
+                val duration = tag(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                    ?.takeIf { it > 0 }
                     ?: return@use null
                 AudioTags(
                     durationMs = duration,
                     title = tag(MediaMetadataRetriever.METADATA_KEY_TITLE),
-                    artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: tag(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST),
+                    artist = tag(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: tag(
+                        MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST
+                    ),
                     bitrate = tag(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toLongOrNull(),
                 )
             }
