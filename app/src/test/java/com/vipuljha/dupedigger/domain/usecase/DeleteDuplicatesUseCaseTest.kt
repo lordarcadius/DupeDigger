@@ -113,17 +113,18 @@ class DeleteDuplicatesUseCaseTest {
     private class FakeIndex(initial: Set<Long>) : FileIndexRepository {
         val ids = initial.toMutableSet()
 
-        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun indexedImages(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
-        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun indexedVideos(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
-        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun indexedDocuments(scanId: Long) = emptyList<DocumentFile>()
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
-        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun indexedAudio(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun deleteEmbeddings(modelId: String) = Unit
+        override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>) = emptySet<Long>()
         override suspend fun filesByIds(ids: Collection<Long>) =
             ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.IMAGE, 10) }
         override suspend fun remove(ids: Collection<Long>) {
@@ -131,7 +132,7 @@ class DeleteDuplicatesUseCaseTest {
         }
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
+        override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
     }
 

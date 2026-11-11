@@ -16,7 +16,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 /**
- * Finds byte-identical files among those of the chosen kinds seen in a scan, reading as little as possible.
+ * Finds byte-identical files among every indexed file of the chosen kinds, reading as little as possible.
+ * - A file an earlier scan indexed takes part too, so a copy is found wherever on the device it sits. Reading one
+ *   costs nothing extra in the common case: a file only gets opened once something in this scan shares its size.
  * - Files under the minimum size, or with a size no other file has, are never opened.
  * - A partial hash, then a full hash, each only within buckets keyed by size and hash that still hold two or more files.
  * - Cached hashes are reused; new ones are written a batch at a time, and a cancelled stage still flushes what it read,
@@ -34,7 +36,7 @@ class FindExactDuplicatesUseCase @Inject constructor(
         kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): ExactScanResult {
-        val sameSize = fileIndex.filesSeenIn(scanId, kinds).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
+        val sameSize = fileIndex.indexedFiles(scanId, kinds).filter { it.size >= minSizeBytes }.inSharedBuckets { it.size }
 
         val (withPartial, needPartial) = sameSize.partition { it.partialHash != null }
         val partials = withPartial.toMutableList()

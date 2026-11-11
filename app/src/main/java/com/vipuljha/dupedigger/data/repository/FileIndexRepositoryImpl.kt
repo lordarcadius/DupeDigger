@@ -39,6 +39,7 @@ import javax.inject.Singleton
  * - New file: inserted.
  * - Same size and mtime: only marked seen; its hashes and embeddings stay.
  * - Size or mtime changed: updated in place and its derived rows deleted, so later stages redo it.
+ * - Renamed or moved: found again by its file key and updated in place, so it keeps its hashes and embeddings.
  */
 @Singleton
 class FileIndexRepositoryImpl @Inject constructor(
@@ -52,15 +53,18 @@ class FileIndexRepositoryImpl @Inject constructor(
 
     override suspend fun record(files: List<DiscoveredFile>, scanId: Long): IndexStats = db.withTransaction {
         val known = fileIndexDao.findBySourceUris(files.map { it.sourceUri }).associateByTo(HashMap()) { it.sourceUri }
+        val byFileKey = movedCandidates(files, scanId)
+        val taken = HashSet<Long>()
         val seen = ArrayList<Long>()
         val fresh = LinkedHashMap<String, FileIndexEntity>()
         var changed = 0
         for (file in files) {
-            val row = known[file.sourceUri]
+            val row = known[file.sourceUri] ?: file.movedRow(byFileKey, taken)
             if (row == null) {
                 fresh.putIfAbsent(file.sourceUri, file.toEntity(id = 0, scanId = scanId))
                 continue
             }
+            taken += row.id
             val entity = file.toEntity(id = row.id, scanId = scanId)
             when {
                 row.size != file.size || row.mtime != file.mtime -> {
@@ -80,20 +84,36 @@ class FileIndexRepositoryImpl @Inject constructor(
         IndexStats(added = fresh.size, changed = changed, unchanged = files.size - fresh.size - changed)
     }
 
+    /** Rows this scan hasn't claimed yet that share a file key with something in this batch, so a move can find them. */
+    private suspend fun movedCandidates(files: List<DiscoveredFile>, scanId: Long): Map<String, FileIndexEntity> {
+        val keys = files.mapNotNullTo(HashSet()) { it.fileKey }
+        if (keys.isEmpty()) return emptyMap()
+        return fileIndexDao.findByFileKeys(keys.toList()).filter { it.lastSeenScanId != scanId }.associateBy { it.fileKey!! }
+    }
+
+    /**
+     * The row this file moved out of, if any. The size and the mtime must still match, because a file key can be a
+     * synthesised inode the kernel may reuse; with those agreeing too, keeping the row's hashes is as safe as the
+     * unchanged-file check itself. A row another file of this scan already took is left alone, so hard links get one each.
+     */
+    private fun DiscoveredFile.movedRow(byFileKey: Map<String, FileIndexEntity>, taken: Set<Long>): FileIndexEntity? =
+        fileKey?.let(byFileKey::get)?.takeIf { it.id !in taken && it.size == size && it.mtime == mtime }
+
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int = db.withTransaction {
         sourceUriPrefixes(scope, volumes.roots()).sumOf { fileIndexDao.deleteNotSeenSince(scanId, it) }
     }
 
-    override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>): List<IndexedFile> =
-        fileHashDao.hashStateForScan(scanId, kinds.map { it.name }).map { IndexedFile(it.id, it.sourceUri, it.size, it.mtime, it.partialHash, it.fullHash) }
+    override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>): List<IndexedFile> =
+        fileHashDao.hashState(scanId, kinds.map { it.name })
+            .map { IndexedFile(it.id, it.sourceUri, it.size, it.mtime, it.partialHash, it.fullHash, it.seenNow) }
 
     override suspend fun saveHashes(files: List<IndexedFile>) {
         if (files.isEmpty()) return
         fileHashDao.upsertAll(files.map { FileHashEntity(it.id, it.partialHash, it.fullHash, computedAtMtime = it.mtime) })
     }
 
-    override suspend fun imagesSeenIn(scanId: Long): List<ImageFile> = perceptualHashDao.imagesForScan(scanId).map {
-        ImageFile(it.id, it.sourceUri, it.size, if (it.dHash != null && it.pHash != null) ImageHashes(it.dHash, it.pHash) else null)
+    override suspend fun indexedImages(scanId: Long): List<ImageFile> = perceptualHashDao.images(scanId).map {
+        ImageFile(it.id, it.sourceUri, it.size, if (it.dHash != null && it.pHash != null) ImageHashes(it.dHash, it.pHash) else null, it.seenNow)
     }
 
     override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
@@ -109,12 +129,18 @@ class FileIndexRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun videosSeenIn(scanId: Long): List<VideoFile> =
-        perceptualHashDao.videosForScan(scanId).groupBy { it.id }.map { (id, rows) ->
+    override suspend fun indexedVideos(scanId: Long): List<VideoFile> =
+        perceptualHashDao.videos(scanId).groupBy { it.id }.map { (id, rows) ->
             val duration = rows.firstOrNull { it.algo == ALGO_VIDEO_DURATION }?.value
             val frames = rows.filter { it.algo == ALGO_VIDEO_PHASH }.sortedBy { it.frameIndex }.map { it.value!! }
             val complete = duration != null && frames.size == VIDEO_FRAMES
-            VideoFile(id, rows.first().sourceUri, rows.first().size, if (complete) VideoSignature(duration!!, frames.toImmutableList()) else null)
+            VideoFile(
+                id,
+                rows.first().sourceUri,
+                rows.first().size,
+                if (complete) VideoSignature(duration!!, frames.toImmutableList()) else null,
+                rows.first().seenNow,
+            )
         }
 
     override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) {
@@ -127,8 +153,8 @@ class FileIndexRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun documentsSeenIn(scanId: Long): List<DocumentFile> = perceptualHashDao.documentsForScan(scanId).map {
-        DocumentFile(it.id, it.sourceUri, it.name, it.mimeType, it.size, it.simHash)
+    override suspend fun indexedDocuments(scanId: Long): List<DocumentFile> = perceptualHashDao.documents(scanId).map {
+        DocumentFile(it.id, it.sourceUri, it.name, it.mimeType, it.size, it.simHash, it.seenNow)
     }
 
     override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) {
@@ -136,11 +162,11 @@ class FileIndexRepositoryImpl @Inject constructor(
         perceptualHashDao.upsertAll(hashes.map { (id, hash) -> PerceptualHashEntity(id, ALGO_SIMHASH, 0, hash) })
     }
 
-    override suspend fun audioSeenIn(scanId: Long): List<AudioFile> =
-        perceptualHashDao.audioForScan(scanId).groupBy { it.id }.map { (id, rows) ->
+    override suspend fun indexedAudio(scanId: Long): List<AudioFile> =
+        perceptualHashDao.audio(scanId).groupBy { it.id }.map { (id, rows) ->
             val part = { algo: String -> rows.firstOrNull { it.algo == algo }?.value }
             val signature = part(ALGO_AUDIO_DURATION)?.let { AudioSignature(it, part(ALGO_AUDIO_TITLE), part(ALGO_AUDIO_ARTIST)) }
-            AudioFile(id, rows.first().sourceUri, rows.first().name, rows.first().size, signature)
+            AudioFile(id, rows.first().sourceUri, rows.first().name, rows.first().size, signature, rows.first().seenNow)
         }
 
     override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) {
@@ -159,7 +185,7 @@ class FileIndexRepositoryImpl @Inject constructor(
 
     override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>): List<EmbeddedFile> =
         embeddingDao.candidates(scanId, modelKey, kinds.map { it.name }).map {
-            EmbeddedFile(it.id, it.sourceUri, it.name, it.mimeType, MediaKind.valueOf(it.mediaKind), it.size, it.vector?.let(::decodeVector))
+            EmbeddedFile(it.id, it.sourceUri, it.name, it.mimeType, MediaKind.valueOf(it.mediaKind), it.size, it.vector?.let(::decodeVector), it.seenNow)
         }
 
     override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) {
@@ -168,6 +194,9 @@ class FileIndexRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteEmbeddings(modelId: String) = embeddingDao.deleteForModel(modelId)
+
+    override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>): Set<Long> =
+        ids.chunked(MAX_QUERY_ARGS).flatMapTo(HashSet()) { fileIndexDao.idsNotSeenIn(it, scanId) }
 
     override suspend fun filesByIds(ids: Collection<Long>): List<StoredFile> =
         ids.chunked(MAX_QUERY_ARGS).flatMap { fileIndexDao.findByIds(it) }.map {
@@ -189,6 +218,7 @@ class FileIndexRepositoryImpl @Inject constructor(
         mtime = mtime,
         volume = volume,
         lastSeenScanId = scanId,
+        fileKey = fileKey,
     )
 
     private companion object {

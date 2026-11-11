@@ -17,6 +17,7 @@ import com.vipuljha.dupedigger.domain.model.ScanScope
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.usecase.FindExactDuplicatesUseCase
 import com.vipuljha.dupedigger.domain.usecase.IndexFilesUseCase
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -74,8 +75,69 @@ class ExactEngineDeviceTest {
         assertEquals(4, first.fullHashed)
         assertEquals(first.groups, second.groups)
         assertEquals(0, second.partialHashed + second.fullHashed)
-        val near = repository.filesSeenIn(1).single { it.sourceUri.endsWith("near.mp4") }
+        val near = repository.indexedFiles(1).single { it.sourceUri.endsWith("near.mp4") }
         assertTrue(near.partialHash != null && near.fullHash != null)
+    }
+
+    /**
+     * P10-02 on a device: the whole pipeline, one folder scan each, the copy found across them.
+     * The scope has to be folder-shaped: a whole-device scan prunes every `file:` row it didn't see, as it should.
+     */
+    @Test
+    fun findsACopyInAFolderADifferentScanIndexed() = runBlocking {
+        val photo = Random(2).nextBytes(512 * 1024)
+        val dcim = File(root, "dcim").apply { mkdirs() }
+        val download = File(root, "download").apply { mkdirs() }
+        File(dcim, "IMG_0001.jpg").writeBytes(photo)
+        File(dcim, "only-here.jpg").writeBytes(Random(3).nextBytes(256 * 1024))
+        File(download, "IMG_0001.jpg").writeBytes(photo)
+        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
+        val walker = FileTreeWalker { null }
+        val filter = ScanFilter(emptyList(), skipHidden = false)
+        val indexOf = { folder: File, scanId: Long ->
+            val enumerator = object : FileEnumerator {
+                override fun enumerate(scope: ScanScope, filter: ScanFilter) = walker.walk(listOf(folder), filter)
+            }
+            runBlocking { IndexFilesUseCase(enumerator, repository)(ScanScope.Paths(persistentListOf(folder.name)), filter, scanId) }
+        }
+        val findExact = FindExactDuplicatesUseCase(repository, hasher)
+
+        indexOf(dcim, 1L)
+        findExact(scanId = 1, minSizeBytes = 1)
+        indexOf(download, 2L)
+        val second = findExact(scanId = 2, minSizeBytes = 1)
+
+        val group = second.groups.single()
+        assertEquals(
+            setOf("${dcim.toURI()}IMG_0001.jpg", "${download.toURI()}IMG_0001.jpg"),
+            repository.indexedFiles(2).filter { it.id in group.fileIds }.map { it.sourceUri }.toSet(),
+        )
+    }
+
+    /** P10-01 on a device: a move through the real walker and Room keeps the hashes. */
+    @Test
+    fun aMovedFileIsNotHashedAgain() = runBlocking {
+        val clip = Random(4).nextBytes(1024 * 1024)
+        listOf("a.mp4", "b.mp4").forEach { File(root, it).writeBytes(clip) }
+        val repository = FileIndexRepositoryImpl(db, db.fileIndexDao(), db.fileHashDao(), db.perceptualHashDao(), db.embeddingDao(), StorageVolumes(context))
+        val walker = FileTreeWalker { null }
+        val filter = ScanFilter(emptyList(), skipHidden = false)
+        val enumerator = object : FileEnumerator {
+            override fun enumerate(scope: ScanScope, filter: ScanFilter) = walker.walk(listOf(root), filter)
+        }
+        val index = IndexFilesUseCase(enumerator, repository)
+        val findExact = FindExactDuplicatesUseCase(repository, hasher)
+        index(ScanScope.WholeDevice, filter, scanId = 1)
+        findExact(scanId = 1, minSizeBytes = 1)
+
+        File(root, "moved").mkdirs()
+        assertTrue(File(root, "a.mp4").renameTo(File(root, "moved/renamed.mp4")))
+        index(ScanScope.WholeDevice, filter, scanId = 2)
+        val result = findExact(scanId = 2, minSizeBytes = 1)
+
+        assertEquals(0, result.partialHashed + result.fullHashed)
+        assertEquals(2, result.groups.single().fileIds.size)
+        assertTrue(repository.indexedFiles(2).any { it.sourceUri.endsWith("moved/renamed.mp4") && it.fullHash != null })
     }
 
     @Test

@@ -10,6 +10,8 @@ data class IndexedFile(
     val mtime: Long,
     val partialHash: String?,
     val fullHash: String?,
+    /** False for a file an earlier scan indexed that this one's scope doesn't cover. */
+    val seenNow: Boolean = true,
 )
 
 /** [full] is set when the partial read already covered the whole file. */

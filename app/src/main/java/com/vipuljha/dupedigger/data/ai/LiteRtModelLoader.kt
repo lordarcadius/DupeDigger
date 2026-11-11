@@ -50,7 +50,7 @@ class LiteRtModelLoader @Inject constructor(@param:ApplicationContext private va
         }
         return object : LoadedModel {
             override fun embed(input: EmbeddingInput, dim: Int): FloatArray =
-                engine.computeEmbedding(listOf(input.toInputData()), EmbeddingOptions(normalize = true, outputSize = dim, visionTokensPerImage = VISION_TOKENS)).embedding
+                engine.computeEmbedding(input.toInputData(), EmbeddingOptions(normalize = true, outputSize = dim, visionTokensPerImage = VISION_TOKENS)).embedding
 
             override fun close() {
                 if (engine.isInitialized()) engine.close()
@@ -58,10 +58,12 @@ class LiteRtModelLoader @Inject constructor(@param:ApplicationContext private va
         }
     }
 
-    private fun EmbeddingInput.toInputData(): InputData = when (this) {
-        is EmbeddingInput.Text -> InputData.Text(text)
-        is EmbeddingInput.Image -> InputData.Image(encoded)
-        is EmbeddingInput.Audio -> InputData.Audio(wav)
+    /** One vector per call, so a video's keyframes go in together rather than one at a time. */
+    private fun EmbeddingInput.toInputData(): List<InputData> = when (this) {
+        is EmbeddingInput.Text -> listOf(InputData.Text(text))
+        is EmbeddingInput.Image -> listOf(InputData.Image(encoded))
+        is EmbeddingInput.Audio -> listOf(InputData.Audio(wav))
+        is EmbeddingInput.Video -> frames.map { InputData.Image(it) }
     }
 
     private companion object {

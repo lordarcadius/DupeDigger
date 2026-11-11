@@ -39,6 +39,7 @@ import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
+import com.vipuljha.dupedigger.domain.repository.FilePresence
 import com.vipuljha.dupedigger.domain.repository.FileRemover
 import com.vipuljha.dupedigger.domain.repository.QuarantineRepository
 import com.vipuljha.dupedigger.domain.repository.ScanFolderRepository
@@ -146,17 +147,21 @@ class FakeReclaimGroups : DuplicateGroupRepository {
 open class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
     val ids = initial.toMutableSet()
 
-    override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+    /** Ids an earlier scan indexed, which the current one didn't see. */
+    val carriedOver = mutableSetOf<Long>()
+
+    override suspend fun indexedImages(scanId: Long) = emptyList<ImageFile>()
     override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
-    override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+    override suspend fun indexedVideos(scanId: Long) = emptyList<VideoFile>()
     override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
-    override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+    override suspend fun indexedDocuments(scanId: Long) = emptyList<DocumentFile>()
     override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
-    override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+    override suspend fun indexedAudio(scanId: Long) = emptyList<AudioFile>()
     override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
     override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
     override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
     override suspend fun deleteEmbeddings(modelId: String) = Unit
+    override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>) = ids.filterTo(HashSet()) { it in carriedOver }
     override suspend fun filesByIds(ids: Collection<Long>) =
         ids.filter { it in this.ids }.map { StoredFile(it, "file:/f$it", "/f$it", "f$it", MediaKind.OTHER, 100) }
     override suspend fun remove(ids: Collection<Long>) {
@@ -164,7 +169,7 @@ open class FakeFileIndex(initial: Set<Long>) : FileIndexRepository {
     }
     override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
     override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-    override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
+    override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
     override suspend fun saveHashes(files: List<IndexedFile>) = Unit
 }
 
@@ -240,4 +245,9 @@ class FakeDeviceStorage(
     private val freeBytes: Long = 0,
 ) : DeviceStorage {
     override suspend fun usage() = StorageUsage(totalBytes, freeBytes)
+}
+
+/** Everything is still on the device unless its URI is put in [gone]. */
+class FakePresence(val gone: MutableSet<String> = mutableSetOf()) : FilePresence {
+    override suspend fun missing(sourceUris: Collection<String>) = sourceUris.filterTo(HashSet()) { it in gone }
 }

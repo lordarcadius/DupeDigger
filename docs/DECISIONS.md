@@ -580,3 +580,82 @@ A bar that overlays the pane bottom changes what else can live there. Three thin
 **Delete still confirms,** now naming how many files it would erase, because it is the one place a file leaves the app for good (D-007).
 
 **Use cases folded:** `DeleteQuarantinedUseCase` now takes a collection and returns how many failed, mirroring `RestoreQuarantinedUseCase`; the single-id version is gone.
+
+## D-031: A file keeps its index row across a rename or a move (accepted, P10-01)
+**Decision:** `file_index` gains a nullable `fileKey`, the filesystem's own identity for the file. When a scan finds a
+file whose `sourceUri` is not in the index, it looks the file up by key; a row that matches on key, size and mtime is
+updated in place, so the file keeps its hashes, perceptual hashes and vectors.
+
+**Why:** `sourceUri` was the only identity. For a MediaStore file that is `content://…/42`, which a rename doesn't
+change, but the deep scan walks with `java.io.File` and SAF addresses documents by path, so both produce a path-shaped
+URI. Renaming one photo, or moving a folder, therefore threw away every hash and every embedding for those files and
+the next scan paid for them again — the most expensive part of a scan, lost to an operation that changed no bytes.
+
+**Where it comes from:** `BasicFileAttributes.fileKey()`, which the tree walker already reads — the walk makes one
+attribute call per entry and the key comes with it, so this costs nothing. Its `toString()` is `(dev=…,ino=…)`. The
+format isn't contractual, but we only ever compare it with another key from the same device, and a format change
+would cost one cache miss, not a wrong answer.
+
+**Why size and mtime still have to match:** on a FUSE-backed volume the inode can be synthesised and may be reused, so
+a key alone is not proof of identity. Requiring the size and the mtime to agree too makes a wrong adoption exactly as
+unlikely as the unchanged-file check the index has always relied on. An edited file that also moved simply gets a new
+row, which is right: it needs rehashing anyway.
+
+**Hard links** share a key. A row is adopted only when this scan hasn't already claimed it, so the second path of a
+hard-linked pair gets its own row rather than overwriting the first.
+
+**Not covered:** MediaStore and SAF rows have no key. MediaStore ids survive a rename on their own; SAF document URIs
+don't, so a file in a picked folder still loses its cache when it moves. Reading a key there would mean a stat call
+per row that those branches don't currently make.
+
+## D-032: Duplicates are looked for across the whole index, not just the scan (accepted, P10-02)
+**Decision:** the candidate queries drop their `lastSeenScanId = :scanId` filter and return every indexed file, each
+flagged with whether this scan saw it. What a scan is willing to *compute* still depends on the tier.
+
+**Why:** the index persists, but grouping only ever saw the current scan's files, and `replaceGroups` wipes the table
+each run. So scanning DCIM and then Download reported only Download's internal copies — a photo duplicated between the
+two folders was never found, however many times either was scanned. That is the main thing people scan folders for.
+
+**Where the line is drawn, per tier:**
+- **Exact** will hash a file an earlier scan indexed. Its work is already proportional to the answer, not to the index:
+  a file is only opened once something in this scan shares its size, then only once something shares its partial hash.
+- **Near** and **semantic** will not. Their cost is one decode, or one inference, *per file*, so widening them would
+  turn "scan this folder" into a whole-device scan. A file from an earlier scan takes part when its hash or vector is
+  already cached, and is otherwise left out.
+
+So a folder scan finds every byte-identical copy anywhere on the device, and finds look-alikes anywhere the device has
+already been scanned once. A whole-storage scan, which is the default, caches everything and makes the distinction moot.
+
+**A whole-device scan still stands alone,** and should. Its prune prefix is `file:`, so every `file:` row it didn't
+see is deleted — correct, because it looked everywhere. The cross-scope gain is for folder and media scans, whose
+prefixes cover only their own scope: scanning Download leaves DCIM's rows, and its hashes, in place.
+
+**Grouping cost is not a problem:** every grouper is sub-quadratic already — multi-index Hamming search for images and
+documents, a duration-sorted window for video, random-hyperplane LSH for vectors — so a bigger candidate pool costs
+close to linear.
+
+**Stale rows:** a row an earlier scan indexed may name a file deleted since, which would show as a phantom duplicate.
+`SaveGroupsUseCase` checks exactly those members — never this scan's own, never more than the files that reached a
+group — and drops what has gone, with its index row. An exact group loses the member and keeps the rest, because its
+fingerprint is `size:fullHash`. A near or semantic group goes altogether, because its fingerprint is built from its
+members' URIs and the user's "not duplicates" and keep choices are stored against it; the next scan rebuilds it.
+
+## D-033: Video joins the semantic tier through its keyframes (accepted, P10-03)
+**Decision:** with a vision-capable model, videos are embedded like images: `VIDEO_EMBED_FRAMES` (3) keyframes at the
+middle of equal slices, each JPEG-encoded at 512 px, passed to `computeEmbedding` **together** so the encoder returns
+one vector for the file.
+
+**Why:** the semantic tier covered images, audio and documents; video was near-tier only, matched frame-for-frame by
+pHash. That finds a re-encode, but not the same scene shot twice or the same clip cut differently — which is what the
+AI tier is for everywhere else.
+
+**Why three frames, read together:** one vector per file is what the `embedding` table stores and what
+`groupBySimilarity` compares, and the engine already accepts several inputs per call, so the keyframes can be pooled by
+the model rather than averaged afterwards. Three spreads over the whole video at 70 vision tokens each — 210 tokens,
+well inside the window — and costs three decodes, not one a second.
+
+**`OPTION_CLOSEST_SYNC`, not `OPTION_CLOSEST`:** the near tier needs the exact frame so two re-encodes sample the same
+picture, and pays a decode from the previous keyframe for it. Semantic similarity doesn't care which frame of a shot it
+gets, so the nearest keyframe is both cheaper and a cleaner image.
+
+**Overlap with the near tier** is already handled: a semantic group whose files all sit inside one near group is dropped.

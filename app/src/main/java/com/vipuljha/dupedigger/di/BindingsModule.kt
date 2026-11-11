@@ -19,6 +19,7 @@ import com.vipuljha.dupedigger.data.repository.ScanRunRepositoryImpl
 import com.vipuljha.dupedigger.data.storage.AndroidDeviceStorage
 import com.vipuljha.dupedigger.data.storage.AndroidFileEnumerator
 import com.vipuljha.dupedigger.data.storage.AndroidFileInspector
+import com.vipuljha.dupedigger.data.storage.AndroidFilePresence
 import com.vipuljha.dupedigger.data.storage.AndroidFileRemover
 import com.vipuljha.dupedigger.data.storage.AndroidPowerState
 import com.vipuljha.dupedigger.data.storage.AndroidScanFolderRepository
@@ -37,6 +38,7 @@ import com.vipuljha.dupedigger.domain.repository.DeviceStorage
 import com.vipuljha.dupedigger.domain.repository.FileEnumerator
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FileInspector
+import com.vipuljha.dupedigger.domain.repository.FilePresence
 import com.vipuljha.dupedigger.domain.repository.FileRemover
 import com.vipuljha.dupedigger.domain.repository.ImageHasher
 import com.vipuljha.dupedigger.domain.repository.ModelDownloads
@@ -103,6 +105,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun bindFileInspector(impl: AndroidFileInspector): FileInspector
+
+    @Binds
+    abstract fun bindFilePresence(impl: AndroidFilePresence): FilePresence
 
     @Binds
     abstract fun bindImageHasher(impl: AndroidImageHasher): ImageHasher

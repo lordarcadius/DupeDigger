@@ -33,24 +33,24 @@ class FindNearDuplicatesUseCaseTest {
     private val index = object : FakeFileIndex(emptySet()) {
         val images = mutableListOf<ImageFile>()
         val saved = mutableMapOf<Long, ImageHashes>()
-        override suspend fun imagesSeenIn(scanId: Long) = images.map { it.copy(hashes = it.hashes ?: saved[it.id]) }
+        override suspend fun indexedImages(scanId: Long) = images.map { it.copy(hashes = it.hashes ?: saved[it.id]) }
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
             saved += hashes
         }
         val videos = mutableListOf<VideoFile>()
         val savedVideos = mutableMapOf<Long, VideoSignature>()
-        override suspend fun videosSeenIn(scanId: Long) = videos.map { it.copy(signature = it.signature ?: savedVideos[it.id]) }
+        override suspend fun indexedVideos(scanId: Long) = videos.map { it.copy(signature = it.signature ?: savedVideos[it.id]) }
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) {
             savedVideos += signatures
         }
         val docs = mutableListOf<DocumentFile>()
         val savedDocs = mutableMapOf<Long, Long>()
-        override suspend fun documentsSeenIn(scanId: Long) = docs.map { it.copy(simHash = it.simHash ?: savedDocs[it.id]) }
+        override suspend fun indexedDocuments(scanId: Long) = docs.map { it.copy(simHash = it.simHash ?: savedDocs[it.id]) }
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) {
             savedDocs += hashes
         }
         val audio = mutableListOf<AudioFile>()
-        override suspend fun audioSeenIn(scanId: Long) = audio
+        override suspend fun indexedAudio(scanId: Long) = audio
     }
 
     /** Decodes only the URIs it knows. */
@@ -142,7 +142,8 @@ class FindNearDuplicatesUseCaseTest {
         assertEquals(1 - 3f / 64, result.groups.last().score, 1e-6f)
     }
 
-    private fun image(id: Long, hashes: ImageHashes? = null) = ImageFile(id, "file:/p/$id.jpg", size = id * 10, hashes = hashes)
+    private fun image(id: Long, hashes: ImageHashes? = null, seenNow: Boolean = true) =
+        ImageFile(id, "file:/p/$id.jpg", size = id * 10, hashes = hashes, seenNow = seenNow)
 
     @Test
     fun `similar images group, with cached hashes reused and new ones saved`() = runTest {
@@ -190,6 +191,19 @@ class FindNearDuplicatesUseCaseTest {
         assertTrue(result.groups.isEmpty())
         assertEquals(1, result.unreadable)
         assertEquals(0, result.hashed)
+    }
+
+    @Test
+    fun `an image scanned earlier matches on its cached hash, but is never decoded again`() = runTest {
+        index.images += listOf(image(1, origin), image(2, close, seenNow = false), image(3, seenNow = false))
+        decoded["file:/p/3.jpg"] = origin
+
+        val result = find(scanId = 1, threshold = 10, minSizeBytes = 0, exactGroups = emptyList())
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+        assertTrue("file:/p/3.jpg" !in requested)
+        assertEquals(0, result.hashed)
+        assertEquals(0, result.unreadable)
     }
 
     @Test

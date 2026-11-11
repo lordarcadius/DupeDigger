@@ -51,21 +51,22 @@ class IndexFilesUseCaseTest {
             return 7
         }
 
-        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
+        override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>) = emptyList<IndexedFile>()
 
         override suspend fun saveHashes(files: List<IndexedFile>) = Unit
 
-        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun indexedImages(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
-        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun indexedVideos(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
-        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun indexedDocuments(scanId: Long) = emptyList<DocumentFile>()
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
-        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun indexedAudio(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun deleteEmbeddings(modelId: String) = Unit
+        override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>) = emptySet<Long>()
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
 
         override suspend fun remove(ids: Collection<Long>) = Unit

@@ -15,6 +15,7 @@ import androidx.room.PrimaryKey
         Index(value = ["size"]),
         Index(value = ["mediaKind"]),
         Index(value = ["lastSeenScanId"]),
+        Index(value = ["fileKey"]),
     ],
 )
 data class FileIndexEntity(
@@ -28,6 +29,8 @@ data class FileIndexEntity(
     val mtime: Long,
     val volume: String?,
     val lastSeenScanId: Long,
+    /** The filesystem's identity for the file; null where the enumerator can't read one. Not unique: hard links share it. */
+    val fileKey: String? = null,
 )
 
 @Entity(

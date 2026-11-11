@@ -46,27 +46,28 @@ class FindExactDuplicatesUseCaseTest {
 
         override suspend fun record(files: List<DiscoveredFile>, scanId: Long) = IndexStats()
         override suspend fun removeNotSeen(scope: ScanScope, scanId: Long) = 0
-        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) = synchronized(this) { files.values.toList() }
+        override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>) = synchronized(this) { files.values.toList() }
         override suspend fun saveHashes(files: List<IndexedFile>) = synchronized(this) { files.forEach { this.files[it.id] = it } }
-        override suspend fun imagesSeenIn(scanId: Long) = emptyList<ImageFile>()
+        override suspend fun indexedImages(scanId: Long) = emptyList<ImageFile>()
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) = Unit
-        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun indexedVideos(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
-        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun indexedDocuments(scanId: Long) = emptyList<DocumentFile>()
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
-        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun indexedAudio(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) = emptyList<EmbeddedFile>()
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) = Unit
         override suspend fun deleteEmbeddings(modelId: String) = Unit
+        override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>) = emptySet<Long>()
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
         override suspend fun remove(ids: Collection<Long>) = Unit
     }
 
-    private fun add(name: String, bytes: ByteArray): Long {
+    private fun add(name: String, bytes: ByteArray, seenNow: Boolean = true): Long {
         val f = File(tmp.root, name).apply { writeBytes(bytes) }
         val id = index.files.size + 1L
-        index.files[id] = IndexedFile(id, f.toURI().toString(), f.length(), f.lastModified(), null, null)
+        index.files[id] = IndexedFile(id, f.toURI().toString(), f.length(), f.lastModified(), null, null, seenNow)
         return id
     }
 
@@ -161,5 +162,29 @@ class FindExactDuplicatesUseCaseTest {
         assertEquals(0, second.partialHashed)
         assertEquals(0, second.fullHashed)
         assertTrue(opened.isEmpty())
+    }
+
+    @Test
+    fun `a copy in a folder scanned earlier is still found`() {
+        val photo = Random(7).nextBytes(80 * 1024)
+        val inScope = add("download/a.jpg", photo.also { File(tmp.root, "download").mkdirs() })
+        val scannedBefore = add("dcim/a.jpg", photo.also { File(tmp.root, "dcim").mkdirs() }, seenNow = false)
+
+        val result = run()
+
+        assertEquals(listOf(inScope, scannedBefore), result.groups.single().fileIds)
+    }
+
+    @Test
+    fun `a file scanned earlier is never opened unless this scan has one of its size`() {
+        val lonely = add("dcim/lonely.jpg", Random(8).nextBytes(40 * 1024).also { File(tmp.root, "dcim").mkdirs() }, seenNow = false)
+        val pair = Random(9).nextBytes(50 * 1024)
+        add("download/a.bin", pair.also { File(tmp.root, "download").mkdirs() })
+        add("download/b.bin", pair)
+
+        val result = run()
+
+        assertEquals(1, result.groups.size)
+        assertTrue(index.files.getValue(lonely).sourceUri !in opened)
     }
 }

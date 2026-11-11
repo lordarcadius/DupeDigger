@@ -23,33 +23,36 @@ interface FileIndexRepository {
     /** Deletes files [scope] can produce that were not seen in [scanId], with everything derived from them. */
     suspend fun removeNotSeen(scope: ScanScope, scanId: Long): Int
 
-    /** Files of [kinds] seen in [scanId], each with its cached hashes. */
-    suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind> = AllMediaKinds): List<IndexedFile>
+    /**
+     * Every indexed file of [kinds], each with its cached hashes and whether [scanId] saw it.
+     * A scope scanned earlier is included, so a copy of one of this scan's files is found wherever it sits.
+     */
+    suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind> = AllMediaKinds): List<IndexedFile>
 
     /** Stores each file's partial and full hash together, replacing what was cached. */
     suspend fun saveHashes(files: List<IndexedFile>)
 
-    /** Images seen in [scanId], each with its cached perceptual hashes. */
-    suspend fun imagesSeenIn(scanId: Long): List<ImageFile>
+    /** Every indexed image, each with its cached perceptual hashes and whether [scanId] saw it. */
+    suspend fun indexedImages(scanId: Long): List<ImageFile>
 
     suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>)
 
-    /** Videos seen in [scanId], each with its cached signature when every part of it is stored. */
-    suspend fun videosSeenIn(scanId: Long): List<VideoFile>
+    /** Every indexed video, each with its cached signature when every part of it is stored. */
+    suspend fun indexedVideos(scanId: Long): List<VideoFile>
 
     suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>)
 
-    /** Documents seen in [scanId], each with its cached SimHash. */
-    suspend fun documentsSeenIn(scanId: Long): List<DocumentFile>
+    /** Every indexed document, each with its cached SimHash. */
+    suspend fun indexedDocuments(scanId: Long): List<DocumentFile>
 
     suspend fun saveDocumentHashes(hashes: Map<Long, Long>)
 
-    /** Audio files seen in [scanId], each with its cached signature. */
-    suspend fun audioSeenIn(scanId: Long): List<AudioFile>
+    /** Every indexed audio file, each with its cached signature. */
+    suspend fun indexedAudio(scanId: Long): List<AudioFile>
 
     suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>)
 
-    /** Files of [kinds] seen in [scanId], each with its stored vector under [modelKey] if there is one. */
+    /** Every indexed file of [kinds], each with its stored vector under [modelKey] if there is one. */
     suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>): List<EmbeddedFile>
 
     /** Stores normalised vectors under [modelKey]; other models' vectors are left alone. */
@@ -57,6 +60,9 @@ interface FileIndexRepository {
 
     /** Deletes every vector stored for the model [modelId], at any size. */
     suspend fun deleteEmbeddings(modelId: String)
+
+    /** Of [ids], the ones [scanId] didn't see, so their rows are only as fresh as the scan that did. */
+    suspend fun notSeenIn(scanId: Long, ids: Collection<Long>): Set<Long>
 
     suspend fun filesByIds(ids: Collection<Long>): List<StoredFile>
 

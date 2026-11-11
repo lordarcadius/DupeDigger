@@ -14,6 +14,7 @@ import com.vipuljha.dupedigger.domain.model.FoundGroup
 import com.vipuljha.dupedigger.domain.model.KindReclaim
 import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
+import com.vipuljha.dupedigger.domain.repository.FilePresence
 import com.vipuljha.dupedigger.domain.usecase.SaveGroupsUseCase
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import kotlinx.collections.immutable.persistentListOf
@@ -31,11 +32,25 @@ import org.junit.runner.RunWith
 class DuplicateGroupRepositoryTest {
     private lateinit var db: DupeDiggerDatabase
     private lateinit var repository: DuplicateGroupRepositoryImpl
+    private lateinit var fileIndex: FileIndexRepositoryImpl
+
+    /** Every indexed file is still on the device, so nothing is pruned out of a group. */
+    private val allPresent = object : FilePresence {
+        override suspend fun missing(sourceUris: Collection<String>) = emptySet<String>()
+    }
 
     @Before
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, DupeDiggerDatabase::class.java).build()
         repository = DuplicateGroupRepositoryImpl(db, db.duplicateGroupDao(), db.ignoredGroupDao(), db.keepChoiceDao())
+        fileIndex = FileIndexRepositoryImpl(
+            db,
+            db.fileIndexDao(),
+            db.fileHashDao(),
+            db.perceptualHashDao(),
+            db.embeddingDao(),
+            StorageVolumes(InstrumentationRegistry.getInstrumentation().targetContext),
+        )
     }
 
     @After
@@ -70,7 +85,7 @@ class DuplicateGroupRepositoryTest {
     @Test
     fun keepAndNotDuplicatesChoicesHoldAcrossRescans() = runBlocking {
         val (a, b, c, d) = (1..4).map { file("g$it") }
-        val save = SaveGroupsUseCase(repository)
+        val save = SaveGroupsUseCase(repository, fileIndex, allPresent)
         val fingerprint = exactFingerprint(10, "aaa")
         save(1, listOf(ExactGroup(10, "aaa", persistentListOf(a, b))))
         repository.setKeepChoice(fingerprint, "file:/g2")

@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -117,6 +119,26 @@ class EnumeratorDeviceTest {
 
             assertEquals(setOf("a.jpg", "b.txt"), files.map { it.name }.toSet())
             assertEquals(3L, files.single { it.name == "a.jpg" }.size)
+        } finally {
+            tree.deleteRecursively()
+        }
+    }
+
+    /** P10-01: the walker's one attribute read also carries the identity a rename keeps. */
+    @Test
+    fun aWalkedFileCarriesAFileKeyThatSurvivesARename() = runBlocking {
+        val tree = File(context.cacheDir, "filekey-test").apply { deleteRecursively(); mkdirs() }
+        try {
+            val original = File(tree, "a.jpg").apply { writeBytes(ByteArray(3)) }
+            val before = walker.walk(listOf(tree), keepAll).toList().single()
+            assertNotNull(before.fileKey)
+
+            assertTrue(original.renameTo(File(tree, "b.jpg")))
+            val after = walker.walk(listOf(tree), keepAll).toList().single()
+
+            assertEquals("b.jpg", after.name)
+            assertEquals(before.fileKey, after.fileKey)
+            assertNotEquals(before.sourceUri, after.sourceUri)
         } finally {
             tree.deleteRecursively()
         }

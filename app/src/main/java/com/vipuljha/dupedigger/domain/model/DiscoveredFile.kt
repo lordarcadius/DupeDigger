@@ -7,7 +7,11 @@ enum class MediaKind { IMAGE, VIDEO, AUDIO, DOCUMENT, OTHER }
 
 val AllMediaKinds: ImmutableSet<MediaKind> = MediaKind.entries.toImmutableSet()
 
-/** One file found by an enumerator; [sourceUri] identifies it across scans, [mtime] is epoch millis. */
+/**
+ * One file found by an enumerator; [sourceUri] identifies it across scans, [mtime] is epoch millis.
+ * [fileKey] is the filesystem's own identity for the file, where the enumerator can read it. It survives a rename
+ * or a move, which [sourceUri] does not, so the index can keep what the file already cost to hash.
+ */
 data class DiscoveredFile(
     val sourceUri: String,
     val path: String?,
@@ -17,6 +21,7 @@ data class DiscoveredFile(
     val size: Long,
     val mtime: Long,
     val volume: String?,
+    val fileKey: String? = null,
 )
 
 private val documentMimeTypes = setOf(

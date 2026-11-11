@@ -30,9 +30,12 @@ import javax.inject.Inject
 
 /**
  * Finds files of the chosen kinds that mean the same thing for the SEMANTIC tier, with the downloaded model [ModelVariant].
- * - Embeds what the model reads: images (small re-encodes) with vision, audio clips with audio, document text with
- *   text, prefixed with the similarity prompt and cut to [MAX_TEXT_CHARS].
+ * - Embeds what the model reads: images (small re-encodes) and videos (a few keyframes, read together into one
+ *   vector) with vision, audio clips with audio, document text with text, prefixed with the similarity prompt and
+ *   cut to [MAX_TEXT_CHARS].
  * - Vectors are stored under the model and size, so another model's vectors are kept and never compared.
+ * - A file an earlier scan indexed takes part when its vector is already stored, so a copy in a folder scanned
+ *   before still matches; one without a vector is left out rather than embedded, since this scan was asked for one scope.
  * - Each exact group takes part through one member; a semantic group whose files all sit in one near group is dropped,
  *   since that group already shows them.
  * - A batch the engine rejects is retried file by file so one bad file costs only itself.
@@ -58,14 +61,15 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
     ): NearScanResult? {
         val key = embeddingKey(variant)
         val readable = buildSet {
-            if (ModelCapability.VISION in variant.capabilities) add(MediaKind.IMAGE)
+            if (ModelCapability.VISION in variant.capabilities) addAll(listOf(MediaKind.IMAGE, MediaKind.VIDEO))
             if (ModelCapability.AUDIO in variant.capabilities) add(MediaKind.AUDIO)
             if (ModelCapability.TEXT in variant.capabilities) add(MediaKind.DOCUMENT)
         }
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cached, missing) = fileIndex.embeddingCandidates(scanId, key, readable intersect kinds)
+        val (cached, unvectored) = fileIndex.embeddingCandidates(scanId, key, readable intersect kinds)
             .filter { it.size >= minSizeBytes && it.id !in exactCopies && (it.kind != MediaKind.DOCUMENT || textReader.supports(it.name, it.mimeType)) }
             .partition { it.vector != null }
+        val missing = unvectored.filter { it.seenNow }
 
         val embedded = mutableListOf<EmbeddedFile>()
         var attempted = 0
@@ -131,6 +135,7 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
     /** Null when the file can't be read; [SKIP] when it holds too little text to compare (re-read on each scan). */
     private suspend fun inputFor(file: EmbeddedFile): EmbeddingInput? = when (file.kind) {
         MediaKind.IMAGE -> inputs.image(file.sourceUri)?.let { EmbeddingInput.Image(it) }
+        MediaKind.VIDEO -> inputs.video(file.sourceUri)?.let { EmbeddingInput.Video(it) }
         MediaKind.AUDIO -> inputs.audio(file.sourceUri)?.let { EmbeddingInput.Audio(it) }
         MediaKind.DOCUMENT -> textReader.text(file.sourceUri, file.name, file.mimeType)?.let { text ->
             if (normalizeWords(text).size < MIN_DOCUMENT_WORDS) {

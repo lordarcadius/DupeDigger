@@ -12,6 +12,8 @@ import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.NearGroup
 import com.vipuljha.dupedigger.domain.model.exactFingerprint
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
+import com.vipuljha.dupedigger.presentation.FakeFileIndex
+import com.vipuljha.dupedigger.presentation.FakePresence
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
@@ -61,7 +63,7 @@ class DuplicateGroupUseCasesTest {
             ExactGroup(50, "bbb", persistentListOf(4, 5)),
         )
 
-        val kept = SaveGroupsUseCase(repo)(scanId = 7, exactGroups = groups).exact
+        val kept = SaveGroupsUseCase(repo, FakeFileIndex(emptySet()), FakePresence())(scanId = 7, exactGroups = groups).exact
 
         assertEquals(listOf(groups[1]), kept)
         val (scanId, saved) = repo.saved!!
@@ -74,7 +76,7 @@ class DuplicateGroupUseCasesTest {
         val near = NearGroup("NEAR:abc", persistentListOf(4, 5), score = 0.97f)
         repo.ignored += "NEAR:ignored"
 
-        val kept = SaveGroupsUseCase(repo)(
+        val kept = SaveGroupsUseCase(repo, FakeFileIndex(emptySet()), FakePresence())(
             scanId = 9,
             exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))),
             nearGroups = listOf(near, NearGroup("NEAR:ignored", persistentListOf(6, 7), score = 1f)),
@@ -93,7 +95,7 @@ class DuplicateGroupUseCasesTest {
     @Test
     fun `semantic groups are saved with their tier unless marked not duplicates`() = runTest {
         repo.ignored += "SEMANTIC:ignored"
-        val kept = SaveGroupsUseCase(repo)(
+        val kept = SaveGroupsUseCase(repo, FakeFileIndex(emptySet()), FakePresence())(
             scanId = 10,
             exactGroups = emptyList(),
             semanticGroups = listOf(NearGroup("SEMANTIC:a", persistentListOf(1, 2), 0.95f), NearGroup("SEMANTIC:ignored", persistentListOf(3, 4), 0.95f)),
@@ -104,10 +106,41 @@ class DuplicateGroupUseCasesTest {
     }
 
     @Test
+    fun `a member deleted since the scan that indexed it drops out, with its index row`() = runTest {
+        val index = FakeFileIndex(setOf(1, 2, 3, 4, 5)).apply { carriedOver += setOf(3L, 5L) }
+        val presence = FakePresence(mutableSetOf("file:/f3"))
+
+        val kept = SaveGroupsUseCase(repo, index, presence)(
+            scanId = 11,
+            exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2, 3))),
+            nearGroups = listOf(NearGroup("NEAR:a", persistentListOf(4, 5), 0.97f)),
+        )
+
+        assertEquals(listOf(persistentListOf(1L, 2L)), kept.exact.map { it.fileIds })
+        assertEquals(listOf(NearGroup("NEAR:a", persistentListOf(4, 5), 0.97f)), kept.near)
+        assertEquals(setOf(1L, 2L, 4L, 5L), index.ids)
+    }
+
+    @Test
+    fun `a near group loses the whole group when one of its members has gone`() = runTest {
+        val index = FakeFileIndex(setOf(1, 2)).apply { carriedOver += 2L }
+        val presence = FakePresence(mutableSetOf("file:/f2"))
+
+        val kept = SaveGroupsUseCase(repo, index, presence)(
+            scanId = 12,
+            exactGroups = emptyList(),
+            nearGroups = listOf(NearGroup("NEAR:a", persistentListOf(1, 2), 0.97f)),
+        )
+
+        assertEquals(emptyList<NearGroup>(), kept.near)
+        assertEquals(setOf(1L), index.ids)
+    }
+
+    @Test
     fun `nothing left still replaces the previous results`() = runTest {
         repo.ignored += exactFingerprint(100, "aaa")
 
-        SaveGroupsUseCase(repo)(scanId = 8, exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))))
+        SaveGroupsUseCase(repo, FakeFileIndex(emptySet()), FakePresence())(scanId = 8, exactGroups = listOf(ExactGroup(100, "aaa", persistentListOf(1, 2))))
 
         assertEquals(8L to emptyList<FoundGroup>(), repo.saved)
     }

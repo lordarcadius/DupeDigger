@@ -41,7 +41,7 @@ import com.vipuljha.dupedigger.data.local.db.entity.ScanRunEntity
         IgnoredGroupEntity::class, KeepChoiceEntity::class, QuarantineItemEntity::class, ExcludedPathEntity::class,
         ScanPresetEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class DupeDiggerDatabase : RoomDatabase() {
@@ -72,4 +72,12 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+/** Adds `file_index.fileKey`, the filesystem identity a rename or a move keeps. Existing rows fill it on the next scan. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `file_index` ADD COLUMN `fileKey` TEXT")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_file_index_fileKey` ON `file_index` (`fileKey`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

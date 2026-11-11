@@ -5,7 +5,16 @@ sealed interface EmbeddingInput {
     data class Text(val text: String) : EmbeddingInput
     class Image(val encoded: ByteArray) : EmbeddingInput
     class Audio(val wav: ByteArray) : EmbeddingInput
+
+    /** Keyframes of one video, in time order; the vision encoder reads them together and returns a single vector. */
+    class Video(val frames: List<ByteArray>) : EmbeddingInput
 }
+
+/**
+ * Keyframes sampled per video for its vector. Three spreads over the whole video while staying well inside the
+ * model's input window at 70 vision tokens a frame, and costs three decodes rather than one a second.
+ */
+const val VIDEO_EMBED_FRAMES = 3
 
 /** CPU is the default (D-006); GPU is a preference that falls back to CPU when it can't start. */
 enum class EmbeddingBackend { CPU, GPU }
@@ -28,4 +37,6 @@ class EmbeddedFile(
     val kind: MediaKind,
     val size: Long,
     val vector: FloatArray?,
+    /** False for a file an earlier scan indexed that this one's scope doesn't cover. */
+    val seenNow: Boolean = true,
 )

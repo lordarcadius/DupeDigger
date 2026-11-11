@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.domain.model.MediaKind
 import com.vipuljha.dupedigger.domain.model.ModelCatalog
 import com.vipuljha.dupedigger.domain.model.ModelVariant
 import com.vipuljha.dupedigger.domain.model.NearGroup
+import com.vipuljha.dupedigger.domain.model.VIDEO_EMBED_FRAMES
 import com.vipuljha.dupedigger.domain.model.SIMILARITY_PROMPT
 import com.vipuljha.dupedigger.domain.model.embeddingKey
 import com.vipuljha.dupedigger.domain.repository.DocumentTextReader
@@ -27,6 +28,7 @@ import kotlin.math.sqrt
 class FindSemanticDuplicatesUseCaseTest {
     private val vision = ModelCatalog.variants.first { it.id == "embeddinggemma-440m-text-vision" }
     private val all = ModelCatalog.variants.first { it.id == "embeddinggemma-740m-all" }
+    private val textOnly = ModelCatalog.variants.first { it.id == "embeddinggemma-270m-text" }
 
     /** Each image's bytes name its "scene"; images of one scene embed close together. */
     private fun vectorFor(scene: Int, jitter: Float) = FloatArray(4) { if (it == scene % 4) 1f else jitter }.let { v ->
@@ -38,7 +40,8 @@ class FindSemanticDuplicatesUseCaseTest {
     private val stored = mutableMapOf<Pair<String, Long>, FloatArray>()
     private val index = object : FakeFileIndex(emptySet()) {
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) =
-            files.filter { it.kind in kinds }.map { EmbeddedFile(it.id, it.sourceUri, it.name, it.mimeType, it.kind, it.size, stored[modelKey to it.id]) }
+            files.filter { it.kind in kinds }
+                .map { EmbeddedFile(it.id, it.sourceUri, it.name, it.mimeType, it.kind, it.size, stored[modelKey to it.id], it.seenNow) }
         override suspend fun saveEmbeddings(modelKey: String, vectors: Map<Long, FloatArray>) {
             vectors.forEach { (id, v) -> stored[modelKey to id] = v }
         }
@@ -56,6 +59,8 @@ class FindSemanticDuplicatesUseCaseTest {
                     is EmbeddingInput.Image -> vectorFor(input.encoded[0].toInt(), input.encoded[1] / 100f)
                     is EmbeddingInput.Text -> vectorFor(input.text.length % 4, 0.05f)
                     is EmbeddingInput.Audio -> vectorFor(input.wav[0].toInt(), 0.05f)
+                    // A video's frames read together into one vector, so the first frame's scene stands for it.
+                    is EmbeddingInput.Video -> vectorFor(input.frames.first()[0].toInt(), input.frames.first()[1] / 100f)
                 }
             })
         }
@@ -64,6 +69,9 @@ class FindSemanticDuplicatesUseCaseTest {
 
     /** sourceUri → (scene, jitter in hundredths); scene -1 makes the engine reject the file. */
     private val images = mutableMapOf<String, Pair<Int, Int>>()
+
+    /** sourceUri → one (scene, jitter) per keyframe. */
+    private val videos = mutableMapOf<String, List<Pair<Int, Int>>>()
     private val texts = mutableMapOf<String, String>()
     private val find = FindSemanticDuplicatesUseCase(
         index,
@@ -71,6 +79,7 @@ class FindSemanticDuplicatesUseCaseTest {
         object : EmbeddingInputReader {
             override suspend fun image(sourceUri: String) = images[sourceUri]?.let { byteArrayOf(it.first.toByte(), it.second.toByte()) }
             override suspend fun audio(sourceUri: String): ByteArray? = null
+            override suspend fun video(sourceUri: String) = videos[sourceUri]?.map { byteArrayOf(it.first.toByte(), it.second.toByte()) }
         },
         object : DocumentTextReader {
             override fun supports(name: String, mimeType: String?) = true
@@ -78,9 +87,14 @@ class FindSemanticDuplicatesUseCaseTest {
         },
     )
 
-    private fun image(id: Long, scene: Int, jitter: Int = 5) {
-        files += EmbeddedFile(id, "file:/i/$id.jpg", "$id.jpg", "image/jpeg", MediaKind.IMAGE, id * 10, null)
+    private fun image(id: Long, scene: Int, jitter: Int = 5, seenNow: Boolean = true) {
+        files += EmbeddedFile(id, "file:/i/$id.jpg", "$id.jpg", "image/jpeg", MediaKind.IMAGE, id * 10, null, seenNow)
         images["file:/i/$id.jpg"] = scene to jitter
+    }
+
+    private fun video(id: Long, scene: Int, jitter: Int = 5) {
+        files += EmbeddedFile(id, "file:/v/$id.mp4", "$id.mp4", "video/mp4", MediaKind.VIDEO, id * 1000, null)
+        videos["file:/v/$id.mp4"] = List(VIDEO_EMBED_FRAMES) { scene to jitter }
     }
 
     @Test
@@ -152,5 +166,44 @@ class FindSemanticDuplicatesUseCaseTest {
         image(1, scene = 1)
         available = false
         assertNull(find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList()))
+    }
+
+    @Test
+    fun `videos of the same scene group, from their keyframes read together as one vector`() = runTest {
+        video(1, scene = 3)
+        video(2, scene = 3, jitter = 8)
+        video(3, scene = 2)
+
+        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+        val clips = embedded.filterIsInstance<EmbeddingInput.Video>()
+        assertEquals(3, clips.size)
+        assertTrue(clips.all { it.frames.size == VIDEO_EMBED_FRAMES })
+    }
+
+    @Test
+    fun `a text-only model leaves videos alone`() = runTest {
+        video(1, scene = 3)
+        video(2, scene = 3)
+
+        val result = find(1, textOnly, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
+
+        assertTrue(result.groups.isEmpty())
+        assertTrue(embedded.isEmpty())
+    }
+
+    @Test
+    fun `a file scanned earlier matches on its stored vector, but is never embedded again`() = runTest {
+        image(1, scene = 1)
+        image(2, scene = 1)
+        find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
+        embedded.clear()
+        image(3, scene = 1, seenNow = false)
+
+        val result = find(2, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+        assertTrue(embedded.isEmpty())
     }
 }

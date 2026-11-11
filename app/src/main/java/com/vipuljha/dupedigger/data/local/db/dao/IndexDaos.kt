@@ -23,6 +23,10 @@ interface FileIndexDao {
     @Query("SELECT * FROM file_index WHERE sourceUri IN (:sourceUris)")
     suspend fun findBySourceUris(sourceUris: List<String>): List<FileIndexEntity>
 
+    /** Rows whose file key matches, for a file whose URI changed; hard links make this many-to-one. */
+    @Query("SELECT * FROM file_index WHERE fileKey IN (:fileKeys)")
+    suspend fun findByFileKeys(fileKeys: List<String>): List<FileIndexEntity>
+
     @Query("SELECT * FROM file_index WHERE id IN (:ids)")
     suspend fun findByIds(ids: List<Long>): List<FileIndexEntity>
 
@@ -46,6 +50,10 @@ interface FileIndexDao {
     @Query("DELETE FROM file_index WHERE lastSeenScanId < :scanId AND substr(sourceUri, 1, length(:uriPrefix)) = :uriPrefix")
     suspend fun deleteNotSeenSince(scanId: Long, uriPrefix: String): Int
 
+    /** Of [ids], the ones this scan didn't see, so their rows are only as fresh as the scan that did. */
+    @Query("SELECT id FROM file_index WHERE id IN (:ids) AND lastSeenScanId != :scanId")
+    suspend fun idsNotSeenIn(ids: List<Long>, scanId: Long): List<Long>
+
     @Query("SELECT COUNT(*) FROM file_index")
     fun observeCount(): Flow<Int>
 }
@@ -64,11 +72,12 @@ interface FileHashDao {
     @Query("DELETE FROM file_hash WHERE fileId = :fileId")
     suspend fun deleteForFile(fileId: Long)
 
+    /** Every indexed file of [kinds], not only this scan's, so a copy in a folder scanned earlier is still found. */
     @Query(
-        "SELECT f.id, f.sourceUri, f.size, f.mtime, h.partialHash, h.fullHash FROM file_index f " +
-            "LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.lastSeenScanId = :scanId AND f.mediaKind IN (:kinds)",
+        "SELECT f.id, f.sourceUri, f.size, f.mtime, h.partialHash, h.fullHash, (f.lastSeenScanId = :scanId) AS seenNow " +
+            "FROM file_index f LEFT JOIN file_hash h ON h.fileId = f.id WHERE f.mediaKind IN (:kinds)",
     )
-    suspend fun hashStateForScan(scanId: Long, kinds: List<String>): List<FileHashState>
+    suspend fun hashState(scanId: Long, kinds: List<String>): List<FileHashState>
 }
 
 data class KindReclaimRow(val mediaKind: String, val groupCount: Int, val files: Int, val bytes: Long)
@@ -111,6 +120,7 @@ data class FileHashState(
     val mtime: Long,
     val partialHash: String?,
     val fullHash: String?,
+    val seenNow: Boolean,
 )
 
 @Dao
@@ -125,44 +135,60 @@ interface PerceptualHashDao {
     suspend fun deleteForFile(fileId: Long)
 
     @Query(
-        "SELECT f.id, f.sourceUri, f.size, d.value AS dHash, p.value AS pHash FROM file_index f " +
+        "SELECT f.id, f.sourceUri, f.size, d.value AS dHash, p.value AS pHash, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
             "LEFT JOIN perceptual_hash d ON d.fileId = f.id AND d.algo = 'DHASH' AND d.frameIndex = 0 " +
             "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'PHASH' AND p.frameIndex = 0 " +
-            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'IMAGE'",
+            "WHERE f.mediaKind = 'IMAGE'",
     )
-    suspend fun imagesForScan(scanId: Long): List<ImageHashRow>
+    suspend fun images(scanId: Long): List<ImageHashRow>
 
     /** One row per stored signature part (duration, then frames), or one row with no part for an unsigned video. */
     @Query(
-        "SELECT f.id, f.sourceUri, f.size, p.algo, p.frameIndex, p.value FROM file_index f " +
+        "SELECT f.id, f.sourceUri, f.size, p.algo, p.frameIndex, p.value, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
             "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('VIDEO_DURATION', 'VIDEO_PHASH') " +
-            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
+            "WHERE f.mediaKind = 'VIDEO' ORDER BY f.id, p.frameIndex",
     )
-    suspend fun videosForScan(scanId: Long): List<VideoHashRow>
+    suspend fun videos(scanId: Long): List<VideoHashRow>
 
     @Query(
-        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.size, p.value AS simHash FROM file_index f " +
+        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.size, p.value AS simHash, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
             "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo = 'SIMHASH' AND p.frameIndex = 0 " +
-            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'DOCUMENT'",
+            "WHERE f.mediaKind = 'DOCUMENT'",
     )
-    suspend fun documentsForScan(scanId: Long): List<DocumentHashRow>
+    suspend fun documents(scanId: Long): List<DocumentHashRow>
 
     /** One row per stored signature part, or one row with no part for an unread file. */
     @Query(
-        "SELECT f.id, f.sourceUri, f.name, f.size, p.algo, p.value FROM file_index f " +
+        "SELECT f.id, f.sourceUri, f.name, f.size, p.algo, p.value, (f.lastSeenScanId = :scanId) AS seenNow FROM file_index f " +
             "LEFT JOIN perceptual_hash p ON p.fileId = f.id AND p.algo IN ('AUDIO_DURATION', 'AUDIO_TITLE', 'AUDIO_ARTIST') " +
-            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind = 'AUDIO' ORDER BY f.id",
+            "WHERE f.mediaKind = 'AUDIO' ORDER BY f.id",
     )
-    suspend fun audioForScan(scanId: Long): List<AudioHashRow>
+    suspend fun audio(scanId: Long): List<AudioHashRow>
 }
 
-data class DocumentHashRow(val id: Long, val sourceUri: String, val name: String, val mimeType: String?, val size: Long, val simHash: Long?)
+data class DocumentHashRow(
+    val id: Long,
+    val sourceUri: String,
+    val name: String,
+    val mimeType: String?,
+    val size: Long,
+    val simHash: Long?,
+    val seenNow: Boolean,
+)
 
-data class AudioHashRow(val id: Long, val sourceUri: String, val name: String, val size: Long, val algo: String?, val value: Long?)
+data class AudioHashRow(val id: Long, val sourceUri: String, val name: String, val size: Long, val algo: String?, val value: Long?, val seenNow: Boolean)
 
-data class VideoHashRow(val id: Long, val sourceUri: String, val size: Long, val algo: String?, val frameIndex: Int?, val value: Long?)
+data class VideoHashRow(
+    val id: Long,
+    val sourceUri: String,
+    val size: Long,
+    val algo: String?,
+    val frameIndex: Int?,
+    val value: Long?,
+    val seenNow: Boolean,
+)
 
-data class ImageHashRow(val id: Long, val sourceUri: String, val size: Long, val dHash: Long?, val pHash: Long?)
+data class ImageHashRow(val id: Long, val sourceUri: String, val size: Long, val dHash: Long?, val pHash: Long?, val seenNow: Boolean)
 
 @Dao
 interface EmbeddingDao {
@@ -185,9 +211,9 @@ interface EmbeddingDao {
     suspend fun deleteForModel(modelId: String)
 
     @Query(
-        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.mediaKind, f.size, e.vector FROM file_index f " +
-            "LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +
-            "WHERE f.lastSeenScanId = :scanId AND f.mediaKind IN (:kinds)",
+        "SELECT f.id, f.sourceUri, f.name, f.mimeType, f.mediaKind, f.size, e.vector, (f.lastSeenScanId = :scanId) AS seenNow " +
+            "FROM file_index f LEFT JOIN embedding e ON e.fileId = f.id AND e.modelId = :modelKey " +
+            "WHERE f.mediaKind IN (:kinds)",
     )
     suspend fun candidates(scanId: Long, modelKey: String, kinds: List<String>): List<EmbeddingCandidateRow>
 }
@@ -200,6 +226,7 @@ class EmbeddingCandidateRow(
     val mediaKind: String,
     val size: Long,
     val vector: ByteArray?,
+    val seenNow: Boolean,
 )
 
 @Dao

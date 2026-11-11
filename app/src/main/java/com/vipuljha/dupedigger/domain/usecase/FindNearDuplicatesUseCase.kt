@@ -32,9 +32,11 @@ import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * Finds images, videos, documents and audio that look alike among the files of the chosen kinds seen in a scan, for the NEAR tier.
+ * Finds images, videos, documents and audio of the chosen kinds that look alike, for the NEAR tier.
  * - Each exact group takes part through one member (its lowest id), so byte-identical copies stay in their exact
  *   group and no file's space is counted twice.
+ * - A file an earlier scan indexed takes part when its hash is already cached, so a copy in a folder scanned before
+ *   still matches; one without a cached hash is left out rather than decoded, since this scan was asked for one scope.
  * - Missing work is done per kind and saved as it completes, so a restarted scan redoes no saved work: images,
  *   documents and audio [PARALLELISM] at a time in batches; videos, which decode several frames each, one at a time.
  * - Documents too short to compare are stored as [NO_TEXT_SIMHASH] and never match; formats the device can't read are
@@ -59,15 +61,18 @@ class FindNearDuplicatesUseCase @Inject constructor(
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult {
         val exactCopies = exactGroups.flatMap { it.fileIds.sorted().drop(1) }.toSet()
-        val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.imagesSeenIn(scanId) else emptyList())
-            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.hashes != null }
-        val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.videosSeenIn(scanId) else emptyList())
-            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.signature != null }
-        val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.documentsSeenIn(scanId) else emptyList())
+        val (cachedImages, newImages) = (if (MediaKind.IMAGE in kinds) fileIndex.indexedImages(scanId) else emptyList())
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }
+            .partitionWork({ it.hashes != null }, { it.seenNow })
+        val (cachedVideos, newVideos) = (if (MediaKind.VIDEO in kinds) fileIndex.indexedVideos(scanId) else emptyList())
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }
+            .partitionWork({ it.signature != null }, { it.seenNow })
+        val (cachedDocs, newDocs) = (if (MediaKind.DOCUMENT in kinds) fileIndex.indexedDocuments(scanId) else emptyList())
             .filter { it.size >= minSizeBytes && it.id !in exactCopies && textReader.supports(it.name, it.mimeType) }
-            .partition { it.simHash != null }
-        val (cachedAudio, newAudio) = (if (MediaKind.AUDIO in kinds) fileIndex.audioSeenIn(scanId) else emptyList())
-            .filter { it.size >= minSizeBytes && it.id !in exactCopies }.partition { it.signature != null }
+            .partitionWork({ it.simHash != null }, { it.seenNow })
+        val (cachedAudio, newAudio) = (if (MediaKind.AUDIO in kinds) fileIndex.indexedAudio(scanId) else emptyList())
+            .filter { it.size >= minSizeBytes && it.id !in exactCopies }
+            .partitionWork({ it.signature != null }, { it.seenNow })
         val total = newImages.size + newVideos.size + newDocs.size + newAudio.size
         val attempted = AtomicInteger()
         val step: suspend () -> Unit = { onProgress(attempted.incrementAndGet(), total) }
@@ -133,6 +138,17 @@ class FindNearDuplicatesUseCase @Inject constructor(
             hashed = done,
             unreadable = total - done,
         )
+    }
+
+    /**
+     * Splits into what already has a hash and what this scan should compute.
+     * A file an earlier scan indexed keeps its place when [hashed], so a copy in a folder scanned before is still
+     * matched; without one it is dropped rather than read, because hashing here costs a decode per file and the
+     * scan was asked for one scope, not the whole device.
+     */
+    private inline fun <T> List<T>.partitionWork(hashed: (T) -> Boolean, seenNow: (T) -> Boolean): Pair<List<T>, List<T>> {
+        val (cached, rest) = partition(hashed)
+        return cached to rest.filter(seenNow)
     }
 
     /** [difference] is each member's 0–1 distance from the first; the score is 1 minus their mean. */

@@ -153,3 +153,17 @@ guidance rather than taste; each task cites the rule it follows. Decisions in D-
 | P9-06 | **Bar polish.** Concentric indicator, no shadow or outline, a highlight that follows a drag, and an icon that actually fills. | The bar matches the owner's references and the selected destination is unmistakable. |
 | P9-07 | **What the floating bar broke.** Snackbars and the selection bar hidden behind it; dialog headline alignment; a chevron centred on the wrong thing. | Undo is reachable, dialogs read as M3 intends, and the settings chevron centres on its entry. |
 | P9-08 | **Quarantine selection.** Pick files with a checkbox and act on them with two buttons, instead of a pair of buttons on every card. | Emptying quarantine is one tap, and the screen reads like Results. |
+
+---
+
+## P10: Index identity, cross-folder detection and video in the AI tier
+
+Raised by the owner asking what a second scan of the same folder actually redoes. Three answers were wrong:
+a renamed file threw its cache away, duplicates were never looked for outside the scan's own scope, and the AI tier
+skipped video entirely. Decisions in D-031 to D-033.
+
+| ID | Task | Done when |
+|---|---|---|
+| P10-01 | **Identity that survives a rename.** `file_index.fileKey` from the walker's existing attribute read; a file found again by key, size and mtime keeps its row (D-031). Room 3 with a migration. | Renaming or moving a file recomputes no hash, and a reused inode on other content still does. |
+| P10-02 | **Duplicates across folders and scans.** Candidate queries cover the whole index with a `seenNow` flag; exact will hash a carried-over file, near and AI only use what's cached; vanished members are pruned before the groups are saved (D-032). | Scanning DCIM then Download reports the photo that sits in both, and a file deleted since its scan never shows as a duplicate. |
+| P10-03 | **Video in the AI tier.** Three keyframes per video, encoded like images and read together into one vector (D-033). | Two recordings of the same scene group under SEMANTIC with a vision model, and a text-only model leaves video alone. |

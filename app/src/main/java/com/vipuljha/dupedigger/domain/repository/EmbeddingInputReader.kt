@@ -7,4 +7,7 @@ interface EmbeddingInputReader {
 
     /** A clip of the audio as 16 kHz mono PCM16 WAV. */
     suspend fun audio(sourceUri: String): ByteArray?
+
+    /** Keyframes spread through the video, each encoded like [image]; null when no frame can be read. */
+    suspend fun video(sourceUri: String): List<ByteArray>?
 }

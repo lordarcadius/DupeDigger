@@ -66,6 +66,9 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P9-06 | Bar polish | done | Concentric indicator, no shadow/outline, sliding highlight, FileCopy (D-027, D-028) |
 | P9-07 | What the bar broke | done | Snackbars lifted, dialog alignment, chevron centring (D-029) |
 | P9-08 | Quarantine selection | done | Checkboxes plus Restore and Delete, per-card buttons gone (D-030) |
+| P10-01 | Identity across a rename | done | `file_index.fileKey` from the walker's attribute read, Room 3 (D-031) |
+| P10-02 | Duplicates across folders | done | Whole-index candidates with a `seenNow` flag; vanished members pruned (D-032) |
+| P10-03 | Video in the AI tier | done | Three keyframes read together into one vector (D-033) |
 
 ## Log
 
@@ -373,3 +376,37 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
 - 2026-10-29: P0-02: `DupeDiggerApp` (@HiltAndroidApp, Timber DebugTree in debug only, `Configuration.Provider` with `HiltWorkerFactory`), manifest registers it and removes the default `WorkManagerInitializer`; `MainActivity` is @AndroidEntryPoint and calls `enableEdgeToEdge()` before `super.onCreate()`; `buildConfig` enabled. Builds pass; the debug APK cold-starts on a Primebook (API 35) with no crash. Hilt KSP works on Kotlin 2.4.21 without `kotlin-metadata-jvm`. Next: P0-03.
 - 2026-10-29: P0-01: Java 21 toolchain replaces `compileOptions`; catalog and app gain KSP 2.3.12, Hilt 2.60.1, androidx.hilt 1.4.0, Room 2.8.5 (+ Gradle plugin, schemas in `app/schemas`), DataStore 1.3.0, Navigation 3 1.2.0, lifecycle-viewmodel-navigation3, kotlinx.serialization 1.12.0, collections-immutable 0.5.2, Coil 3.6.3 (+ video, no network module), WorkManager 2.12.0, Paging 3.5.3, Timber 5.0.1, material-icons-extended (BOM), material3 pinned at 1.5.0-beta02 (BOM maps 1.4.0), LiteRT-LM 0.18.1. AGP, Kotlin and BOM unchanged; no kotlin-android, no kapt. `assembleDebug assembleRelease` and `testDebugUnitTest` pass. Next: P0-02.
 - 2026-10-29: planning: created AGENTS.md, PLAN.md, ARCHITECTURE.md, PROGRESS.md and DECISIONS.md. No code changes yet. Next: P0-01.
+- 2026-11-11: P10-01 to P10-03: what a rescan redoes, what it never looked at, and video in the AI tier.
+  - **The question that started it:** "if I scan a folder again, does everything get scanned again?" Answering it honestly
+    turned up three things worth fixing. What already worked stays as it was: an unchanged file is marked seen and keeps
+    its hashes; a changed one loses its derived rows; a cancelled scan keeps what it flushed; and vectors are keyed by
+    model so switching variants doesn't throw the others away.
+  - **P10-01 — a rename cost a full rehash.** `sourceUri` was the only identity, and the deep scan's URIs are path-shaped.
+    `file_index` now carries `fileKey` from `BasicFileAttributes.fileKey()`, which the walker's one attribute call per
+    entry already produces, so it costs nothing. A row is adopted only on a key, size and mtime match (D-031 says why all
+    three), and only if this scan hasn't claimed it, so hard links get a row each. Room 2 → 3 with `MIGRATION_2_3` and
+    schema 3 committed. MediaStore ids already survive a rename; SAF documents still don't.
+  - **P10-02 — duplicates were only ever sought inside one scan.** The candidate queries dropped
+    `lastSeenScanId = :scanId` and now return the whole index with a `seenNow` flag. The exact tier will hash a file an
+    earlier scan indexed, because its work is bounded by shared sizes rather than by index size; the near and AI tiers
+    use only what is already cached, because their cost is per file. `SaveGroupsUseCase` checks the carried-over members
+    that reached a group against the device through the new `FilePresence`, drops what has gone with its index row, and
+    keeps the rest of an exact group while dropping a whole near or semantic group (its fingerprint is its members).
+  - **P10-03 — video skipped the AI tier.** With a vision model, a video is now embedded from three keyframes passed to
+    `computeEmbedding` together, so the encoder pools them into one vector. `EmbeddingInput.Video` was added and
+    `toInputData()` returns a list. Near-tier video is untouched.
+  - **Renames:** `filesSeenIn`/`imagesSeenIn`/… → `indexedFiles`/`indexedImages`/…, because the old names said the
+    opposite of what the methods now do.
+  - **Found while testing:** `ScanScope.WholeDevice`'s prune prefix is `file:`, so a whole-device scan still deletes
+    every `file:` row it didn't see — right, since it looked everywhere. Cross-scope matching is therefore a gain for
+    folder and media scans, whose prefixes are scoped. Noted in D-032; the device test uses `ScanScope.Paths`.
+  - **Checked:** `testDebugUnitTest` (294 tests, 0 failures), `lint`, the domain-purity grep, and
+    `connectedDebugAndroidTest` on `Pixel_10_Pro_XL` API 37 (**80 tests, 0 failures, 7 skipped**, up from 73). New unit
+    tests cover the cross-scan exact match, the near and AI tiers refusing to hash a carried-over file, a vanished
+    member leaving the results, videos grouping from keyframes, and a text-only model leaving video alone. New
+    instrumented tests: `FileIndexIdentityTest` (move, reused inode, hard links, no key), a walker test that a file key
+    survives a rename, and two in `ExactEngineDeviceTest` that run the real pipeline over Room — a copy found across two
+    folder scans, and a moved file hashed zero times on the next scan.
+  - **Not checked:** semantic video quality against real footage — the grouping is covered by a fake embedder, not by
+    EmbeddingGemma on a device, so the 0.90 threshold is unverified for video. Memory of a whole-index semantic pass on a
+    large library is also unmeasured (256-float vectors, so about 1 KB a file).

@@ -49,6 +49,7 @@ import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import com.vipuljha.dupedigger.domain.repository.VideoHasher
+import com.vipuljha.dupedigger.presentation.FakePresence
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.awaitCancellation
@@ -70,6 +71,7 @@ class RunScanUseCaseTest {
     /** sourceUri → content; files sharing content are duplicates. */
     private val disk = linkedMapOf<String, String>()
     private val index = FakeIndex()
+    private val presence = FakePresence()
     private val hasher = FakeHasher(disk)
     private val runs = FakeScanRuns()
     private val groups = DuplicateGroupUseCasesTest.FakeGroups()
@@ -138,6 +140,7 @@ class RunScanUseCaseTest {
             object : EmbeddingInputReader {
                 override suspend fun image(sourceUri: String): ByteArray? = scenes[sourceUri]?.let { byteArrayOf(it.toByte()) }
                 override suspend fun audio(sourceUri: String): ByteArray? = null
+                override suspend fun video(sourceUri: String): List<ByteArray>? = null
             },
             object : DocumentTextReader {
                 override fun supports(name: String, mimeType: String?) = false
@@ -147,7 +150,7 @@ class RunScanUseCaseTest {
         power = object : PowerState {
             override fun isCharging() = charging
         },
-        saveGroups = SaveGroupsUseCase(groups),
+        saveGroups = SaveGroupsUseCase(groups, index, presence),
         skip = skip,
     )
 
@@ -467,17 +470,17 @@ class RunScanUseCaseTest {
         val rows = linkedMapOf<String, IndexedFile>()
         val imageHashes = mutableMapOf<Long, ImageHashes>()
 
-        override suspend fun imagesSeenIn(scanId: Long) =
+        override suspend fun indexedImages(scanId: Long) =
             rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId }
                 .map { ImageFile(it.id, it.sourceUri, it.size, imageHashes[it.id]) }
         override suspend fun saveImageHashes(hashes: Map<Long, ImageHashes>) {
             imageHashes += hashes
         }
-        override suspend fun videosSeenIn(scanId: Long) = emptyList<VideoFile>()
+        override suspend fun indexedVideos(scanId: Long) = emptyList<VideoFile>()
         override suspend fun saveVideoSignatures(signatures: Map<Long, VideoSignature>) = Unit
-        override suspend fun documentsSeenIn(scanId: Long) = emptyList<DocumentFile>()
+        override suspend fun indexedDocuments(scanId: Long) = emptyList<DocumentFile>()
         override suspend fun saveDocumentHashes(hashes: Map<Long, Long>) = Unit
-        override suspend fun audioSeenIn(scanId: Long) = emptyList<AudioFile>()
+        override suspend fun indexedAudio(scanId: Long) = emptyList<AudioFile>()
         override suspend fun saveAudioSignatures(signatures: Map<Long, AudioSignature>) = Unit
         override suspend fun embeddingCandidates(scanId: Long, modelKey: String, kinds: Set<MediaKind>) =
             rows.values.filter { it.sourceUri.endsWith(".jpg") && lastSeen[it.sourceUri] == scanId && MediaKind.IMAGE in kinds }
@@ -515,11 +518,12 @@ class RunScanUseCaseTest {
             return stale.size
         }
 
-        override suspend fun filesSeenIn(scanId: Long, kinds: Set<MediaKind>) =
+        override suspend fun indexedFiles(scanId: Long, kinds: Set<MediaKind>) =
             rows.values.filter { lastSeen[it.sourceUri] == scanId && kindOf[it.sourceUri] in kinds }
 
         override suspend fun saveHashes(files: List<IndexedFile>) = files.forEach { rows[it.sourceUri] = it }
 
+        override suspend fun notSeenIn(scanId: Long, ids: Collection<Long>) = emptySet<Long>()
         override suspend fun filesByIds(ids: Collection<Long>) = emptyList<StoredFile>()
 
         override suspend fun remove(ids: Collection<Long>) = Unit

@@ -18,7 +18,8 @@ import java.nio.file.attribute.BasicFileAttributes
  * Walks folders with `java.io.File`, used for the Deep scan (All files access).
  * - Iterative and depth-first: memory holds the pending folders and one listing, never every file.
  * - Symlinks are skipped, so the walk never leaves its roots or loops.
- * - Filtered entries are dropped before any stat call; every other entry costs one attribute read.
+ * - Filtered entries are dropped before any stat call; every other entry costs one attribute read, which also
+ *   carries the file key, so a renamed or moved file keeps its index row for free.
  * - Checks for cancellation before each directory and each file.
  */
 class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
@@ -50,6 +51,7 @@ class FileTreeWalker(private val mimeTypeOf: (fileName: String) -> String?) {
                                 size = attrs.size(),
                                 mtime = attrs.lastModifiedTime().toMillis(),
                                 volume = volume.path,
+                                fileKey = attrs.fileKey()?.toString(),
                             ),
                         )
                     }

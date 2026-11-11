@@ -6,8 +6,10 @@ import android.graphics.ImageDecoder
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.vipuljha.dupedigger.core.common.IoDispatcher
+import com.vipuljha.dupedigger.domain.model.VIDEO_EMBED_FRAMES
 import com.vipuljha.dupedigger.domain.repository.EmbeddingInputReader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -31,6 +33,8 @@ import kotlin.math.roundToInt
  * Prepares files for the embedding model (D-006).
  * - Images: decoded straight to a long side of [IMAGE_SIDE] px (EXIF orientation applied) and re-encoded as JPEG.
  * - Audio: [CLIP_SECONDS] from a quarter of the way in (skipping intros), mixed to mono and resampled to 16 kHz PCM16 WAV.
+ * - Video: [VIDEO_EMBED_FRAMES] keyframes at the middle of equal slices, each encoded like an image. The nearest
+ *   keyframe is enough here, unlike the near tier's frame-for-frame pHash, and it costs no decode from a previous one.
  */
 @Singleton
 class AndroidEmbeddingInputReader @Inject constructor(
@@ -59,6 +63,30 @@ class AndroidEmbeddingInputReader @Inject constructor(
     override suspend fun audio(sourceUri: String): ByteArray? = read("audio") {
         val mono = decodeClip(sourceUri) ?: return@read null
         wav(resample(mono.first, mono.second, TARGET_RATE))
+    }
+
+    override suspend fun video(sourceUri: String): List<ByteArray>? = read("video") {
+        MediaMetadataRetriever().use { retriever ->
+            if (sourceUri.startsWith("file:")) {
+                retriever.setDataSource(File(URI(sourceUri)).path)
+            } else {
+                retriever.setDataSource(context, Uri.parse(sourceUri))
+            }
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                ?.takeIf { it > 0 } ?: return@use null
+            val frames = (0 until VIDEO_EMBED_FRAMES).mapNotNull { i ->
+                currentCoroutineContext().ensureActive()
+                val timeUs = durationMs * 1000 * (2 * i + 1) / (2 * VIDEO_EMBED_FRAMES)
+                retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, IMAGE_SIDE, IMAGE_SIDE)?.let { frame ->
+                    try {
+                        ByteArrayOutputStream().also { frame.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }.toByteArray()
+                    } finally {
+                        frame.recycle()
+                    }
+                }
+            }
+            frames.ifEmpty { null }
+        }
     }
 
     private suspend fun <T> read(what: String, block: suspend () -> T?): T? = withContext(ioDispatcher) {

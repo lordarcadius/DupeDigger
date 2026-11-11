@@ -44,7 +44,7 @@ class ImageHashCacheTest {
     @Test
     fun hashesReadBackUntilTheFileChanges() = runBlocking<Unit> {
         repository.record(listOf(file("a.jpg", MediaKind.IMAGE), file("b.jpg", MediaKind.IMAGE), file("c.pdf", MediaKind.DOCUMENT)), scanId = 1)
-        val (a, b) = repository.imagesSeenIn(1).sortedBy { it.sourceUri }
+        val (a, b) = repository.indexedImages(1).sortedBy { it.sourceUri }
         assertEquals(listOf(null, null), listOf(a.hashes, b.hashes))
 
         repository.saveImageHashes(mapOf(a.id to ImageHashes(1, 2), b.id to ImageHashes(3, 4)))
@@ -52,14 +52,14 @@ class ImageHashCacheTest {
 
         assertEquals(
             listOf(ImageFile(a.id, "file:/p/a.jpg", 10, ImageHashes(1, 2)), ImageFile(b.id, "file:/p/b.jpg", 10, null)),
-            repository.imagesSeenIn(2).sortedBy { it.sourceUri },
+            repository.indexedImages(2).sortedBy { it.sourceUri },
         )
     }
 
     @Test
     fun videoSignaturesReadBackOnlyWhenComplete() = runBlocking<Unit> {
         repository.record(listOf(file("a.mp4", MediaKind.VIDEO), file("b.mp4", MediaKind.VIDEO), file("c.jpg", MediaKind.IMAGE)), scanId = 1)
-        val (a, b) = repository.videosSeenIn(1).sortedBy { it.sourceUri }
+        val (a, b) = repository.indexedVideos(1).sortedBy { it.sourceUri }
         val signature = VideoSignature(60_000, List(VIDEO_FRAMES) { it * 3L }.toImmutableList())
 
         repository.saveVideoSignatures(mapOf(a.id to signature))
@@ -67,10 +67,13 @@ class ImageHashCacheTest {
 
         assertEquals(
             listOf(VideoFile(a.id, "file:/p/a.mp4", 10, signature), VideoFile(b.id, "file:/p/b.mp4", 10, null)),
-            repository.videosSeenIn(1).sortedBy { it.sourceUri },
+            repository.indexedVideos(1).sortedBy { it.sourceUri },
         )
         repository.record(listOf(file("a.mp4", MediaKind.VIDEO, mtime = 2)), scanId = 2)
-        assertEquals(listOf(VideoFile(a.id, "file:/p/a.mp4", 10, null)), repository.videosSeenIn(2))
+        assertEquals(
+            listOf(VideoFile(a.id, "file:/p/a.mp4", 10, null), VideoFile(b.id, "file:/p/b.mp4", 10, null, seenNow = false)),
+            repository.indexedVideos(2).sortedBy { it.sourceUri },
+        )
     }
 
     @Test
@@ -79,17 +82,17 @@ class ImageHashCacheTest {
             listOf(file("a.pdf", MediaKind.DOCUMENT), file("b.mp3", MediaKind.AUDIO), file("c.m4a", MediaKind.AUDIO)),
             scanId = 1,
         )
-        val doc = repository.documentsSeenIn(1).single()
-        val (b, c) = repository.audioSeenIn(1).sortedBy { it.name }
+        val doc = repository.indexedDocuments(1).single()
+        val (b, c) = repository.indexedAudio(1).sortedBy { it.name }
         assertEquals(listOf(null, null, null), listOf(doc.simHash, b.signature, c.signature))
 
         repository.saveDocumentHashes(mapOf(doc.id to 42L))
         repository.saveAudioSignatures(mapOf(b.id to AudioSignature(200_000, 7, 9), c.id to AudioSignature(200_500, null, null)))
 
-        assertEquals(DocumentFile(doc.id, "file:/p/a.pdf", "a.pdf", null, 10, 42L), repository.documentsSeenIn(1).single())
+        assertEquals(DocumentFile(doc.id, "file:/p/a.pdf", "a.pdf", null, 10, 42L), repository.indexedDocuments(1).single())
         assertEquals(
             listOf(AudioSignature(200_000, 7, 9), AudioSignature(200_500, null, null)),
-            repository.audioSeenIn(1).sortedBy { it.name }.map { it.signature },
+            repository.indexedAudio(1).sortedBy { it.name }.map { it.signature },
         )
     }
 }
