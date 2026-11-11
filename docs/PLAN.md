@@ -182,3 +182,11 @@ right vendor runtime. Decisions in D-034 and D-035.
 | P11-02 | **One runtime per device.** Three dynamic feature modules, each conditionally delivered to its vendor's chips by `device_targeting_config.xml` (D-035). | `bundleRelease` carries all three modules with their dispatch libraries and device groups, and no device can receive two. |
 | P11-03 | **Measure the backends.** A benchmark that loads each backend directly and reports load time, time per item by modality, memory, battery and how far the backends' vectors agree. | The harness runs and prints a table; the numbers from a Snapdragon device are in PROGRESS and the 0.90 threshold is confirmed or changed. |
 | P11-04 | **What the benchmark found.** Vectors keyed by backend as well as model, and a vector that isn't finite counted as a file that couldn't be read (D-036). | Changing backend re-reads rather than comparing across backends, and a NaN vector is never stored. |
+
+---
+
+## P12: Deprecations
+
+| ID | Task | Done when |
+|---|---|---|
+| P12-01 | **Slider's state API.** The three sliders (AI threshold, near threshold, compare wipe) use the deprecated `value`/`onValueChange` overload. Move each to `SliderState` as the single source of truth, keyed so a value changed elsewhere still moves the thumb, and check each on screen. | `compileDebugKotlin` has no deprecation warnings, and all three sliders drag, save and follow an external change on a device. |

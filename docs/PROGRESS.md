@@ -73,6 +73,7 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P11-02 | One NPU runtime per device | done | Three conditionally delivered feature modules (D-035) |
 | P11-03 | Backend benchmark | in progress | Harness done and run on the emulator; the Snapdragon numbers are what is left |
 | P11-04 | What the benchmark found | done | Vectors keyed by backend; a non-finite vector counts as unread (D-036) |
+| P12-01 | Slider state API | todo | Three sliders still on the deprecated overload; needs a device check |
 
 ## Log
 
@@ -464,3 +465,17 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
   - **Still open, P11-03:** every figure above is an emulator's. A real GPU may agree with the CPU at 0.99 and never
     produce a NaN, and no NPU row has ever been printed. Run the harness on the Snapdragon device before drawing any
     conclusion about whether the NPU is worth it, and re-take the agreement numbers before relaxing D-036.
+- 2026-11-12: A project-wide IDE reformat, and the two API migrations hidden in it.
+  - 154 files were reformatted — wrapping, sorted imports, unused imports dropped, companion constants imported
+    explicitly. Behaviour unchanged; checked by comparing identifier multisets per file against the previous commit,
+    which is also what turned up the two changes that weren't formatting.
+  - **`Data.getStringArray` → `getNullableStringArray`** in `ScanScopeCodec`. It returns `Array<String?>`, so
+    `ScanScope.Paths` stopped type-checking. Kept the new call with `filterNotNull()`.
+  - **Compose `Slider` → `SliderState`** in the AI threshold, near threshold and compare wipe screens, with
+    `COMPILED_CODE` — the decompiler's placeholder — left wherever a default argument couldn't be resolved. Eleven
+    more errors. Those three call sites are back on the committed version.
+  - **Why not finish that migration here:** the old overload really is deprecated, so the direction was right, but
+    `rememberSliderState` takes its value only as an initial one and isn't keyed, so a threshold changed anywhere
+    else would stop moving the thumb. Doing it properly means making `SliderState` the source of truth in each
+    screen and looking at it on a device. That is P12-01.
+  - **Checked:** `compileDebugKotlin` clean, with the three Slider deprecation warnings that predate this.
