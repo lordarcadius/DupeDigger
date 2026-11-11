@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import com.vipuljha.dupedigger.domain.repository.DeviceSoc
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,4 +18,12 @@ class AndroidDeviceSoc @Inject constructor(@param:ApplicationContext private val
     override fun model(): String = Build.SOC_MODEL.takeUnless { it == Build.UNKNOWN }.orEmpty()
 
     override fun nativeLibraryDir(): String = context.applicationInfo.nativeLibraryDir
+
+    override fun hasNpuRuntime(): Boolean =
+        File(nativeLibraryDir()).listFiles { _, name -> name.startsWith(DISPATCH_PREFIX) && name.endsWith(".so") }?.isNotEmpty() == true
+
+    private companion object {
+        /** What LiteRT names a vendor's dispatch library; a conditionally delivered module brings exactly one. */
+        const val DISPATCH_PREFIX = "libLiteRtDispatch_"
+    }
 }

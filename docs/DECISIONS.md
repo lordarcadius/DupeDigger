@@ -712,3 +712,33 @@ its manufacturer as `QTI`; each group also lists the spelling a device might use
 with their dispatch libraries and the right device groups, and that the app falls back cleanly when none is present.
 Whether a conditionally delivered module's library actually lands in `applicationInfo.nativeLibraryDir`, and whether
 the vision encoder runs on the NPU at all, both still need a Snapdragon device and a Play install.
+
+## D-036: Vectors are keyed by backend too, and an unusable one is a failed read (accepted, P11-03)
+Both of these came out of the backend benchmark, not from reasoning.
+
+**Measured** on the Pixel 10 Pro XL emulator, 440M text + vision, dim 256, the *same input* through the *same model
+file*, CPU against GPU:
+
+| | text | image | video |
+|---|---|---|---|
+| cosine, CPU vs GPU | 0.8847 | *not finite* | 0.7943 |
+
+**Decision 1: `embeddingKey` includes the backend.** The SEMANTIC tier groups at 0.90. Two backends disagreeing at
+0.88 and 0.79 means a cached vector compared with a fresh one from another backend could both miss real duplicates
+and invent them — the second is the one this app must never do. The key is now `<model>@<dim>/<backend>`, so changing
+backend re-reads the files, exactly as changing model does (D-006). Before this, only NPU was separated, and only
+because it happens to be a different *file*; CPU and GPU shared a key.
+
+`ResolveEmbeddingModelUseCase` therefore also checks that a vendor dispatch library is present before it settles on
+NPU, so the key names the backend that will actually run rather than the one that was asked for.
+
+**Decision 2: a vector that isn't finite counts as a file that couldn't be read.** The emulator's GPU returned a
+vector full of NaN for an image, while text and video were fine. Cosine with a NaN vector is NaN, so the file would
+silently match nothing — and storing it would cache that silence for good, since a stored vector is never recomputed.
+`FindSemanticDuplicatesUseCase` now drops a vector that isn't finite or is all zero, counts it unreadable, and leaves
+it to be tried again.
+
+**Worth knowing:** these figures come from an emulator's software GPU, whose arithmetic is not a real driver's. A
+real GPU may well agree with the CPU at 0.99, and the NaN may be SwiftShader alone. Both decisions are safe either
+way — the cost is a re-embed on a change the user makes deliberately and rarely — but the numbers should be taken
+again on hardware before anyone relaxes them.

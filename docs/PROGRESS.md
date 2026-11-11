@@ -71,7 +71,8 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P10-03 | Video in the AI tier | done | Three keyframes read together into one vector (D-033) |
 | P11-01 | NPU backend and per-chip model | done | `Build.SOC_MODEL` picks the build; NPU→GPU→CPU fallback (D-034) |
 | P11-02 | One NPU runtime per device | done | Three conditionally delivered feature modules (D-035) |
-| P11-03 | Measure NPU on hardware | todo | Needs a Snapdragon 8 Gen 2+ device; nothing is verified on silicon yet |
+| P11-03 | Backend benchmark | in progress | Harness done and run on the emulator; the Snapdragon numbers are what is left |
+| P11-04 | What the benchmark found | done | Vectors keyed by backend; a non-finite vector counts as unread (D-036) |
 
 ## Log
 
@@ -439,3 +440,27 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
     module's library reaches `applicationInfo.nativeLibraryDir`; that the vision encoder runs on the NPU rather than
     only text; whether NPU is actually faster for our short-prefill workload, as against the published decode numbers;
     and whether the 0.90 semantic threshold still suits NPU vectors.
+- 2026-11-12: P11-03 and P11-04: a backend benchmark, and the two bugs it found.
+  - **`EmbeddingBackendBenchmark`** (`app/src/androidTest/.../benchmark/`) loads each backend this device has and
+    reports load time, milliseconds per item for every modality the model reads, process RSS, battery charge used,
+    and how far each backend's vectors agree with the CPU's. It loads through `LiteRtModelLoader` rather than the
+    app's embedder on purpose: the embedder falls back quietly, and a row labelled NPU has to be the NPU.
+    Opt-in and it downloads models:
+    `./gradlew connectedDebugAndroidTest -PnpuFeatures=false -Pandroid.testInstrumentationRunnerArguments.class=com.vipuljha.dupedigger.benchmark.EmbeddingBackendBenchmark -Pandroid.testInstrumentationRunnerArguments.embedBenchmark=true`
+    with optional `model`, `items` and `keep` arguments.
+  - **Emulator numbers** (Pixel_10_Pro_XL API 37, x86_64, software GPU, dim 256, debuggable build — all pessimistic
+    and not a real device). 440M text + vision: CPU load 1.5–13 s then 214 ms a text, 977 ms an image, 2775 ms a
+    video; GPU load 82–114 s then 123 / 969 / 1871 ms, so 1.74× / 1.01× / 1.48× against CPU. 270M text: CPU 223 ms,
+    GPU 130 ms, 1.71×. The GPU's load time dwarfs any of it, which matters for a tier that loads once a scan.
+  - **It confirmed the video path works on the real engine**, which P10-03 had only ever had fakes for: three
+    keyframes go in and one unit-norm vector comes out, at about 2.8× the cost of a single image.
+  - **Two findings, both fixed (D-036).** The same input through the same model file came back at cosine 0.8847
+    (text) and 0.7943 (video) between CPU and GPU — below the 0.90 the tier groups at — so `embeddingKey` now carries
+    the backend, and `ResolveEmbeddingModelUseCase` checks for a vendor dispatch library so the key names the backend
+    that will really run. And the GPU returned a vector full of NaN for an image, which would have matched nothing
+    and been cached forever; an unusable vector now counts as a file that couldn't be read.
+  - **Checked:** `testDebugUnitTest` (305 tests, 0 failures), `lint`, the domain-purity grep, `assembleDebug`,
+    `bundleRelease`, and the benchmark itself run twice on the emulator.
+  - **Still open, P11-03:** every figure above is an emulator's. A real GPU may agree with the CPU at 0.99 and never
+    produce a NaN, and no NPU row has ever been printed. Run the harness on the Snapdragon device before drawing any
+    conclusion about whether the NPU is worth it, and re-take the agreement numbers before relaxing D-036.

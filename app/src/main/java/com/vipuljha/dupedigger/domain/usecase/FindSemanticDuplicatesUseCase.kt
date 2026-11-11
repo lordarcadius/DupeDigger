@@ -38,7 +38,8 @@ import javax.inject.Inject
  *   before still matches; one without a vector is left out rather than embedded, since this scan was asked for one scope.
  * - Each exact group takes part through one member; a semantic group whose files all sit in one near group is dropped,
  *   since that group already shows them.
- * - A batch the engine rejects is retried file by file so one bad file costs only itself.
+ * - A batch the engine rejects is retried file by file so one bad file costs only itself, and a vector that comes
+ *   back unusable counts as a file that couldn't be read rather than being stored.
  * Returns null when the model can't be loaded, so the scan carries on without the tier.
  */
 class FindSemanticDuplicatesUseCase @Inject constructor(
@@ -59,7 +60,7 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         kinds: Set<MediaKind> = AllMediaKinds,
         onProgress: suspend (done: Int, total: Int) -> Unit = { _, _ -> },
     ): NearScanResult? {
-        val key = embeddingKey(variant)
+        val key = embeddingKey(variant, backend)
         val readable = buildSet {
             if (ModelCapability.VISION in variant.capabilities) addAll(listOf(MediaKind.IMAGE, MediaKind.VIDEO))
             if (ModelCapability.AUDIO in variant.capabilities) add(MediaKind.AUDIO)
@@ -119,7 +120,7 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
     ): Map<EmbeddedFile, FloatArray>? {
         if (prepared.isEmpty()) return emptyMap()
         return when (val outcome = embedder.embed(variant, prepared.map { it.second }, EMBEDDING_DIM, backend)) {
-            is Outcome.Success -> prepared.map { it.first }.zip(outcome.data).toMap()
+            is Outcome.Success -> prepared.map { it.first }.zip(outcome.data).filter { (_, vector) -> vector.isComparable() }.toMap()
             is Outcome.Failure -> if (outcome.error == DomainError.ModelUnavailable) {
                 null
             } else if (prepared.size == 1) {
@@ -146,6 +147,12 @@ class FindSemanticDuplicatesUseCase @Inject constructor(
         }
         else -> null
     }
+
+    /**
+     * A backend can hand back a vector holding NaN or infinity. Cosine with one is NaN, so it would match nothing,
+     * and storing it would cache that silence for good — it counts as a file that couldn't be read, to try again.
+     */
+    private fun FloatArray.isComparable(): Boolean = isNotEmpty() && all(Float::isFinite) && any { it != 0f }
 
     private fun EmbeddedFile.withVector(vector: FloatArray) = EmbeddedFile(id, sourceUri, name, mimeType, kind, size, vector)
 

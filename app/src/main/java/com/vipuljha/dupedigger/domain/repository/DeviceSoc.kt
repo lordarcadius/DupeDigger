@@ -7,4 +7,7 @@ interface DeviceSoc {
 
     /** Where the app's bundled native libraries live, which the NPU runtime is loaded from. */
     fun nativeLibraryDir(): String
+
+    /** Whether a vendor dispatch library is actually there, which only a bundle installed from Play delivers. */
+    fun hasNpuRuntime(): Boolean
 }

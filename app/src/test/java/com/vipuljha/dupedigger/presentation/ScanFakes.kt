@@ -257,9 +257,10 @@ class FakePresence(val gone: MutableSet<String> = mutableSetOf()) : FilePresence
 }
 
 /** A chip with no NPU build unless [soc] names one. */
-class FakeSoc(var soc: String = "") : DeviceSoc {
+class FakeSoc(var soc: String = "", var npuRuntime: Boolean = true) : DeviceSoc {
     override fun model() = soc
     override fun nativeLibraryDir() = "/data/app/lib/arm64"
+    override fun hasNpuRuntime() = npuRuntime
 }
 
 /** A model counts as downloaded only while its id is in [installed]. */

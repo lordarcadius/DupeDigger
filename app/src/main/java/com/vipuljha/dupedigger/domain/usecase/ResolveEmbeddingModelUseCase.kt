@@ -12,8 +12,10 @@ data class EmbeddingTarget(val variant: ModelVariant, val backend: EmbeddingBack
 
 /**
  * Turns the chosen model and the preferred backend into the file that actually exists on this device.
- * An NPU run needs a build compiled for this exact chip and downloaded; without one the scan runs the portable file
- * on the GPU rather than not running at all, because the backend is a preference (D-034).
+ * An NPU run needs a build compiled for this exact chip, downloaded, and the vendor dispatch library that only a
+ * bundle from Play delivers. Short of all three the scan runs the portable file on the GPU rather than not running
+ * at all, because the backend is a preference (D-034). Deciding here, before anything is embedded, is what keeps the
+ * vectors' key honest about the backend that produced them.
  */
 class ResolveEmbeddingModelUseCase @Inject constructor(
     private val downloads: ModelDownloads,
@@ -21,7 +23,7 @@ class ResolveEmbeddingModelUseCase @Inject constructor(
 ) {
     operator fun invoke(variant: ModelVariant, backend: EmbeddingBackend): EmbeddingTarget {
         if (backend != EmbeddingBackend.NPU) return EmbeddingTarget(variant, backend)
-        val build = npuBuild(variant)?.takeIf { downloads.installedPath(it) != null }
+        val build = npuBuild(variant)?.takeIf { downloads.installedPath(it) != null && soc.hasNpuRuntime() }
             ?: return EmbeddingTarget(variant, EmbeddingBackend.GPU)
         return EmbeddingTarget(build, EmbeddingBackend.NPU)
     }

@@ -25,8 +25,16 @@ enum class EmbeddingBackend { CPU, GPU, NPU }
 /** Vector size used for similarity: near-lossless Matryoshka truncation per D-006. */
 const val EMBEDDING_DIM = 256
 
-/** Stored vectors are keyed by model and size, since vectors from another model or size can't be compared. */
-fun embeddingKey(variant: ModelVariant, dim: Int = EMBEDDING_DIM): String = "${variant.id}@$dim"
+/**
+ * Stored vectors are keyed by model, size **and backend**, since vectors from another of those can't be compared.
+ *
+ * The backend belongs in the key because it changes the answer: measured on one device, the same file through the
+ * same model file came back at cosine 0.88 for text and 0.79 for video between CPU and GPU — below the 0.90 the
+ * SEMANTIC tier groups at. Comparing a cached vector with one from another backend could therefore both miss real
+ * duplicates and invent them. Changing backend re-reads the files, which the settings screen says.
+ */
+fun embeddingKey(variant: ModelVariant, backend: EmbeddingBackend, dim: Int = EMBEDDING_DIM): String =
+    "${variant.id}@$dim/${backend.name}"
 
 /** EmbeddingGemma's symmetric-similarity prompt (D-006); document text is embedded after it. */
 const val SIMILARITY_PROMPT = "task: sentence similarity | query: "

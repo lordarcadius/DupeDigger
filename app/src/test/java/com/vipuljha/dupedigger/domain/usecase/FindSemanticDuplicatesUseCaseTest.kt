@@ -56,7 +56,9 @@ class FindSemanticDuplicatesUseCaseTest {
             embedded += inputs
             return Outcome.Success(inputs.map { input ->
                 when (input) {
-                    is EmbeddingInput.Image -> vectorFor(input.encoded[0].toInt(), input.encoded[1] / 100f)
+                    // A real backend has been seen to hand back NaN for an image; scene NAN_SCENE stands in for that.
+                    is EmbeddingInput.Image ->
+                        if (input.encoded[0].toInt() == NAN_SCENE) FloatArray(4) { Float.NaN } else vectorFor(input.encoded[0].toInt(), input.encoded[1] / 100f)
                     is EmbeddingInput.Text -> vectorFor(input.text.length % 4, 0.05f)
                     is EmbeddingInput.Audio -> vectorFor(input.wav[0].toInt(), 0.05f)
                     // A video's frames read together into one vector, so the first frame's scene stands for it.
@@ -108,7 +110,7 @@ class FindSemanticDuplicatesUseCaseTest {
 
         assertEquals(listOf(listOf(1L, 2L, 3L)), result.groups.map { it.fileIds })
         assertTrue(result.groups.single().fingerprint.startsWith("${MatchTier.SEMANTIC}:"))
-        assertEquals(setOf(1L, 2L, 3L, 4L), stored.keys.filter { it.first == embeddingKey(vision) }.map { it.second }.toSet())
+        assertEquals(setOf(1L, 2L, 3L, 4L), stored.keys.filter { it.first == embeddingKey(vision, EmbeddingBackend.CPU) }.map { it.second }.toSet())
     }
 
     @Test
@@ -162,6 +164,32 @@ class FindSemanticDuplicatesUseCaseTest {
     }
 
     @Test
+    fun `switching backend re-reads the files, because the two sets of vectors can't be compared`() = runTest {
+        image(1, scene = 1)
+        image(2, scene = 1)
+        find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
+        val onCpu = embedded.size
+
+        find(2, vision, EmbeddingBackend.GPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())
+
+        assertEquals(onCpu * 2, embedded.size)
+        assertEquals(setOf(EmbeddingBackend.CPU, EmbeddingBackend.GPU).map { embeddingKey(vision, it) }.toSet(), stored.keys.map { it.first }.toSet())
+    }
+
+    @Test
+    fun `a vector that comes back unusable is never stored, and counts as unread`() = runTest {
+        image(1, scene = 1)
+        image(2, scene = 1)
+        image(3, scene = NAN_SCENE)
+
+        val result = find(1, vision, EmbeddingBackend.CPU, 0.9f, minSizeBytes = 0, exactGroups = emptyList(), nearGroups = emptyList())!!
+
+        assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
+        assertEquals(1, result.unreadable)
+        assertTrue(stored.keys.none { it.second == 3L })
+    }
+
+    @Test
     fun `without the model the tier is skipped`() = runTest {
         image(1, scene = 1)
         available = false
@@ -205,5 +233,10 @@ class FindSemanticDuplicatesUseCaseTest {
 
         assertEquals(listOf(listOf(1L, 2L)), result.groups.map { it.fileIds })
         assertTrue(embedded.isEmpty())
+    }
+
+    private companion object {
+        /** A scene the fake engine answers with NaN, the way a real backend sometimes does. */
+        const val NAN_SCENE = 9
     }
 }

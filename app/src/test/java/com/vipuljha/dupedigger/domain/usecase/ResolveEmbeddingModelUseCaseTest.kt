@@ -44,6 +44,18 @@ class ResolveEmbeddingModelUseCaseTest {
     }
 
     @Test
+    fun `without the vendor runtime the npu build is not used, however complete the download`() {
+        soc.soc = "SM8650"
+        soc.npuRuntime = false
+        downloads.installed += resolve.npuBuild(model)!!.id
+
+        val target = resolve(model, EmbeddingBackend.NPU)
+
+        assertEquals(model, target.variant)
+        assertEquals(EmbeddingBackend.GPU, target.backend)
+    }
+
+    @Test
     fun `a chip with no build falls back, whatever the backend asks for`() {
         soc.soc = "SM7325"
 
@@ -67,7 +79,7 @@ class ResolveEmbeddingModelUseCaseTest {
         assertEquals(model.capabilities, build.capabilities)
         assertEquals(model.id, build.baseId)
         assertNotEquals(model.sha256, build.sha256)
-        assertNotEquals(embeddingKey(model), embeddingKey(build))
+        assertNotEquals(embeddingKey(model, EmbeddingBackend.GPU), embeddingKey(build, EmbeddingBackend.NPU))
         assertTrue(build.url.endsWith("embeddinggemma-2-text-vision-440m_Qualcomm_SM8750.litertlm"))
     }
 
