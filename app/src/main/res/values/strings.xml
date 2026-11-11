@@ -268,6 +268,14 @@
     <string name="ai_backend_cpu">Processor</string>
     <string name="ai_backend_gpu">Graphics chip</string>
     <string name="ai_backend_body">The processor works on every device. The graphics chip can be faster for photos but takes longer to start and uses much more memory; if it can’t start, the processor is used.</string>
+    <string name="ai_backend_npu">Neural engine</string>
+    <string name="ai_backend_npu_body">Your device’s neural engine (%1$s) runs the model using much less battery, which suits a scan of a whole gallery. It needs its own build of the model, below. Without it the graphics chip is used instead.</string>
+    <string name="ai_npu_build">Neural engine build · %1$s</string>
+    <string name="ai_npu_build_body">The chosen model, compiled for this chip. It is compared only with other files read the same way, so turning the neural engine on or off means reading files once more.</string>
+    <!-- Names Play shows for the neural-engine support each chip needs; only one is ever installed. -->
+    <string name="npu_module_qualcomm">Qualcomm neural engine support</string>
+    <string name="npu_module_mediatek">MediaTek neural engine support</string>
+    <string name="npu_module_google_tensor">Google Tensor neural engine support</string>
     <string name="ai_threshold">How alike files must be</string>
     <string name="ai_threshold_value">At least %1$s alike</string>
     <string name="ai_threshold_body">Lower finds more, but unrelated photos start to match. Applies from the next scan.</string>

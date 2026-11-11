@@ -10,8 +10,14 @@ import com.vipuljha.dupedigger.domain.model.ModelDownloadState
 import com.vipuljha.dupedigger.domain.model.ModelVariant
 import kotlinx.collections.immutable.toImmutableList
 
-fun aiUi(settings: AppSettings, models: List<Pair<ModelVariant, ModelDownloadState>>): AiUi {
-    val inFlight = models.any { (_, state) -> state is ModelDownloadState.Queued || state is ModelDownloadState.Downloading }
+/** [npu] is the chosen model's build for this chip and its download state, when the chip has one. */
+fun aiUi(
+    settings: AppSettings,
+    models: List<Pair<ModelVariant, ModelDownloadState>>,
+    npu: Pair<ModelVariant, ModelDownloadState>? = null,
+): AiUi {
+    val all = models + listOfNotNull(npu)
+    val inFlight = all.any { (_, state) -> state is ModelDownloadState.Queued || state is ModelDownloadState.Downloading }
     return AiUi(
         enabled = settings.semanticEnabled && settings.aiModelId != null,
         canEnable = settings.aiModelId != null,
@@ -20,6 +26,14 @@ fun aiUi(settings: AppSettings, models: List<Pair<ModelVariant, ModelDownloadSta
         wifiOnly = settings.modelDownloadWifiOnly,
         chargingOnly = settings.aiOnlyWhileCharging,
         models = models.map { (variant, state) -> variant.toRow(state, settings, inFlight) }.toImmutableList(),
+        npuChip = npu?.first?.socTarget?.replace('_', ' '),
+        npuBuild = npu?.let { (variant, state) ->
+            variant.toRow(state, settings, inFlight).copy(
+                title = UiText.res(R.string.ai_npu_build, variant.socTarget!!.replace('_', ' ')),
+                capabilities = UiText.res(R.string.ai_npu_build_body),
+                canChoose = false,
+            )
+        },
     )
 }
 

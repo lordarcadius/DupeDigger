@@ -37,11 +37,13 @@ class LiteRtEmbedderTest {
         override fun installedPath(variant: ModelVariant) = "/models/${variant.fileName}".takeIf { variant.id in installed }
     }
 
-    /** Records loads and closes; GPU fails when [gpuWorks] is false; [failEmbed] makes the model throw. */
+    /** Records loads and closes; a backend fails when its `...Works` flag is false; [failEmbed] makes the model throw. */
     private inner class FakeLoader : ModelLoader {
         val loads = mutableListOf<Pair<String, EmbeddingBackend>>()
         var closes = 0
         var gpuWorks = true
+        var npuWorks = true
+        var cpuWorks = true
         var failEmbed = false
         val active = AtomicInteger()
         var maxActive = 0
@@ -50,6 +52,8 @@ class LiteRtEmbedderTest {
         override fun load(path: String, variant: ModelVariant, backend: EmbeddingBackend): LoadedModel {
             loads += variant.id to backend
             if (backend == EmbeddingBackend.GPU && !gpuWorks) error("no GPU delegate")
+            if (backend == EmbeddingBackend.NPU && !npuWorks) error("no usable dispatch runtime")
+            if (backend == EmbeddingBackend.CPU && !cpuWorks) error("no CPU runtime")
             return object : LoadedModel {
                 override fun embed(input: EmbeddingInput, dim: Int): FloatArray {
                     val now = active.incrementAndGet()
@@ -101,6 +105,32 @@ class LiteRtEmbedderTest {
         embedder.embed(text, inputs, 128, EmbeddingBackend.GPU)
 
         assertEquals(listOf(text.id to EmbeddingBackend.GPU, text.id to EmbeddingBackend.CPU), loader.loads)
+    }
+
+    @Test
+    fun `an NPU that can't start walks down to the GPU, and then to the CPU`() = runTest {
+        loader.npuWorks = false
+        val embedder = embedder()
+
+        assertTrue(embedder.embed(text, inputs, 128, EmbeddingBackend.NPU) is Outcome.Success)
+        assertEquals(listOf(text.id to EmbeddingBackend.NPU, text.id to EmbeddingBackend.GPU), loader.loads)
+
+        loader.loads.clear()
+        loader.gpuWorks = false
+        embedder.embed(vision, inputs, 128, EmbeddingBackend.NPU)
+
+        assertEquals(
+            listOf(vision.id to EmbeddingBackend.NPU, vision.id to EmbeddingBackend.GPU, vision.id to EmbeddingBackend.CPU),
+            loader.loads,
+        )
+    }
+
+    @Test
+    fun `a CPU that can't start has nothing left to try and fails the batch`() = runTest {
+        loader.cpuWorks = false
+        val embedder = embedder()
+
+        assertTrue(embedder.embed(text, inputs, 128, EmbeddingBackend.CPU) is Outcome.Failure)
     }
 
     @Test

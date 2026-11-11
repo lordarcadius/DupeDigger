@@ -16,8 +16,11 @@ sealed interface EmbeddingInput {
  */
 const val VIDEO_EMBED_FRAMES = 3
 
-/** CPU is the default (D-006); GPU is a preference that falls back to CPU when it can't start. */
-enum class EmbeddingBackend { CPU, GPU }
+/**
+ * CPU is the default (D-006). Each of the others is a preference, not a promise: the engine falls back down the
+ * list — NPU to GPU to CPU — when a backend can't start or the model has no build for it.
+ */
+enum class EmbeddingBackend { CPU, GPU, NPU }
 
 /** Vector size used for similarity: near-lossless Matryoshka truncation per D-006. */
 const val EMBEDDING_DIM = 256

@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.domain.usecase.CancelModelDownloadUseCase
 import com.vipuljha.dupedigger.domain.usecase.ChooseModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.DownloadModelUseCase
+import com.vipuljha.dupedigger.domain.usecase.ResolveEmbeddingModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetAiBackendUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetAiChargingOnlyUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetModelWifiOnlyUseCase
@@ -17,6 +18,7 @@ import com.vipuljha.dupedigger.domain.usecase.SetSemanticEnabledUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetSemanticThresholdUseCase
 import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.presentation.FakeFileIndex
+import com.vipuljha.dupedigger.presentation.FakeSoc
 import com.vipuljha.dupedigger.presentation.FakeSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,10 +72,13 @@ class AiSettingsTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
+    private val soc = FakeSoc()
+    private val resolve = ResolveEmbeddingModelUseCase(downloads, soc)
+
     private fun viewModel() = AiViewModel(
         settings, downloads,
         DownloadModelUseCase(downloads, settings), CancelModelDownloadUseCase(downloads), ChooseModelUseCase(settings, downloads),
-        DeleteModelUseCase(downloads, settings, index), SetSemanticEnabledUseCase(settings), SetAiBackendUseCase(settings),
+        DeleteModelUseCase(downloads, settings, index, resolve), resolve, SetSemanticEnabledUseCase(settings), SetAiBackendUseCase(settings),
         SetSemanticThresholdUseCase(settings), SetModelWifiOnlyUseCase(settings, downloads), SetAiChargingOnlyUseCase(settings),
     )
 

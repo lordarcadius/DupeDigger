@@ -16,7 +16,11 @@ data class AiState(
     val confirmDelete: ModelRowUi? = null,
 ) : UiState
 
-/** [canEnable] is false until a downloaded model is chosen. */
+/**
+ * [canEnable] is false until a downloaded model is chosen.
+ * [npuChip] names this device's chip when a model is built for it, which is also when the NPU backend is offered;
+ * [npuBuild] is that build's own download row.
+ */
 @Immutable
 data class AiUi(
     val enabled: Boolean,
@@ -26,6 +30,8 @@ data class AiUi(
     val wifiOnly: Boolean,
     val chargingOnly: Boolean,
     val models: ImmutableList<ModelRowUi>,
+    val npuChip: String? = null,
+    val npuBuild: ModelRowUi? = null,
 )
 
 /** [canDownload] is false while another model downloads, since only one runs at a time. */
@@ -38,6 +44,8 @@ data class ModelRowUi(
     val status: ModelStatusUi,
     val chosen: Boolean,
     val canDownload: Boolean,
+    /** False for a chip's NPU build, which the backend picker selects rather than a "Use" button. */
+    val canChoose: Boolean = true,
 )
 
 @Immutable

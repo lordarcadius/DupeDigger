@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.vipuljha.dupedigger.core.common.Outcome
+import com.vipuljha.dupedigger.data.storage.AndroidDeviceSoc
 import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
 import com.vipuljha.dupedigger.domain.model.EmbeddingInput
 import com.vipuljha.dupedigger.domain.model.ModelCatalog
@@ -67,7 +68,7 @@ class EmbedderDeviceTest {
     fun embedsTextAndAnImageAtTheAskedSize() = runBlocking<Unit> {
         val download = storage.fetcher.fetch(variant)
         assertTrue("download: $download", download is FetchResult.Done)
-        val embedder = LiteRtEmbedder(downloads, LiteRtModelLoader(context), Dispatchers.IO, CoroutineScope(SupervisorJob()))
+        val embedder = LiteRtEmbedder(downloads, LiteRtModelLoader(context, AndroidDeviceSoc(context)), Dispatchers.IO, CoroutineScope(SupervisorJob()))
         val prefix = "task: sentence similarity | query: "
         val inputs = listOf(
             EmbeddingInput.Text(prefix + "a cat sleeping on a sofa"),

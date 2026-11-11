@@ -157,7 +157,9 @@ private fun ModelCard(row: ModelRowUi, onIntent: (AiIntent) -> Unit, modifier: M
                         AppButton(stringResource(R.string.action_cancel), { onIntent(AiIntent.CancelClicked(row.id)) }, kind = ButtonKind.Text)
                     ModelStatusUi.Downloaded -> {
                         AppButton(stringResource(R.string.action_delete), { onIntent(AiIntent.DeleteClicked(row.id)) }, kind = ButtonKind.Text)
-                        if (!row.chosen) AppButton(stringResource(R.string.ai_use_model), { onIntent(AiIntent.UseClicked(row.id)) }, kind = ButtonKind.Tonal)
+                        if (!row.chosen && row.canChoose) {
+                            AppButton(stringResource(R.string.ai_use_model), { onIntent(AiIntent.UseClicked(row.id)) }, kind = ButtonKind.Tonal)
+                        }
                     }
                 }
             }
@@ -175,12 +177,32 @@ private fun Options(ui: AiUi, onIntent: (AiIntent) -> Unit, modifier: Modifier =
         }
         Text(stringResource(R.string.ai_backend), style = MaterialTheme.typography.bodyLarge)
         AppConnectedButtonGroup(
-            options = persistentListOf(EmbeddingBackend.CPU, EmbeddingBackend.GPU),
+            options = if (ui.npuChip == null) {
+                persistentListOf(EmbeddingBackend.CPU, EmbeddingBackend.GPU)
+            } else {
+                persistentListOf(EmbeddingBackend.CPU, EmbeddingBackend.GPU, EmbeddingBackend.NPU)
+            },
             isSelected = { it == ui.backend },
             onClick = { onIntent(AiIntent.BackendSelected(it)) },
-            label = { stringResource(if (it == EmbeddingBackend.CPU) R.string.ai_backend_cpu else R.string.ai_backend_gpu) },
+            label = {
+                stringResource(
+                    when (it) {
+                        EmbeddingBackend.CPU -> R.string.ai_backend_cpu
+                        EmbeddingBackend.GPU -> R.string.ai_backend_gpu
+                        EmbeddingBackend.NPU -> R.string.ai_backend_npu
+                    },
+                )
+            },
         )
         Text(stringResource(R.string.ai_backend_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (ui.backend == EmbeddingBackend.NPU && ui.npuChip != null) {
+            Text(
+                stringResource(R.string.ai_backend_npu_body, ui.npuChip),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ui.npuBuild?.let { ModelCard(it, onIntent) }
+        }
         ThresholdSlider(ui.threshold, onIntent)
     }
 }

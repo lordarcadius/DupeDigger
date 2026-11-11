@@ -10,6 +10,7 @@ import com.vipuljha.dupedigger.domain.model.EmbeddingBackend
 import com.vipuljha.dupedigger.domain.model.EmbeddingInput
 import com.vipuljha.dupedigger.domain.model.ModelCapability
 import com.vipuljha.dupedigger.domain.model.ModelVariant
+import com.vipuljha.dupedigger.domain.repository.DeviceSoc
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -26,11 +27,23 @@ fun interface ModelLoader {
 /**
  * LiteRT-LM per D-006: image and audio encoders run on the same backend as text and only for variants that have them,
  * audio needs a 512-token input limit, and images use 70 vision tokens.
+ *
+ * The NPU backend reads its vendor dispatch library out of the app's native library directory, where Play's
+ * conditional delivery puts the one that matches this chip (D-035).
  */
-class LiteRtModelLoader @Inject constructor(@param:ApplicationContext private val context: Context) : ModelLoader {
+class LiteRtModelLoader @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+    private val soc: DeviceSoc,
+) : ModelLoader {
 
     override fun load(path: String, variant: ModelVariant, backend: EmbeddingBackend): LoadedModel {
-        val engineBackend = { if (backend == EmbeddingBackend.GPU) Backend.GPU() else Backend.CPU() }
+        val engineBackend = {
+            when (backend) {
+                EmbeddingBackend.NPU -> Backend.NPU(soc.nativeLibraryDir())
+                EmbeddingBackend.GPU -> Backend.GPU()
+                EmbeddingBackend.CPU -> Backend.CPU()
+            }
+        }
         val audio = ModelCapability.AUDIO in variant.capabilities
         val engine = EmbeddingEngine(
             EmbeddingEngineConfig(

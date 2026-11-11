@@ -39,8 +39,13 @@ Detection runs in three tiers. Each tier has its own confidence label and thresh
 ./gradlew assembleDebug          # build
 ./gradlew testDebugUnitTest      # JVM unit tests
 ./gradlew lint                   # Android lint
-./gradlew connectedDebugAndroidTest   # instrumented tests (device/emulator needed)
+./gradlew connectedDebugAndroidTest -PnpuFeatures=false   # instrumented tests (device/emulator needed)
+./gradlew bundleRelease           # the shipping artifact, NPU modules included
 ```
+
+`-PnpuFeatures=false` drops the three NPU runtime modules. They are arm64 only, and a bundle needs every module to
+carry the same ABIs, so including them makes an arm64-only build that an x86 emulator can't install. Leave the flag
+off for anything that ships (D-035).
 
 Run the smallest relevant check first, then widen it. Never claim a check passed unless you ran it.
 
@@ -58,6 +63,9 @@ Versions live only in `gradle/libs.versions.toml`. Don't bump AGP, Kotlin or any
 ## Architecture rules
 
 Single `:app` module, with Clean Architecture layers as packages under `com.vipuljha.dupedigger`. The full layout is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+The only other modules are `:npu:qualcomm`, `:npu:mediatek` and `:npu:google_tensor`: dynamic feature modules holding
+one vendor's NPU dispatch library each, with no code of their own. They are a delivery mechanism, not a layer (D-035).
 
 ### Layers
 - **Dependency rule:** `presentation → domain ← data`, wired by Hilt. Presentation sees only domain types, never an entity, DAO, `File` wrapper or repository implementation.

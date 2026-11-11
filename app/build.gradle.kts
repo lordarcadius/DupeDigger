@@ -9,6 +9,13 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
+/**
+ * LiteRT's NPU runtimes are arm64 only, and a bundle needs every module to carry the same ABIs, so taking the NPU
+ * modules means an arm64-only build. That is what ships. Pass `-PnpuFeatures=false` to drop them and get x86_64
+ * back, which is what an x86 emulator needs to install anything (D-035).
+ */
+val npuFeatures = providers.gradleProperty("npuFeatures").orNull != "false"
+
 // Release signing comes from the git-ignored keystore.properties; without it the release APK is left unsigned.
 val keystoreProperties = rootProject.file("keystore.properties").takeIf { it.exists() }
     ?.let { file -> Properties().apply { file.inputStream().use(::load) } }
@@ -29,6 +36,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // One per NPU vendor, each installed only on its own chips (D-035).
+    if (npuFeatures) dynamicFeatures += setOf(":npu:qualcomm", ":npu:mediatek", ":npu:google_tensor")
+
+    bundle {
+        deviceTargetingConfig = file("device_targeting_config.xml")
+        deviceGroup {
+            enableSplit = true
+            defaultGroup = "other"
+        }
+    }
+
     signingConfigs {
         if (keystoreProperties != null) {
             create("release") {
@@ -43,9 +61,11 @@ android {
     buildTypes {
         debug {
             enableUnitTestCoverage = true
+            ndk { abiFilters += if (npuFeatures) setOf("arm64-v8a") else setOf("arm64-v8a", "x86_64") }
         }
         release {
             signingConfig = signingConfigs.findByName("release")
+            ndk { abiFilters += setOf("arm64-v8a") }
             optimization {
                 enable = true
             }

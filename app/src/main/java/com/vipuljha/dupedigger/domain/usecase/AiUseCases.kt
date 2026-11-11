@@ -57,16 +57,22 @@ class CancelModelDownloadUseCase @Inject constructor(private val downloads: Mode
 /**
  * Removes a model and everything made with it: the file and its stored vectors. If it was the chosen model the AI tier
  * turns off, so nothing is left half-set; semantic groups from earlier scans go with the next scan.
+ * Deleting the portable file also removes this chip's NPU build of it, since the user asked for the model to go.
  */
 class DeleteModelUseCase @Inject constructor(
     private val downloads: ModelDownloads,
     private val settings: SettingsRepository,
     private val fileIndex: FileIndexRepository,
+    private val resolveModel: ResolveEmbeddingModelUseCase,
 ) {
     suspend operator fun invoke(variant: ModelVariant) {
-        downloads.cancel(variant)
-        downloads.delete(variant)
-        fileIndex.deleteEmbeddings(variant.id)
+        val builds = listOfNotNull(variant, resolveModel.npuBuild(variant).takeIf { variant.socTarget == null })
+        for (build in builds) {
+            downloads.cancel(build)
+            downloads.delete(build)
+            fileIndex.deleteEmbeddings(build.id)
+        }
+        if (variant.socTarget != null) return
         settings.update { if (it.aiModelId == variant.id) it.copy(aiModelId = null, semanticEnabled = false) else it }
     }
 }

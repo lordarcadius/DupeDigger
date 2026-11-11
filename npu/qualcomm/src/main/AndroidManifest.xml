@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Installed only on the chips this vendor's dispatch library is for (see app/device_targeting_config.xml).
+  LiteRT loads the first libLiteRtDispatch_*.so it finds in the native library directory, so exactly one of these
+  three modules may ever be present on a device.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:dist="http://schemas.android.com/apk/distribution">
+
+    <dist:module dist:title="@string/npu_module_qualcomm">
+        <dist:delivery>
+            <dist:install-time>
+                <dist:conditions>
+                    <dist:device-groups>
+                        <dist:device-group dist:name="npu_qualcomm" />
+                    </dist:device-groups>
+                </dist:conditions>
+            </dist:install-time>
+        </dist:delivery>
+        <dist:fusing dist:include="false" />
+    </dist:module>
+</manifest>

@@ -8,12 +8,15 @@ import com.vipuljha.dupedigger.core.ui.ContentState
 import com.vipuljha.dupedigger.core.ui.UiText
 import com.vipuljha.dupedigger.core.ui.toUiText
 import com.vipuljha.dupedigger.domain.model.ModelCatalog
+import com.vipuljha.dupedigger.domain.model.ModelVariant
+import com.vipuljha.dupedigger.domain.model.NPU_ID_SEPARATOR
 import com.vipuljha.dupedigger.domain.repository.ModelDownloads
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.usecase.CancelModelDownloadUseCase
 import com.vipuljha.dupedigger.domain.usecase.ChooseModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.DeleteModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.DownloadModelUseCase
+import com.vipuljha.dupedigger.domain.usecase.ResolveEmbeddingModelUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetAiBackendUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetAiChargingOnlyUseCase
 import com.vipuljha.dupedigger.domain.usecase.SetModelWifiOnlyUseCase
@@ -22,7 +25,11 @@ import com.vipuljha.dupedigger.domain.usecase.SetSemanticThresholdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -36,6 +43,7 @@ class AiViewModel @Inject constructor(
     private val cancelDownload: CancelModelDownloadUseCase,
     private val chooseModel: ChooseModelUseCase,
     private val deleteModel: DeleteModelUseCase,
+    private val resolveModel: ResolveEmbeddingModelUseCase,
     private val setEnabled: SetSemanticEnabledUseCase,
     private val setBackend: SetAiBackendUseCase,
     private val setThreshold: SetSemanticThresholdUseCase,
@@ -45,14 +53,20 @@ class AiViewModel @Inject constructor(
 
     init {
         val states = combine(ModelCatalog.variants.map { variant -> downloads.observe(variant) }) { it.toList() }
-        combine(settings.settings, states) { appSettings, modelStates -> aiUi(appSettings, ModelCatalog.variants.zip(modelStates)) }
+        val npu = settings.settings
+            .map { it.aiModelId?.let(ModelCatalog::byId)?.let(resolveModel::npuBuild) }
+            .distinctUntilChanged { old, new -> old?.id == new?.id }
+            .flatMapLatest { build -> build?.let { b -> downloads.observe(b).map { b to it } } ?: flowOf(null) }
+        combine(settings.settings, states, npu) { appSettings, modelStates, npuState ->
+            aiUi(appSettings, ModelCatalog.variants.zip(modelStates), npuState)
+        }
             .onEach { ui -> setState { copy(content = ContentState.Success(ui)) } }
             .catch { setState { copy(content = ContentState.Error(DomainError.Unknown.toUiText(), retryable = false)) } }
             .launchIn(viewModelScope)
     }
 
     override fun handleIntent(intent: AiIntent) {
-        val variant = { id: String -> ModelCatalog.byId(id) }
+        val variant = ::variantOf
         when (intent) {
             is AiIntent.EnabledToggled -> viewModelScope.launch { setEnabled(intent.enabled) }
             is AiIntent.DownloadClicked -> variant(intent.id)?.let { viewModelScope.launch { download(it) } }
@@ -79,5 +93,12 @@ class AiViewModel @Inject constructor(
         }
     }
 
-    private fun rowOf(id: String) = (currentState.content as? ContentState.Success)?.data?.models?.firstOrNull { it.id == id }
+    /** An id names a catalog model, or that model's build for this chip when it carries the chip's name. */
+    private fun variantOf(id: String): ModelVariant? {
+        val base = ModelCatalog.byId(id.substringBefore(NPU_ID_SEPARATOR)) ?: return null
+        return if (NPU_ID_SEPARATOR in id) resolveModel.npuBuild(base)?.takeIf { it.id == id } else base
+    }
+
+    private fun rowOf(id: String) = (currentState.content as? ContentState.Success)?.data
+        ?.let { ui -> (ui.models + listOfNotNull(ui.npuBuild)).firstOrNull { it.id == id } }
 }

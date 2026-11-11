@@ -28,7 +28,8 @@ import javax.inject.Singleton
 /**
  * The app's one embedding engine.
  * - Loads lazily on the IO dispatcher on first use, keeping one model and backend loaded; asking for another reloads.
- * - A GPU that can't start the model falls back to CPU, and the fallback is kept until the model or backend changes.
+ * - A backend that can't start the model falls back to the next simpler one (NPU to GPU to CPU), and the fallback is
+ *   kept until the model or backend changes.
  * - One batch runs at a time; the engine closes [IDLE_CLOSE_MS] after the last batch, or when the app is trimmed in the
  *   background ([onTrimMemory]), and loads again on the next call.
  */
@@ -88,19 +89,29 @@ class LiteRtEmbedder @Inject constructor(
         val key = variant.id to backend
         loaded?.takeIf { loadedKey == key }?.let { return it }
         closeLoaded()
-        val model = if (backend == EmbeddingBackend.GPU) {
-            try {
-                loader.load(path, variant, EmbeddingBackend.GPU)
-            } catch (e: Exception) {
-                Timber.w(e, "GPU couldn't start %s; using CPU", variant.id)
-                loader.load(path, variant, EmbeddingBackend.CPU)
-            }
-        } else {
-            loader.load(path, variant, EmbeddingBackend.CPU)
-        }
+        val model = loadFallingBack(path, variant, backend) ?: return null
         loaded = model
         loadedKey = key
         return model
+    }
+
+    /**
+     * Tries [backend], then each simpler one. An accelerator that can't start the model is a device fact, not an
+     * error worth failing a scan over, and the chosen backend is a preference (D-034).
+     */
+    private fun loadFallingBack(path: String, variant: ModelVariant, backend: EmbeddingBackend): LoadedModel? {
+        val order = FALLBACK.dropWhile { it != backend }.ifEmpty { listOf(EmbeddingBackend.CPU) }
+        for ((index, candidate) in order.withIndex()) {
+            try {
+                return loader.load(path, variant, candidate)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (index == order.lastIndex) throw e
+                Timber.w(e, "%s couldn't start %s; trying %s", candidate, variant.id, order[index + 1])
+            }
+        }
+        return null
     }
 
     private fun closeLoaded() {
@@ -111,5 +122,8 @@ class LiteRtEmbedder @Inject constructor(
 
     companion object {
         const val IDLE_CLOSE_MS = 60_000L
+
+        /** Most to least capable; a backend falls back to the next one along. */
+        private val FALLBACK = listOf(EmbeddingBackend.NPU, EmbeddingBackend.GPU, EmbeddingBackend.CPU)
     }
 }

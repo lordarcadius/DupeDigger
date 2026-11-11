@@ -38,6 +38,8 @@ import javax.inject.Inject
  *   their index rows and cached work.
  * - Runs the stages in order (index, exact, near when similar files are on, semantic when the AI tier is on and its
  *   model is chosen, unless it is set to run only while charging and the device isn't) and reports progress for each.
+ * - The semantic stage runs whichever build of the chosen model this device actually has, on the backend that build
+ *   is for, so asking for the NPU without its build still scans rather than skipping the tier.
  * - A skip asked for during the scan ends only the semantic stage; the scan completes with its exact and near groups.
  * - Only a scan that completes replaces the saved groups; a cancelled or failed one leaves the previous results.
  * - Every stage caches per file, so a scan restarted after process death redoes nothing it already finished.
@@ -53,6 +55,7 @@ class RunScanUseCase @Inject constructor(
     private val findExact: FindExactDuplicatesUseCase,
     private val findNear: FindNearDuplicatesUseCase,
     private val findSemantic: FindSemanticDuplicatesUseCase,
+    private val resolveModel: ResolveEmbeddingModelUseCase,
     private val power: PowerState,
     private val saveGroups: SaveGroupsUseCase,
     private val skip: SemanticStageSkip,
@@ -90,8 +93,9 @@ class RunScanUseCase @Inject constructor(
                 val model = appSettings.aiModelId?.let(ModelCatalog::byId)
                 val semantic = if (appSettings.semanticEnabled && model != null && (!appSettings.aiOnlyWhileCharging || power.isCharging())) {
                     onProgress(ScanProgress(ScanStage.SEMANTIC, 0, null))
+                    val target = resolveModel(model, appSettings.aiBackend)
                     unlessSkipped {
-                        findSemantic(scanId, model, appSettings.aiBackend, appSettings.semanticThreshold, appSettings.minFileSizeBytes, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
+                        findSemantic(scanId, target.variant, target.backend, appSettings.semanticThreshold, appSettings.minFileSizeBytes, exact.groups, near?.groups.orEmpty(), kinds) { done, total ->
                             onProgress(ScanProgress(ScanStage.SEMANTIC, done, total))
                         }
                     }

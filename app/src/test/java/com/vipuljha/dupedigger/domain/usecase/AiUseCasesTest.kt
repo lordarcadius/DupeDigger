@@ -8,6 +8,7 @@ import com.vipuljha.dupedigger.domain.model.ModelVariant
 import com.vipuljha.dupedigger.domain.repository.ModelDownloads
 import com.vipuljha.dupedigger.presentation.FakeFileIndex
 import com.vipuljha.dupedigger.presentation.FakeSettings
+import com.vipuljha.dupedigger.presentation.FakeSoc
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -108,7 +109,7 @@ class AiUseCasesTest {
         downloads.installed += small.id
         settings.update { it.copy(aiModelId = small.id, semanticEnabled = true) }
 
-        DeleteModelUseCase(downloads, settings, fileIndex)(small)
+        DeleteModelUseCase(downloads, settings, fileIndex, ResolveEmbeddingModelUseCase(downloads, FakeSoc()))(small)
 
         assertEquals(listOf("cancel ${small.id}", "delete ${small.id}"), downloads.calls)
         assertEquals(listOf(small.id), deletedVectors)
@@ -120,7 +121,7 @@ class AiUseCasesTest {
     fun `deleting another model leaves the chosen one in use`() = runTest {
         settings.update { it.copy(aiModelId = small.id, semanticEnabled = true) }
 
-        DeleteModelUseCase(downloads, settings, fileIndex)(large)
+        DeleteModelUseCase(downloads, settings, fileIndex, ResolveEmbeddingModelUseCase(downloads, FakeSoc()))(large)
 
         assertEquals(small.id, settings.settings.value.aiModelId)
         assertTrue(settings.settings.value.semanticEnabled)

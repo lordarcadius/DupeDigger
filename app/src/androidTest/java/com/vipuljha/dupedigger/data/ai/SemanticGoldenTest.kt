@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.vipuljha.dupedigger.data.storage.AndroidDeviceSoc
 import com.vipuljha.dupedigger.core.common.Outcome
 import com.vipuljha.dupedigger.domain.detector.cosine
 import com.vipuljha.dupedigger.domain.detector.groupBySimilarity
@@ -95,7 +96,7 @@ class SemanticGoldenTest {
     fun burstShotsGroupAndAnUnrelatedPhotoDoesNot() = runBlocking<Unit> {
         assertTrue(storage.fetcher.fetch(variant) is FetchResult.Done)
         val reader = AndroidEmbeddingInputReader(context, Dispatchers.IO)
-        val embedder = LiteRtEmbedder(downloads, LiteRtModelLoader(context), Dispatchers.IO, CoroutineScope(SupervisorJob()))
+        val embedder = LiteRtEmbedder(downloads, LiteRtModelLoader(context, AndroidDeviceSoc(context)), Dispatchers.IO, CoroutineScope(SupervisorJob()))
         val photos = listOf(beach("burst1.jpg", 0f), beach("burst2.jpg", 25f), beach("burst3.jpg", 55f), desk("desk.jpg"))
         val inputs = photos.map { EmbeddingInput.Image(reader.image(it.toURI().toString())!!) }
 

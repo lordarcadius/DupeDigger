@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One group per NPU vendor, listing exactly the chips LiteRT publishes an ahead-of-time build of EmbeddingGemma for
+  (see ModelCatalog.npuSocKeys, which a unit test holds to this list). Play installs a vendor's runtime module only
+  on its own chips, so a device never carries two dispatch libraries (D-035).
+
+  `manufacturer` is Build.SOC_MANUFACTURER and `model` is Build.SOC_MODEL, both API 31 and up. Qualcomm reports
+  itself as QTI; the spare entries cost nothing and cover a device that spells its vendor differently.
+-->
+<config:device-targeting-config xmlns:config="http://schemas.android.com/apk/config">
+
+    <config:device-group name="npu_qualcomm">
+        <config:device-selector>
+            <config:system-on-chip manufacturer="QTI" model="SM8550" />
+            <config:system-on-chip manufacturer="QTI" model="SM8650" />
+            <config:system-on-chip manufacturer="QTI" model="SM8750" />
+            <config:system-on-chip manufacturer="QTI" model="SM8850" />
+            <config:system-on-chip manufacturer="QTI" model="QCS8275" />
+        </config:device-selector>
+        <config:device-selector>
+            <config:system-on-chip manufacturer="Qualcomm" model="SM8550" />
+            <config:system-on-chip manufacturer="Qualcomm" model="SM8650" />
+            <config:system-on-chip manufacturer="Qualcomm" model="SM8750" />
+            <config:system-on-chip manufacturer="Qualcomm" model="SM8850" />
+            <config:system-on-chip manufacturer="Qualcomm" model="QCS8275" />
+        </config:device-selector>
+    </config:device-group>
+
+    <config:device-group name="npu_mediatek">
+        <config:device-selector>
+            <config:system-on-chip manufacturer="Mediatek" model="MT6991" />
+            <config:system-on-chip manufacturer="Mediatek" model="MT6993" />
+        </config:device-selector>
+        <config:device-selector>
+            <config:system-on-chip manufacturer="MediaTek" model="MT6991" />
+            <config:system-on-chip manufacturer="MediaTek" model="MT6993" />
+        </config:device-selector>
+    </config:device-group>
+
+    <config:device-group name="npu_google_tensor">
+        <config:device-selector>
+            <config:system-on-chip manufacturer="Google" model="Tensor G5" />
+            <config:system-on-chip manufacturer="Google" model="Tensor G6" />
+        </config:device-selector>
+    </config:device-group>
+
+</config:device-targeting-config>

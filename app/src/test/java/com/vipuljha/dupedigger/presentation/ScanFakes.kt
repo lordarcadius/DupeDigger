@@ -29,6 +29,8 @@ import com.vipuljha.dupedigger.domain.model.IndexStats
 import com.vipuljha.dupedigger.domain.model.IndexedFile
 import com.vipuljha.dupedigger.domain.model.MatchTier
 import com.vipuljha.dupedigger.domain.model.MediaKind
+import com.vipuljha.dupedigger.domain.model.ModelDownloadState
+import com.vipuljha.dupedigger.domain.model.ModelVariant
 import com.vipuljha.dupedigger.domain.model.QuarantinedFile
 import com.vipuljha.dupedigger.domain.model.RemovalResult
 import com.vipuljha.dupedigger.domain.model.StoredFile
@@ -37,6 +39,8 @@ import com.vipuljha.dupedigger.domain.model.VideoFile
 import com.vipuljha.dupedigger.domain.model.VideoSignature
 import com.vipuljha.dupedigger.core.common.DomainError
 import com.vipuljha.dupedigger.domain.repository.DeviceStorage
+import com.vipuljha.dupedigger.domain.repository.DeviceSoc
+import com.vipuljha.dupedigger.domain.repository.ModelDownloads
 import com.vipuljha.dupedigger.domain.repository.DuplicateGroupRepository
 import com.vipuljha.dupedigger.domain.repository.FileIndexRepository
 import com.vipuljha.dupedigger.domain.repository.FilePresence
@@ -250,4 +254,23 @@ class FakeDeviceStorage(
 /** Everything is still on the device unless its URI is put in [gone]. */
 class FakePresence(val gone: MutableSet<String> = mutableSetOf()) : FilePresence {
     override suspend fun missing(sourceUris: Collection<String>) = sourceUris.filterTo(HashSet()) { it in gone }
+}
+
+/** A chip with no NPU build unless [soc] names one. */
+class FakeSoc(var soc: String = "") : DeviceSoc {
+    override fun model() = soc
+    override fun nativeLibraryDir() = "/data/app/lib/arm64"
+}
+
+/** A model counts as downloaded only while its id is in [installed]. */
+open class FakeDownloads(val installed: MutableSet<String> = mutableSetOf()) : ModelDownloads {
+    override fun start(variant: ModelVariant, wifiOnly: Boolean) = Unit
+    override fun restart(variant: ModelVariant, wifiOnly: Boolean) = Unit
+    override fun cancel(variant: ModelVariant) = Unit
+    override suspend fun delete(variant: ModelVariant) {
+        installed -= variant.id
+    }
+    override fun observe(variant: ModelVariant) =
+        flowOf(if (variant.id in installed) ModelDownloadState.Downloaded else ModelDownloadState.NotDownloaded)
+    override fun installedPath(variant: ModelVariant) = if (variant.id in installed) "/models/${variant.fileName}" else null
 }

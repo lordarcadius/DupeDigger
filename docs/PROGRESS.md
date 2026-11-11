@@ -69,6 +69,9 @@ Statuses: `todo` · `in-progress` · `blocked` · `done`
 | P10-01 | Identity across a rename | done | `file_index.fileKey` from the walker's attribute read, Room 3 (D-031) |
 | P10-02 | Duplicates across folders | done | Whole-index candidates with a `seenNow` flag; vanished members pruned (D-032) |
 | P10-03 | Video in the AI tier | done | Three keyframes read together into one vector (D-033) |
+| P11-01 | NPU backend and per-chip model | done | `Build.SOC_MODEL` picks the build; NPU→GPU→CPU fallback (D-034) |
+| P11-02 | One NPU runtime per device | done | Three conditionally delivered feature modules (D-035) |
+| P11-03 | Measure NPU on hardware | todo | Needs a Snapdragon 8 Gen 2+ device; nothing is verified on silicon yet |
 
 ## Log
 
@@ -410,3 +413,29 @@ Newest first. One entry per session: `YYYY-MM-DD: <task IDs>: what was done; wha
   - **Not checked:** semantic video quality against real footage — the grouping is covered by a fake embedder, not by
     EmbeddingGemma on a device, so the 0.90 threshold is unverified for video. Memory of a whole-index semantic pass on a
     large library is also unmeasured (256-float vectors, so about 1 KB a file).
+- 2026-11-11: P11-01 and P11-02: NPU support, built but not yet run on an NPU.
+  - **What was already there:** LiteRT-LM 0.19.1 ships `Backend.NPU(nativeLibraryDir)`, `Backend.GOOGLE_TENSOR` and an
+    `NpuBrand` enum, and `ModelInfo` exposes `supportedBackends`, `npuBrand` and `socName` — checked by unpacking the
+    AAR, not from documentation. The `litert-community` repositories publish 9 Android per-chip builds of each of our
+    three models alongside the portable file, public and ungated.
+  - **P11-01:** `EmbeddingBackend.NPU`; `DeviceSoc` reading `Build.SOC_MODEL`; 27 NPU builds in `ModelCatalog` with
+    pinned revision, size and SHA-256 (taken from the Hugging Face API's `lfs.oid`, whose three base digests matched
+    the ones already pinned); `ResolveEmbeddingModelUseCase` picking the build; `LiteRtEmbedder` walking NPU→GPU→CPU.
+    An NPU build is its own `ModelVariant`, so the downloader was untouched and its vectors are stored under their own
+    key — a differently quantised graph must never be compared with the portable one (D-034).
+  - **P11-02:** `:npu:qualcomm`, `:npu:mediatek` and `:npu:google_tensor`, each carrying one vendor's dispatch library
+    and conditionally delivered to that vendor's chips through `app/device_targeting_config.xml` (D-035). Verified by
+    unpacking `app-release.aab`: four modules, the right `.so` in each, and each manifest conditioned on its own device
+    group, with all three groups and every chip present in `DeviceGroupConfig.pb`.
+  - **The ABI knot:** the NPU runtimes are arm64 only and a bundle wants one ABI set across modules, so the default
+    build is now arm64-only. `-PnpuFeatures=false` drops the modules and restores x86_64 for the emulator; AGENTS.md
+    and the test command were updated. Two debug ABIs (`armeabi-v7a`, `x86`) went away with it, which costs nothing:
+    LiteRT-LM ships no 32-bit library, so the AI tier never ran there.
+  - **Checked:** `testDebugUnitTest` (302 tests, 0 failures), `lint`, the domain-purity grep, `assembleDebug`,
+    `bundleRelease`, and `connectedDebugAndroidTest -PnpuFeatures=false` (80 tests, 0 failures, 7 skipped). New unit
+    tests cover backend resolution, the chip-name match, an NPU build keeping its model's capabilities but not its
+    vector key, every model having a build for every targeted chip, and the NPU→GPU→CPU walk.
+  - **Not checked — P11-03 holds this:** no NPU device was available. Unverified: that a conditionally delivered
+    module's library reaches `applicationInfo.nativeLibraryDir`; that the vision encoder runs on the NPU rather than
+    only text; whether NPU is actually faster for our short-prefill workload, as against the published decode numbers;
+    and whether the 0.90 semantic threshold still suits NPU vectors.

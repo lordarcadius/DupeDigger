@@ -49,7 +49,9 @@ import com.vipuljha.dupedigger.domain.repository.SemanticStageSkip
 import com.vipuljha.dupedigger.domain.repository.SettingsRepository
 import com.vipuljha.dupedigger.domain.repository.StorageAccess
 import com.vipuljha.dupedigger.domain.repository.VideoHasher
+import com.vipuljha.dupedigger.presentation.FakeDownloads
 import com.vipuljha.dupedigger.presentation.FakePresence
+import com.vipuljha.dupedigger.presentation.FakeSoc
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.awaitCancellation
@@ -130,6 +132,7 @@ class RunScanUseCaseTest {
                 override suspend fun read(sourceUri: String): AudioTags? = null
             },
         ),
+        resolveModel = ResolveEmbeddingModelUseCase(FakeDownloads(), FakeSoc()),
         findSemantic = FindSemanticDuplicatesUseCase(
             index,
             object : Embedder {

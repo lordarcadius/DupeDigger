@@ -167,3 +167,17 @@ skipped video entirely. Decisions in D-031 to D-033.
 | P10-01 | **Identity that survives a rename.** `file_index.fileKey` from the walker's existing attribute read; a file found again by key, size and mtime keeps its row (D-031). Room 3 with a migration. | Renaming or moving a file recomputes no hash, and a reused inode on other content still does. |
 | P10-02 | **Duplicates across folders and scans.** Candidate queries cover the whole index with a `seenNow` flag; exact will hash a carried-over file, near and AI only use what's cached; vanished members are pruned before the groups are saved (D-032). | Scanning DCIM then Download reports the photo that sits in both, and a file deleted since its scan never shows as a duplicate. |
 | P10-03 | **Video in the AI tier.** Three keyframes per video, encoded like images and read together into one vector (D-033). | Two recordings of the same scene group under SEMANTIC with a vision model, and a text-only model leaves video alone. |
+
+---
+
+## P11: NPU support
+
+Raised by the owner: "can we add NPU support too?" LiteRT-LM 0.19.1 already has `Backend.NPU`, and the model
+repositories already publish ahead-of-time builds per chip, so the work is choosing the right file and delivering the
+right vendor runtime. Decisions in D-034 and D-035.
+
+| ID | Task | Done when |
+|---|---|---|
+| P11-01 | **NPU backend and the per-chip model.** `EmbeddingBackend.NPU`; `Build.SOC_MODEL` picks the ahead-of-time build; vectors keyed per build; NPU falls back to GPU falls back to CPU (D-034). | A supported chip offers the option and downloads its build; an unsupported one never sees it; neither can ever compare vectors from two different builds. |
+| P11-02 | **One runtime per device.** Three dynamic feature modules, each conditionally delivered to its vendor's chips by `device_targeting_config.xml` (D-035). | `bundleRelease` carries all three modules with their dispatch libraries and device groups, and no device can receive two. |
+| P11-03 | **Measure it on hardware.** Run the AI tier on a Snapdragon device: NPU against GPU against CPU, for speed, battery and whether vision runs on the NPU at all. | PROGRESS records real numbers, and the 0.90 threshold is confirmed or changed for NPU vectors. |

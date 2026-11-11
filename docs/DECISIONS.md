@@ -659,3 +659,56 @@ picture, and pays a decode from the previous keyframe for it. Semantic similarit
 gets, so the nearest keyframe is both cheaper and a cleaner image.
 
 **Overlap with the near tier** is already handled: a semantic group whose files all sit inside one near group is dropped.
+
+## D-034: The NPU is a third backend, and every backend is a preference (accepted, P11-01)
+**Decision:** `EmbeddingBackend` gains `NPU`. A chosen backend is tried and then given up on: NPU falls back to GPU,
+GPU to CPU. `LiteRtEmbedder` walks that list once per load and keeps whatever started.
+
+**Why a fallback rather than an error:** whether an accelerator can run a model is a fact about the device, not a
+mistake the user made. The GPU already worked this way; the NPU needs it more, because it also depends on a model
+file compiled for this exact chip and on a runtime module Play may not have installed.
+
+**An NPU build is a `ModelVariant` of its own,** derived from the base one with its own file name, URL, size and
+digest, and an id of `<base>+<SoC>`. That falls out well:
+- the downloader, storage and progress UI already take a `ModelVariant`, so none of them changed;
+- `embeddingKey` is built from the id, so an ahead-of-time build's vectors are stored under their own key and are
+  never compared with the portable build's. They come from a differently quantised graph, so mixing them could group
+  files that don't belong together — the one failure this app must not have.
+
+The cost is that turning the neural engine on or off re-embeds. The settings screen says so.
+
+**Which chip:** `Build.SOC_MODEL`, which is `ro.soc.model` — the property LiteRT's own instructions use — and exists
+from API 31, this app's minimum. Names are compared with case and punctuation stripped, so `Tensor G5`, `tensor_g5`
+and `TENSORG5` are one chip. A device that reports nothing matches no build and simply never sees the option.
+
+**Digests:** the catalog pins a revision, a size and a SHA-256 for all 27 NPU files, read from the Hugging Face API's
+`lfs.oid`. The three base files' digests came back identical to the ones already pinned, which is what makes the rest
+trustworthy. A unit test holds every model to having a build for every chip the delivery config targets.
+
+## D-035: One NPU runtime per device, through conditional feature delivery (accepted, P11-02)
+**Decision:** each vendor's dispatch library lives in its own dynamic feature module — `:npu:qualcomm`,
+`:npu:mediatek`, `:npu:google_tensor` — delivered at install time only to its own chips, listed by
+`Build.SOC_MANUFACTURER` and `Build.SOC_MODEL` in `app/device_targeting_config.xml`.
+
+**Why not just add all three dependencies:** LiteRT loads the first `libLiteRtDispatch_*.so` it finds in the native
+library directory ([LiteRT #11250](https://github.com/google-ai-edge/LiteRT/issues/11250)), so an app carrying three
+would break two of them. Conditional delivery means a device only ever holds the one it can use.
+
+**What it costs:** almost nothing in size. The three runtime AARs are 0.3–0.7 MB each and hold only a dispatch library
+and a compiler plugin; the real vendor libraries (`libcdsprpc.so`, `libedgetpu_litert.so`, MediaTek's Neuron set) come
+from the device's own vendor partition, declared with `uses-native-library`. The model is where the weight is: an NPU
+build runs 188–895 MB against the portable file's 165–485 MB.
+
+**The ABI knot.** The NPU runtimes are arm64 only, and a bundle requires every module to carry the same ABIs, so
+taking the modules makes the whole build arm64-only. That is right for what ships — LiteRT-LM has no 32-bit library
+anyway — but it leaves out x86_64, which is the only thing an emulator on a PC can install. Hence `-PnpuFeatures=false`,
+which drops the modules from the build and from `settings.gradle.kts` and puts x86_64 back; the instrumented suite
+runs with it.
+
+**Device targeting is beta** and needs `android.experimental.enableDeviceTargetingConfigApi=true`. Qualcomm reports
+its manufacturer as `QTI`; each group also lists the spelling a device might use instead, which costs nothing.
+
+**Not verified here:** no NPU device was available, so what is proven is that the bundle carries the three modules
+with their dispatch libraries and the right device groups, and that the app falls back cleanly when none is present.
+Whether a conditionally delivered module's library actually lands in `applicationInfo.nativeLibraryDir`, and whether
+the vision encoder runs on the NPU at all, both still need a Snapdragon device and a Play install.
